@@ -1,0 +1,2 @@
+
+NodeMCU Modules: bit, enduser_setup, file, gpio, http, i2c, net, node, pcm, rtctime, sjson, sntp, tmr, uart, wifi, ws2812

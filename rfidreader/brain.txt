@@ -1,0 +1,30 @@
+
+Event driven RFID kaart lezen:
+
+Init krijgt callback functie mee
+- Kaart init (reset lijn aankoppelen voor robuustheid?? ivm issues met dat ie het soms niet meer doet)
+  - i2c initialisatie
+  - firmware versie ophalen voor sanity check
+    - Klopt niet?  Dan error callback
+  - SAM config naar PN532 sturen
+
+- Status init
+
+- Timer starten, 10x (of 20x of 50x?) per seconde:
+  - Respons lezen van PN532, als er een RDY is (eerste byte = 1):
+    - Is het een 0x4b?  Dan callback met kaart-ID
+  - Teller verlagen
+    <= 0:
+    - Commando 0x4a sturen, teller naar 10 (of 5 of 20 of whatever)
+    - ACK checken, niet goed?:
+      - Error callback
+
+
+WiFi:
+- enduser setup module?
+
+- Timer starten, 1x per minuut? (of per 10 minuten?)
+  - Wifi starten/stoppen? (ivm stroom gebruik?)
+  - Lijst met nfc-IDs ophalen
+  - Tijd sync (?)
+  - logs doorsturen van accesses
