@@ -3,8 +3,10 @@ from machine import Pin
 from neopixel import NeoPixel
 from utime import sleep_ms,ticks_ms,ticks_add,ticks_diff,time
 import ntptime
-import wifiportal
+from umqtt.simple import MQTTClient
+import ubinascii, machine
 import urequests as requests
+import wifiportal
 
 np = NeoPixel(Pin(2),24)
 np.write()
@@ -18,7 +20,10 @@ for r in range(8):
 
 wifiportal.captive_portal("RfidLock")
 
-ntptime.settime()
+try:
+    ntptime.settime()
+except:
+    pass
 
 for r in range(8):
     np[r] = (0,0,0)
@@ -32,6 +37,28 @@ cardid = None
 colors = [(20,0,0),(15,15,0),(0,20,0),(0,15,15),(0,0,20),(15,0,15)]
 statecols = [(0,0,0),(0,0,20),(0,20,0),(20,0,0)]
 cardstate = 0
+
+def mqtt_rec(topic,msg):
+    global cardstate
+    if topic == b'eos/rfid/color':
+        if msg == b'blue':
+            cardstate = 124
+        elif msg == b'green':
+            cardstate = 224
+        elif msg == b'red':
+            cardstate = 324
+        else:
+            cardstate = 23
+
+mqttid = ubinascii.hexlify(machine.unique_id())
+mqtt = MQTTClient(client_id=mqttid, server='192.168.1.58')
+mqtt.set_callback(mqtt_rec)
+try:
+    mqtt.connect()
+    mqtt.subscribe('eos/rfid/color')
+except:
+    pass
+
 while True:
     ct = ticks_add(ticks_ms(),40)
     try:
@@ -49,7 +76,14 @@ while True:
                 cardstate = 224
             else:
                 cardstate = 324
-            res = requests.post("http://test.medicorum.space/roster/api/register_access.php", data=('{"cardid":"%08x","timestamp":%d}' % (cardid,time())), headers = {'Content-Type': 'application/json'})
+            try:
+                res = requests.post("http://test.medicorum.space/roster/api/register_access.php", data=('{"cardid":"%08x","timestamp":%d}' % (cardid,time())), headers = {'Content-Type': 'application/json'})
+            except:
+                pass
+            try:
+                mqtt.publish(b'eos/rfid/card', (b'%08x' % cardid))
+            except:
+                pass
             print("POST: %s" % (res.text.strip()))
 
     if cardstate > 0 and cardstate < 400 and (cardstate % 100) <= 24:
@@ -58,6 +92,10 @@ while True:
             cardstate = 23
         np[cardstate % 100] = statecols[int(cardstate/100)]
         np.write()
+    try:
+        mqtt.check_msg()
+    except:
+        pass
     et = ticks_diff(ct,ticks_ms())
     if et > 0:
         sleep_ms(et)

@@ -30,7 +30,7 @@ def mainloop(np, host='192.168.1.58'):
     global client,leds
     leds = np
     cid = ubinascii.hexlify(machine.unique_id())
-    client = MQTTClient(cid, host)
+    client = MQTTClient(client_id=cid, server=host)
     client.set_callback(mqtt_rec)
     client.connect()
     client.subscribe('eos/portal/status')
