@@ -50,15 +50,19 @@ def mqtt_rec(topic,msg):
         else:
             cardstate = 23
 
+tstatus = b'eos/rfid/status'
 mqttid = ubinascii.hexlify(machine.unique_id())
 mqtt = MQTTClient(client_id=mqttid, server='192.168.1.58')
 mqtt.set_callback(mqtt_rec)
+mqtt.set_last_will(tstatus, b'{"battery":0.0,"connected":false}', retain=True, qos=1)
 try:
     mqtt.connect()
-    mqtt.subscribe('eos/rfid/color')
+    mqtt.subscribe(b'eos/rfid/color')
 except:
     pass
 
+adc = machine.ADC(0)
+cnt = 1500
 while True:
     ct = ticks_add(ticks_ms(),40)
     try:
@@ -78,13 +82,13 @@ while True:
                 cardstate = 324
             try:
                 res = requests.post("http://test.medicorum.space/roster/api/register_access.php", data=('{"cardid":"%08x","timestamp":%d}' % (cardid,time())), headers = {'Content-Type': 'application/json'})
+                print("POST: %s" % (res.text.strip()))
             except:
                 pass
             try:
-                mqtt.publish(b'eos/rfid/card', (b'%08x' % cardid))
+                mqtt.publish(topic=b'eos/rfid/card', msg=(b'%08x' % cardid))
             except:
                 pass
-            print("POST: %s" % (res.text.strip()))
 
     if cardstate > 0 and cardstate < 400 and (cardstate % 100) <= 24:
         cardstate = cardstate-1
@@ -96,6 +100,15 @@ while True:
         mqtt.check_msg()
     except:
         pass
+    cnt -= 1
+    if cnt <= 0:
+        cnt = 1500
+        try:
+            vlt = adc.read() * 0.0059
+            mqtt.publish(topic = tstatus, msg = b'{"battery":%1.2f,"connected":true}' % vlt, retain=True, qos=1)
+        except:
+            pass
+
     et = ticks_diff(ct,ticks_ms())
     if et > 0:
         sleep_ms(et)

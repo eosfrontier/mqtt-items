@@ -4,7 +4,7 @@ from utime import sleep_ms
 import wifiportal
 import mqtt
 
-np = NeoPixel(Pin(2),4)
+np = NeoPixel(Pin(0),4)
 np.write()
 sleep_ms(100)
 np[0] = (20,0,0)
