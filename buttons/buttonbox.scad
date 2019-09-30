@@ -25,12 +25,14 @@ front();
 
 *switches();
 
-#color("gray")
+color("gray")
 front2();
 color("gray")
 translate([0,0,-tol]) bottom2();
 switches(180);
 color("teal") translate([0,-17,height-wid-0.1]) rotate([0,0,180]) batteryholder();
+
+*button(180);
 
 module bottom2() {
     to2 = trioff-bsize-cwid;
@@ -58,13 +60,23 @@ module switches(rot=0) {
     for (n = [360/trivec:360/trivec:360]) {
         rotate([0,0,n])
         translate([0,trioff-bsize-cwid,0]) {
-            color("brown") translate([0,0,sheight-0.75]) cube([15.5,15.5,1.5], true);
-            color("white") rotate([0,0,rot]) button();
+            #color("brown") translate([0,-1.25,sheight-0.75]) cube([15.5,15.5,1.5], true);
+            color("white") rotate([0,0,rot]) button(rot);
         }
     }
 }
 
-module button() {
+module swtab(w=10) {
+    rotate([0,90,0])
+    translate([0,0,-w/2])
+    linear_extrude(height=w)
+    polygon([
+        [-0.1,0.1],[1.6,0.1],[2.0,-0.3],
+        [3.5,0.6],[2.8,1.2],[-0.1,1.2]
+    ]);
+}
+
+module button(rot) {
     bs2 = bsize-btol*s3;
     cur_prism(trivec, [
             [bs2,height+bth,-bbev-cwid],
@@ -72,11 +84,18 @@ module button() {
             [bs2,sheight+wid+2,-cwid],
             [bs2,sheight+2,0],
             [bs2,sheight,0],
-            [0,sheight,6-crv],
-            [0,sheight+wid,6-crv],
+            [0,sheight,5-crv],
+            [0,sheight+wid,5-crv],
             [bs2,sheight+wid,-cwid-bwid],
             [bs2,height+bth-bbev,-cwid-bwid],
-            [bs2,height+bth-bwid,-cwid-bbev] ]);            
+            [bs2,height+bth-bwid,-cwid-bbev] ]);    
+    rotate([0,0,90]) translate([0,15.5/2,sheight]) swtab();
+    rotate([0,0,-90]) translate([0,15.5/2,sheight]) swtab();
+    rotate([0,0,rot]) {
+        translate([0,7.2,sheight-1]) cube([10,1,2],true);
+        translate([-8,-9.6,sheight-1]) cube([3,1,2],true);
+        translate([ 8,-9.6,sheight-1]) cube([3,1,2],true); 
+    }
 }
 
 module front2() {
