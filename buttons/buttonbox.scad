@@ -1,32 +1,65 @@
 s3 = sqrt(3);
 
 trivec = 3;
-trisize = 180;
+trisize = 170;
 trioff = trisize / s3;
-bsize = 27;
+bsize = 25;
 wid = 3;
-cwid = wid*s3;
+cwid = wid*s3/2;
 height = 35;
 bheight = 20;
-sheight = height - 25;
-cang = 10;
+bott = 2;
+sheight = 9.5;
+cang = 5;
 btol = 0.3;
-bth = 5;
-bbev = 3;
+tol = 0.1;
+bth = 6;
+bbev = 4;
 bwid = 2;
 
-color("gray")
+crv = 10;
+
+*color("gray")
 front();
-color("teal") translate([9.5,-1,height-wid-0.1]) rotate([0,0,180]) batteryholder();
+*color("teal") translate([9.5,-1,height-wid-0.1]) rotate([0,0,180]) batteryholder();
 
-switches();
+*switches();
 
-module switches() {
+#color("gray")
+front2();
+color("gray")
+translate([0,0,-tol]) bottom2();
+switches(180);
+color("teal") translate([0,-17,height-wid-0.1]) rotate([0,0,180]) batteryholder();
+
+module bottom2() {
+    to2 = trioff-bsize-cwid;
+    difference() {
+        cur_prism(trivec, [
+            [to2,0,-bwid],
+            [to2,sheight-2,-bwid],
+            [to2,sheight-2,-tol],
+            [to2,0,-tol],
+            [to2,0,cwid],
+            [to2,-bott,cwid]
+        ],cw=bsize);
+        #for (n = [360/trivec:360/trivec:360]) {
+            rotate([0,0,n])
+            translate([35,5,0])
+            cur_prism(trivec, [
+                [20,1,-5],
+                [20,-bott-1,-5]
+            ]);
+        }
+    }
+}
+
+module switches(rot=0) {
     for (n = [360/trivec:360/trivec:360]) {
         rotate([0,0,n])
         translate([0,trioff-bsize-cwid,0]) {
-            *color("brown") translate([0,0,sheight-0.5]) cube([15.5,15.5,1], true);
-            color("white") button();
+            color("brown") translate([0,0,sheight-0.75]) cube([15.5,15.5,1.5], true);
+            color("white") rotate([0,0,rot]) button();
         }
     }
 }
@@ -34,19 +67,72 @@ module switches() {
 module button() {
     bs2 = bsize-btol*s3;
     cur_prism(trivec, [
-            [bs2-wid-bbev,height+bth],
-            [bs2-wid,height+bth-bbev],
-            [bs2-wid,sheight+wid+2],
-            [bs2,sheight+2],
-            [bs2,sheight],
-            [3,sheight],
-            [3,sheight+wid],
-            [bs2-bwid-wid,sheight+wid],
-            [bs2-bwid-wid,height+bth-wid] ]);            
+            [bs2,height+bth,-bbev-cwid],
+            [bs2,height+bth-bbev,-cwid],
+            [bs2,sheight+wid+2,-cwid],
+            [bs2,sheight+2,0],
+            [bs2,sheight,0],
+            [0,sheight,6-crv],
+            [0,sheight+wid,6-crv],
+            [bs2,sheight+wid,-cwid-bwid],
+            [bs2,height+bth-bbev,-cwid-bwid],
+            [bs2,height+bth-bwid,-cwid-bbev] ]);            
 }
 
+module front2() {
+    sides = 360/cang;
+    to2 = trioff-bsize-cwid;
+    difference() {
+        cur_prism(trivec,[
+            [to2,height,cwid-cwid],
+            [to2,height-cwid,cwid],
+            [to2,0,cwid],
+            [to2,0,-0.01],
+            [to2,height-wid,-0.01]],cw=bsize);
+        for (n=[360/trivec:360/trivec:360]) {
+            rotate([0,0,n])
+            translate([0,trioff-bsize-cwid,0])
+            rotate([0,0,180])
+            polyhedron(
+                points = concat(
+                    cur_ngon(trivec,bsize,height+0.5,crv-cwid+s3/2),
+                    cur_ngon(trivec,bsize,height-0.5,crv-cwid),
+                    cur_ngon(trivec,bsize,height-wid-0.5,crv-cwid)
+                ), faces = concat(
+                [[for (n=[0:sides-1]) n]],
+                nquads(sides,0),
+                nquads(sides,sides),
+                [[for (n=[sides-1:-1:0]) n+sides*2]]
+                )
+            );
+        }
+    }
+    for (n=[360/trivec:360/trivec:360]) {
+        rotate([0,0,n])
+        translate([0,trioff-bsize-cwid,0])
+        rotate([0,0,180])
+        polyhedron(
+            points = concat(
+                cur_ngon(trivec,bsize,sheight+wid+2,crv-cwid),
+                cur_ngon(trivec,bsize,height-1,crv-cwid),
+                cur_ngon(trivec,bsize,height-1,crv),
+                cur_ngon(trivec,bsize,sheight+2,crv) ),
+            faces = concat(
+                nquads(sides,0),
+                nquads(sides,sides),
+                nquads(sides,sides*2),
+                [for (i=[0:sides-1]) [(i+1)%sides,i+sides*3,i]],
+                [for (i=[0:sides-1]) [(i+1)%sides,(i+1)%sides+sides*3,i+sides*3]]
+            ) );
+                
+    }
+    translate([0,-17,height-wid-0.1]) batteryclips();
+    translate([-50,25,height-wid-0.1]) rotate([0,0,-120]) wemosd1();
+}
+
+
 module front() {
-    sides = 360/cang+trivec;
+    sides = 360/cang;
     difference() {
         cur_prism(trivec,[
             [trioff-wid/2,height],
@@ -93,17 +179,6 @@ module front() {
     translate([-33,5,height-wid-0.1]) rotate([0,0,90]) wemosd1();
 }
 
-function ngon(n,s,h) = [for (an=[360/n:360/n:360]) [s*cos(an),s*sin(an),h]];
-
-function cur_ngon(n,s,h,ct=5,cs=cang) = concat([for (sd=[0:n-1])
-        for (an=[(sd-0.5)*360/n:cs:(sd+0.5)*360/n])
-            [s*sin(sd*360/n)+ct*sin(an),s*cos(sd*360/n)+ct*cos(an),h]]
-        );
-        
-function cur_ngon2(n,s,ct=5,cs=cang) = concat([for (sd=[0:n-1])
-        for (an=[(sd-0.5)*360/n:cs:(sd+0.5)*360/n])
-            [s*sin(sd*360/n)+ct*sin(an),s*cos(sd*360/n)+ct*cos(an)]]
-        );
 
 module batteryclips() {
     translate([-33/2,-95/2,0]) batterypin();
@@ -138,15 +213,15 @@ module wemosd1() {
     translate([-17.3,-9.2,0]) rotate([0,0, 90]) mcutab(8);
     translate([-17.3, 9.2,0]) rotate([0,0, 90]) mcutab(8);
 
-    translate([ 10,-12.7-2/2,-7/2+0.1]) cube([7,2,7],true);
-    translate([ 10, 12.7+2/2,-7/2+0.1]) cube([7,2,7],true);
-    translate([-10,-12.7-2/2,-7/2+0.1]) cube([7,2,7],true);
-    translate([-10, 12.7+2/2,-7/2+0.1]) cube([7,2,7],true);
+    translate([ 10,-12.7-2/2,-7/2+0.1]) cube([7,2,7.2],true);
+    translate([ 10, 12.7+2/2,-7/2+0.1]) cube([7,2,7.2],true);
+    translate([-10,-12.7-2/2,-7/2+0.1]) cube([7,2,7.2],true);
+    translate([ -6, 12.7+2/2,-7/2+0.1]) cube([7,2,7.2],true);
 }
 
 module mcutab(w) {
     translate([-w/2,0,0]) rotate([0,90,0]) linear_extrude(height=w) polygon([
-        [0,0],[4.8,0],[5.4,-0.5],[7,0.5],[5.4,1.5],[0,1.5]
+        [-0.2,0],[4.8,0],[5.4,-0.5],[7,0.5],[5.4,1.5],[-0.2,1.5]
     ]);
 }
 
@@ -192,16 +267,26 @@ function nquads(n,o) = concat(
     [for (i=[0:n-1]) [(i+1)%n+o,i+o+n,(i+1)%n+o+n]]
 );
 
-module cur_prism(sides, points, ct = 5, cang = 10) {
-    sds = 360/cang+sides;
+module cur_prism(sides, points, ct = crv, cs = 10, cw=0) {
+    sds = 360/cs;
     nm = len(points);
     polyhedron(
-        points = [for (ps = points) each cur_ngon(sides, ps[0],ps[1],ct,cang)]
+        points = [for (ps = points) each cur_ngon(sides, ps[0],ps[1],ct+(ps[2]?ps[2]:0),cs,cw)]
             ,
         faces = concat(
                 [[for (n=[0:sds-1]) n]],
-                [for (n=[0:nm-1]) each nquads(sds,sds*n)],
+                [for (n=[0:nm-2]) each nquads(sds,sds*n)],
                 [[for (n=[sds-1:-1:0]) n+sds*(nm-1)]]
             ));
             
 }
+
+function cur_ngon(n,s,h,ct=crv,cs=cang,cw=0) = concat([for (sd=[0:n-1]) each concat(
+        [for (an=[(sd-0.5)*360/n+cs/2:cs:(sd)*360/n-cs/2])
+            [s*sin(sd*360/n)+ct*sin(an)+cw*sin((sd-0.5)*360/n),
+             s*cos(sd*360/n)+ct*cos(an)+cw*cos((sd-0.5)*360/n),h]],
+        [for (an=[(sd)*360/n+cs/2:cs:(sd+0.5)*360/n-cs/2])
+            [s*sin(sd*360/n)+ct*sin(an)+cw*sin((sd+0.5)*360/n),
+             s*cos(sd*360/n)+ct*cos(an)+cw*cos((sd+0.5)*360/n),h]])
+        ]
+        );
