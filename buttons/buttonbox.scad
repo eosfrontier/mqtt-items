@@ -19,6 +19,9 @@ bwid = 2;
 
 crv = 10;
 
+taboff = trioff-bsize-cwid-1.114-tol;
+
+
 *color("gray")
 front();
 *color("teal") translate([9.5,-1,height-wid-0.1]) rotate([0,0,180]) batteryholder();
@@ -27,19 +30,23 @@ front();
 
 color("gray")
 front2();
-color("gray")
+*color("gray")
 translate([0,0,-tol]) bottom2();
-switches(180);
-color("teal") translate([0,-17,height-wid-0.1]) rotate([0,0,180]) batteryholder();
+*switches(180);
+*color("teal") translate([0,-17,height-wid-0.1]) rotate([0,0,180]) batteryholder();
 
-*button(180);
+*rotate([0,180,0]) union() {
+    button(180);
+    // Sacrificial layer to bridge hole
+    #translate([0,0,sheight+wid-0.1]) cube([11,11,0.2],true);
+}
 
 module bottom2() {
     to2 = trioff-bsize-cwid;
     difference() {
         cur_prism(trivec, [
-            [to2,0,-bwid],
-            [to2,sheight-2,-bwid],
+            [to2,0,-bwid*2/s3-tol],
+            [to2,sheight-2,-bwid*2/s3-tol],
             [to2,sheight-2,-tol],
             [to2,0,-tol],
             [to2,0,cwid],
@@ -52,6 +59,16 @@ module bottom2() {
                 [20,1,-5],
                 [20,-bott-1,-5]
             ]);
+        }
+    }
+    for (n = [360/trivec:360/trivec:360]) {
+        rotate([0,0,n]) {
+            translate([40,-taboff,sheight-2])
+            rotate([0,0,180])
+            bottomtab();
+            translate([-40,-taboff,sheight-2])
+            rotate([0,0,180])
+            bottomtab();
         }
     }
 }
@@ -88,7 +105,7 @@ module button(rot) {
             [0,sheight+wid,5-crv],
             [bs2,sheight+wid,-cwid-bwid],
             [bs2,height+bth-bbev,-cwid-bwid],
-            [bs2,height+bth-bwid,-cwid-bbev] ]);    
+            [bs2,height+bth-bwid,-cwid-bbev] ]);
     rotate([0,0,90]) translate([0,15.5/2,sheight]) swtab();
     rotate([0,0,-90]) translate([0,15.5/2,sheight]) swtab();
     rotate([0,0,rot]) {
@@ -147,6 +164,17 @@ module front2() {
     }
     translate([0,-17,height-wid-0.1]) batteryclips();
     translate([-50,25,height-wid-0.1]) rotate([0,0,-120]) wemosd1();
+    
+    for (n = [360/trivec:360/trivec:360]) {
+        rotate([0,0,n]) {
+            translate([40,-taboff-tol,sheight-2-tol])
+            rotate([0,0,180])
+            bottomtablip();
+            translate([-40,-taboff-tol,sheight-2-tol])
+            rotate([0,0,180])
+            bottomtablip();
+        }
+    }
 }
 
 
@@ -244,7 +272,7 @@ module mcutab(w) {
     ]);
 }
 
-module bottomtab(off=0, pos=studheight+edge+sideheight-boxthick-0.9) {
+module bottomtab(off=0, pos=0) {
     translate([-10+off,pos,0])
     rotate([0,90,0])
     linear_extrude(height=20) polygon([
@@ -252,7 +280,7 @@ module bottomtab(off=0, pos=studheight+edge+sideheight-boxthick-0.9) {
     ]);
 }
 
-module bottomtablip(off=0, pos=studheight+edge+sideheight-boxthick-0.8) {
+module bottomtablip(off=0, pos=0) {
     translate([-10+off,pos,0])
     rotate([0,90,0])
     linear_extrude(height=20) polygon([
