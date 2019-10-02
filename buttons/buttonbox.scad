@@ -6,11 +6,11 @@ trioff = trisize / s3;
 bsize = 25;
 wid = 3;
 cwid = wid*s3/2;
-height = 35;
+height = 30;
 bheight = 20;
 bott = 2;
 sheight = 9.5;
-cang = 5;
+cang = 3;
 btol = 0.3;
 tol = 0.1;
 bth = 6;
@@ -28,14 +28,14 @@ front();
 
 *switches();
 
-color("gray")
+*color("gray")
 front2();
 *color("gray")
 translate([0,0,-tol]) bottom2();
 *switches(180);
 *color("teal") translate([0,-17,height-wid-0.1]) rotate([0,0,180]) batteryholder();
 
-*rotate([0,180,0]) union() {
+rotate([0,180,0]) union() {
     button(180);
     // Sacrificial layer to bridge hole
     #translate([0,0,sheight+wid-0.1]) cube([11,11,0.2],true);
@@ -52,13 +52,8 @@ module bottom2() {
             [to2,0,cwid],
             [to2,-bott,cwid]
         ],cw=bsize);
-        #for (n = [360/trivec:360/trivec:360]) {
-            rotate([0,0,n])
-            translate([35,5,0])
-            cur_prism(trivec, [
-                [20,1,-5],
-                [20,-bott-1,-5]
-            ]);
+        #for (n = [360/trivec:360/trivec:360]) rotate([0,0,n]) {
+            translate([0,0,-bott-0.5]) slitgroup();
         }
     }
     for (n = [360/trivec:360/trivec:360]) {
@@ -72,6 +67,23 @@ module bottom2() {
         }
     }
 }
+
+module slitgroup(w=5, s=5, n=3, e=1, h=3) {
+    for (i = [0:n-1]) {
+        translate([(w+s)/s3,s/2+i*(s+w),0])
+        slit((2*w+s+6*i*(w+s))/s3, w, h);
+    }
+    if (e > 0)
+    for (i = [n:n+e-1]) {
+        translate([0,s/2+i*(s+w)+w,0])
+        rotate([0,0,180]) slit((2*w+s+6*(i-1)*(w+s)+2*w)/s3, w, h);
+    }
+}
+
+module slit(w, h=10, t=3) {
+    linear_extrude(height=t)
+    polygon([[-w/2,0],[w/2,0],[w/2+h/s3,h],[-w/2-h/s3,h]]);
+} 
 
 module switches(rot=0) {
     for (n = [360/trivec:360/trivec:360]) {
@@ -88,14 +100,16 @@ module swtab(w=10) {
     translate([0,0,-w/2])
     linear_extrude(height=w)
     polygon([
-        [-0.1,0.1],[1.6,0.1],[2.0,-0.3],
-        [3.5,0.6],[2.8,1.2],[-0.1,1.2]
+        [0.4,0.1],[1.6,0.1],[2.0,-0.3],
+        [3.8,0.6],[2.8,1.6],[0.4,1.6]
     ]);
+    translate([1.5,0.85,-1]) cube([17,1.5,1.2],true);
 }
 
 module button(rot) {
     bs2 = bsize-btol*s3;
-    cur_prism(trivec, [
+    difference() {
+        cur_prism(trivec, [
             [bs2,height+bth,-bbev-cwid],
             [bs2,height+bth-bbev,-cwid],
             [bs2,sheight+wid+2,-cwid],
@@ -106,12 +120,16 @@ module button(rot) {
             [bs2,sheight+wid,-cwid-bwid],
             [bs2,height+bth-bbev,-cwid-bwid],
             [bs2,height+bth-bwid,-cwid-bbev] ]);
+        for (n=[360/trivec:360/trivec:360]) rotate([0,0,n+180])
+        translate([0,0,height+bth-bwid-0.1]) slitgroup(3,2,2,1,1.1);
+    }
     rotate([0,0,90]) translate([0,15.5/2,sheight]) swtab();
-    rotate([0,0,-90]) translate([0,15.5/2,sheight]) swtab();
+    rotate([0,0,90]) mirror([0,1,0]) translate([0,15.5/2,sheight]) swtab();
     rotate([0,0,rot]) {
-        translate([0,7.2,sheight-1]) cube([10,1,2],true);
-        translate([-8,-9.6,sheight-1]) cube([3,1,2],true);
-        translate([ 8,-9.6,sheight-1]) cube([3,1,2],true); 
+        translate([-6,7.7,sheight-1]) cube([6.7,2,3],true);
+        translate([ 6,7.7,sheight-1]) cube([6.7,2,3],true);
+        translate([-7.85,-10.1,sheight-1]) cube([3,2,3],true);
+        translate([ 7.85,-10.1,sheight-1]) cube([3,2,3],true); 
     }
 }
 
@@ -125,8 +143,7 @@ module front2() {
             [to2,0,cwid],
             [to2,0,-0.01],
             [to2,height-wid,-0.01]],cw=bsize);
-        for (n=[360/trivec:360/trivec:360]) {
-            rotate([0,0,n])
+        for (n=[360/trivec:360/trivec:360]) rotate([0,0,n]) {
             translate([0,trioff-bsize-cwid,0])
             rotate([0,0,180])
             polyhedron(
@@ -141,6 +158,7 @@ module front2() {
                 [[for (n=[sides-1:-1:0]) n+sides*2]]
                 )
             );
+            *#translate([0,0,height-0.4]) slitgroup(2,3,6);
         }
     }
     for (n=[360/trivec:360/trivec:360]) {
@@ -314,7 +332,7 @@ function nquads(n,o) = concat(
     [for (i=[0:n-1]) [(i+1)%n+o,i+o+n,(i+1)%n+o+n]]
 );
 
-module cur_prism(sides, points, ct = crv, cs = 10, cw=0) {
+module cur_prism(sides, points, ct = crv, cs = cang, cw=0) {
     sds = 360/cs;
     nm = len(points);
     polyhedron(
