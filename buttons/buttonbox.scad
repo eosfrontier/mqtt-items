@@ -97,13 +97,15 @@ module switches(rot=0) {
 
 module swtab(w=10) {
     rotate([0,90,0])
-    translate([0,0,-w/2])
+    translate([0,0,-w/2+1.5])
     linear_extrude(height=w)
     polygon([
-        [0.4,0.1],[1.6,0.1],[2.0,-0.3],
-        [3.8,0.6],[2.8,1.6],[0.4,1.6]
+        [0.8,0.1],[1.6,0.1],[2.0,-0.3],
+        [3.8,0.6],[2.8,1.6],[0.8,1.6]
     ]);
     translate([1.5,0.85,-1]) cube([17,1.5,1.2],true);
+    translate([10.1,0.85,-0.6]) cube([2,1.5,2],true);
+    translate([-7.7,0.85,-0.6]) cube([2,1.5,2],true);
 }
 
 module button(rot) {
@@ -123,13 +125,15 @@ module button(rot) {
         for (n=[360/trivec:360/trivec:360]) rotate([0,0,n+180])
         translate([0,0,height+bth-bwid-0.1]) slitgroup(3,2,2,1,1.1);
     }
-    rotate([0,0,90]) translate([0,15.5/2,sheight]) swtab();
-    rotate([0,0,90]) mirror([0,1,0]) translate([0,15.5/2,sheight]) swtab();
     rotate([0,0,rot]) {
-        translate([-6,7.7,sheight-1]) cube([6.7,2,3],true);
-        translate([ 6,7.7,sheight-1]) cube([6.7,2,3],true);
-        translate([-7.85,-10.1,sheight-1]) cube([3,2,3],true);
-        translate([ 7.85,-10.1,sheight-1]) cube([3,2,3],true); 
+        rotate([0,0,-90]) translate([0,15.5/2,sheight]) swtab();
+        rotate([0,0,-90]) mirror([0,1,0]) translate([0,15.5/2,sheight]) swtab();
+ 
+        translate([-5.2,7.7,sheight-1]) cube([5,2,3],true);
+        translate([ 5.2,7.7,sheight-1]) cube([5,2,3],true);
+        translate([-7.1,-10.1,sheight-1]) cube([1.2,2,3],true);
+        translate([ 7.1,-10.1,sheight-1]) cube([1.2,2,3],true); 
+        
     }
 }
 
