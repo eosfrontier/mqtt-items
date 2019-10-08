@@ -46,7 +46,7 @@ def mainloop(np, host='192.168.1.58', myname='light01'):
     tstatus = b'eos/portal/%s/status' % myname
     leds = np
     cid = ubinascii.hexlify(machine.unique_id())
-    client = MQTTClient(client_id=cid, server=host, user='blinken', password='Chocola')
+    client = MQTTClient(client_id=cid, server=host)
     client.set_callback(mqtt_rec)
     client.set_last_will(topic=tstatus, msg=b'{"battery":0.0,"connected":false}', retain=True, qos=1)
     client.connect()

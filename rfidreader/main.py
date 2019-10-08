@@ -52,7 +52,7 @@ def mqtt_rec(topic,msg):
 
 tstatus = b'eos/rfid/status'
 mqttid = ubinascii.hexlify(machine.unique_id())
-mqtt = MQTTClient(client_id=mqttid, server='192.168.1.58', user='blinken', password='Chocola')
+mqtt = MQTTClient(client_id=mqttid, server='192.168.1.58')
 mqtt.set_callback(mqtt_rec)
 mqtt.set_last_will(tstatus, b'{"battery":0.0,"connected":false}', retain=True, qos=1)
 try:
