@@ -11,6 +11,7 @@ CONTENT = open('index.html', 'r').read()
 def connection(network_name, network_password, dhcp_name):
 	attempts = 0
 	station = network.WLAN(network.STA_IF)
+	station.active(True)
 	try:
 		station.config(dhcp_hostname=dhcp_name)
 	except:

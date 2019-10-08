@@ -7,7 +7,7 @@ leds = None
 tset = None
 tport = b'eos/portal/incoming'
 
-buttonpins = [machine.Pin(pn,machine.Pin.IN,machine.Pin.PULL_UP) for pn in [12,13,15]]
+buttonpins = [machine.Pin(pn,machine.Pin.IN,machine.Pin.PULL_UP) for pn in [14,12,13]]
 buttonlabels = [b'1',b'2',b'3']
 buttonstates = [1,1,1]
 
@@ -15,14 +15,14 @@ def mqtt_rec(topic,msg):
     global leds,tset,tport
     if topic == tport:
         if msg == b'good':
-            leds[0] = (0,255,0)
-            leds[1] = (0,255,0)
-            leds[2] = (0,255,0)
-            leds.write()
-        elif msg == b'bad':
             leds[0] = (255,0,0)
             leds[1] = (255,0,0)
-            leds[2] = (255,0,0)
+            leds[2] = (0,0,50)
+            leds.write()
+        elif msg == b'bad':
+            leds[0] = (0,255,0)
+            leds[1] = (0,255,0)
+            leds[2] = (0,0,50)
             leds.write()
         else:
             leds[0] = (50,0,0)
@@ -55,7 +55,7 @@ def mainloop(np, host='192.168.1.58', myname='buttons01'):
     tstatus = b'eos/portal/%s/status' % myname
     leds = np
     cid = ubinascii.hexlify(machine.unique_id())
-    client = MQTTClient(client_id=cid, server=host)
+    client = MQTTClient(client_id=cid, server=host, user='blinken', password='Chocola')
     client.set_callback(mqtt_rec)
     client.set_last_will(topic=tstatus, msg=b'{"battery":0.0,"connected":false}', retain=True, qos=1)
     client.connect()

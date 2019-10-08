@@ -1,4 +1,5 @@
 s3 = sqrt(3);
+s2 = sqrt(2);
 
 trivec = 3;
 trisize = 170;
@@ -21,24 +22,196 @@ crv = 10;
 
 taboff = trioff-bsize-cwid-1.114-tol;
 
+boxsq();
+*boxtri();
 
-*color("gray")
-front();
-*color("teal") translate([9.5,-1,height-wid-0.1]) rotate([0,0,180]) batteryholder();
+module boxsq() {
+    bw = 110;
+    bh = 30;
+    eh = sheight-2;
+    bt = 2;
+    btw = 3.65;
+    
+    color("gray")
+    sqfront(bw,bh,bt,btw*s2);
+    
+    *color("gray")
+    translate([0,0,-0.1])
+    sqback(bw,bt,3,eh);
+    
+    *color("white")
+    for (n = [0:3]) {
+        translate([-41.4,n*(82.8/3)-41.4,0]) sqbutton(bh, btw*s2);
+    }
+    
+    *color("teal") translate([28,0,bh-bt-0.1]) rotate([0,0,180])batteryholder();
+}
 
-*switches();
+*rotate([0,180,0]) union() {
+    sqbutton(30,3.65*s2);
+    // Sacrificial layer to bridge hole
+    #translate([0,0,sheight+wid-0.1]) cube([11,11,0.2],true);
+}
 
-*color("gray")
-front2();
-*color("gray")
-translate([0,0,-tol]) bottom2();
-*switches(180);
-*color("teal") translate([0,-17,height-wid-0.1]) rotate([0,0,180]) batteryholder();
+module boxtri() {
+    color("gray")
+    front2();
+    color("gray")
+    translate([0,0,-tol]) bottom2();
+    switches(180);
+    color("teal") translate([0,-17,height-wid-0.1]) rotate([0,0,180]) batteryholder();
+}
 
-rotate([0,180,0]) union() {
+*rotate([0,180,0]) union() {
     button(180);
     // Sacrificial layer to bridge hole
     #translate([0,0,sheight+wid-0.1]) cube([11,11,0.2],true);
+}
+
+module sqfront(bw,bh,bt,btw) {
+    w = bw/s2-crv-bt;
+    t = bt;
+    bev = 2;
+    bv = bev*s2/2;
+    bs2 = btw;
+    
+    difference() {
+        rotate([0,0,45]) cur_prism(4, [
+            [w-t,bh,t-bv],
+            [w-t,bh-bev,t],
+            [w-t,0,t],
+            [w-t,0,0],
+            [w-t,bh-bt,0]]);
+        
+            #for (n=[0:3]) {
+                translate([-41.4,n*(82.8/3)-41.4,0])
+                rotate([0,0,45])
+                cur_prism(4, [
+                    [bs2,bh+0.5,1-t],
+                    [bs2,bh-0.5,-t],
+                    [bs2,bh-bt-0.5,-t]]);                
+        }
+    }
+    
+    for (n=[0:3]) {
+        translate([-41.4,n*(82.8/3)-41.4,0])
+        rotate([0,0,45])
+        cur_donut(4, [
+            [bs2,sheight+2+bt,-t],
+            [bs2,bh-1,-t],
+            [bs2,bh-1,0.2],
+            [bs2,sheight+2,0.2],
+            [bs2,sheight+2,0]]);                
+    }
+    
+    bsw = bs2/s2;
+    bssz = (bsw+(crv*cos(cang/2))+0.2);
+    for (n=[0:3]) {
+        translate([-41.4,n*(82.8/3)-41.4,sheight+2])
+        linear_extrude(height=bh-(sheight+2)-1)
+        polygon(concat(
+            [[bsw,-13.9],[bssz,-13.9],[bssz,13.9],[bsw,13.9]],
+            [for (an = [cang/2:cang:90-cang/2]) [bsw+sin(an)*crv,bsw+cos(an)*crv]],
+            [for (an = [90+cang/2:cang:180-cang/2]) [bsw+sin(an)*crv,-bsw+cos(an)*crv]]
+    ));
+    }
+    for (n=[0:2]) {
+        translate([-41.4,n*(82.8/3)-41.4,sheight+2])
+        linear_extrude(height=bh-(sheight+2)-1)
+        polygon(concat(
+            [[-bssz,bsw],[-bssz,27.6-bsw]],
+            [for (an = [90+cang/2:cang:180-cang/2]) [-bsw-sin(an)*crv,27.6-bsw+cos(an)*crv]],
+            [for (an = [cang/2:cang:90-cang/2]) [-bsw-sin(an)*crv,bsw+cos(an)*crv]]
+    ));
+    }
+    
+    translate([28,0,bh-bt-0.1]) rotate([0,0,180]) batteryclips();
+    translate([-13,-27,bh-bt-0.1]) rotate([0,0,-90]) wemosd1();
+    
+    translate([35,-bw/2+bt/2-tol,sheight-2-tol])
+    rotate([0,0,180])
+    bottomtablip();
+    translate([-15,-bw/2+bt/2-tol,sheight-2-tol])
+    rotate([0,0,180])
+    bottomtablip();
+    
+    translate([35,bw/2-bt/2+tol,sheight-2-tol])
+    bottomtablip();
+    translate([-15,bw/2-bt/2+tol,sheight-2-tol])
+    bottomtablip();
+    
+    translate([bw/2-bt/2+tol,30,sheight-2-tol])
+    rotate([0,0,-90])
+    bottomtablip();
+    translate([bw/2-bt/2+tol,-30,sheight-2-tol])
+    rotate([0,0,-90])
+    bottomtablip();
+    
+    translate([-bw/2+bt/2-tol,30,-3])
+    rotate([0,0,90])
+    bottomtablip();
+    translate([-bw/2+bt/2-tol,-30,-3])
+    rotate([0,0,90])
+    bottomtablip();
+}
+
+module sqback(bw,bt,et,eh) {
+    w = bw/s2-crv-bt;
+    t = bt;
+    
+    difference() {
+        rotate([0,0,45]) cur_prism(4, [
+            [w-t,0,-et],
+            [w-t,eh,-et],
+            [w-t,eh,-tol],
+            [w-t,0,-tol],
+            [w-t,0,t],
+            [w-t,-bt,t]
+        ]);
+        
+            
+        translate([-bw/2+bt/2+tol,30,-3])
+        rotate([0,0,90])
+        bottomtablip(wid=21);
+        translate([-bw/2+bt/2+tol,-30,-3])
+        rotate([0,0,90])
+        bottomtablip(wid=21);
+        
+        #for (n = [3:6]) {
+            translate([(n-2)*4*s2,(n+2)*4*s2,0])
+            rotate([0,0,45])
+            cur_prism(2, [[(6-n)*8,0.5,-8],[(6-n)*8,-2.5,-8]]);
+            translate([-(n-2)*4*s2,-(n+2)*4*s2,0])
+            rotate([0,0,45])
+            cur_prism(2, [[(6-n)*8,0.5,-8],[(6-n)*8,-2.5,-8]]);
+        }
+        #for (n = [-2:2]) {
+            translate([0,n*8*s2,0])
+            rotate([0,0,45])
+            cur_prism(2, [[32,0.5,-8],[32,-2.5,-8]]);
+        }
+    }
+
+    
+    translate([35,-bw/2+bt/2,sheight-2])
+    rotate([0,0,180])
+    bottomtab();
+    translate([-15,-bw/2+bt/2,sheight-2])
+    rotate([0,0,180])
+    bottomtab();
+    
+    translate([35,bw/2-bt/2,sheight-2])
+    bottomtab();
+    translate([-15,bw/2-bt/2,sheight-2])
+    bottomtab();
+    
+    translate([bw/2-bt/2,30,sheight-2])
+    rotate([0,0,-90])
+    bottomtab();
+    translate([bw/2-bt/2,-30,sheight-2])
+    rotate([0,0,-90])
+    bottomtab();
+
 }
 
 module bottom2() {
@@ -95,17 +268,25 @@ module switches(rot=0) {
     }
 }
 
-module swtab(w=10) {
-    rotate([0,90,0])
-    translate([0,0,-w/2+1.5])
-    linear_extrude(height=w)
-    polygon([
-        [0.8,0.1],[1.6,0.1],[2.0,-0.3],
-        [3.8,0.6],[2.8,1.6],[0.8,1.6]
-    ]);
-    translate([1.5,0.85,-1]) cube([17,1.5,1.2],true);
-    translate([10.1,0.85,-0.6]) cube([2,1.5,2],true);
-    translate([-7.7,0.85,-0.6]) cube([2,1.5,2],true);
+module sqbutton(height, bsize, btol=0.2, bbev=bbev) {
+    bs2 = bsize-btol*s3;
+    rotate([0,0,45])
+    difference() {
+        cur_prism(4, [
+            [bs2,height+bth,-bbev-cwid],
+            [bs2,height+bth-bbev,-cwid],
+            [bs2,sheight+wid+2,-cwid],
+            [bs2,sheight+2,0],
+            [bs2,sheight,0],
+            [0,sheight,5-crv],
+            [0,sheight+wid,5-crv],
+            [bs2,sheight+wid,-cwid-bwid],
+            [bs2,height+bth-bbev,-cwid-bwid],
+            [bs2,height+bth-bwid,-cwid-bbev] ]);
+        *for (n=[360/trivec:360/trivec:360]) rotate([0,0,n+180])
+        translate([0,0,height+bth-bwid-0.1]) slitgroup(3,2,2,1,1.1);
+    }
+    rotate([0,0,90]) swtabs();
 }
 
 module button(rot) {
@@ -125,16 +306,31 @@ module button(rot) {
         for (n=[360/trivec:360/trivec:360]) rotate([0,0,n+180])
         translate([0,0,height+bth-bwid-0.1]) slitgroup(3,2,2,1,1.1);
     }
-    rotate([0,0,rot]) {
-        rotate([0,0,-90]) translate([0,15.5/2,sheight]) swtab();
-        rotate([0,0,-90]) mirror([0,1,0]) translate([0,15.5/2,sheight]) swtab();
- 
-        translate([-5.2,7.7,sheight-1]) cube([5,2,3],true);
-        translate([ 5.2,7.7,sheight-1]) cube([5,2,3],true);
-        translate([-7.1,-10.1,sheight-1]) cube([1.2,2,3],true);
-        translate([ 7.1,-10.1,sheight-1]) cube([1.2,2,3],true); 
-        
-    }
+    rotate([0,0,rot]) swtabs();
+}
+
+module swtabs() {
+    rotate([0,0,-90]) translate([0,15.5/2,sheight]) swtab();
+    rotate([0,0,-90]) mirror([0,1,0]) translate([0,15.5/2,sheight]) swtab();
+    
+    translate([-5.4,7.7,sheight-1]) cube([5,2,3],true);
+    translate([ 5.4,7.7,sheight-1]) cube([5,2,3],true);
+    translate([ 6.6,-10.1,sheight-1]) cube([2.6,2,3],true); 
+    translate([-7.2,-10.1,sheight-0.3]) cube([1.5,2,1.5],true);         
+
+}
+
+module swtab(w=10) {
+    rotate([0,90,0])
+    translate([0,0,-w/2+1.5])
+    linear_extrude(height=w)
+    polygon([
+        [0.8,0.1],[1.6,0.1],[2.3,-0.6],
+        [4.4,0.6],[3.0,1.6],[0.8,1.6]
+    ]);
+    translate([1.5,0.85,-1]) cube([17,1.5,1.2],true);
+    translate([10.1,0.85,-0.6]) cube([2,1.5,2],true);
+    translate([-7.7,0.85,-0.6]) cube([2,1.5,2],true);
 }
 
 module front2() {
@@ -302,10 +498,10 @@ module bottomtab(off=0, pos=0) {
     ]);
 }
 
-module bottomtablip(off=0, pos=0) {
-    translate([-10+off,pos,0])
+module bottomtablip(off=0, pos=0, wid=20) {
+    translate([-wid/2+off,pos,0])
     rotate([0,90,0])
-    linear_extrude(height=20) polygon([
+    linear_extrude(height=wid) polygon([
         [-6,1.3],[-8.2,0],[-9.5,1.3]
     ]);
 }
@@ -331,9 +527,9 @@ module batteryholder() {
     }
 }
 
-function nquads(n,o) = concat(
-    [for (i=[0:n-1]) [(i+1)%n+o,i+o,i+o+n]],
-    [for (i=[0:n-1]) [(i+1)%n+o,i+o+n,(i+1)%n+o+n]]
+function nquads(n,o,s=9999999) = concat(
+    [for (i=[0:n-1]) [(i+1)%n+o,i+o,(i+o+n)%s]],
+    [for (i=[0:n-1]) [(i+1)%n+o,(i+o+n)%s,((i+1)%n+o+n)%s]]
 );
 
 module cur_prism(sides, points, ct = crv, cs = cang, cw=0) {
@@ -346,6 +542,18 @@ module cur_prism(sides, points, ct = crv, cs = cang, cw=0) {
                 [[for (n=[0:sds-1]) n]],
                 [for (n=[0:nm-2]) each nquads(sds,sds*n)],
                 [[for (n=[sds-1:-1:0]) n+sds*(nm-1)]]
+            ));
+            
+}
+
+module cur_donut(sides, points, ct = crv, cs = cang, cw=0) {
+    sds = 360/cs;
+    nm = len(points);
+    polyhedron(
+        points = [for (ps = points) each cur_ngon(sides, ps[0],ps[1],ct+(ps[2]?ps[2]:0),cs,cw)]
+            ,
+        faces = concat(
+                [for (n=[0:nm-1]) each nquads(sds,sds*n,sds*nm)]
             ));
             
 }
