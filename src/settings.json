@@ -1,0 +1,14 @@
+{
+    "leds":{
+        "num":3,
+        "pin":0,
+        "order":"GRB",
+        "colors":["180000","001800","000018"]
+    },"buttons":{
+        "pins":[14,12,13]
+    },"mqtt":{
+        "server":"192.168.1.58",
+        "name":"eos/portal/buttons_in",
+        "buttons":["b1","b2","b3"]
+    }
+}
