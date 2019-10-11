@@ -1,3 +1,4 @@
 *.sw?
 *.gcode
 *.bin
+password.json
