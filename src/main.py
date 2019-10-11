@@ -1,5 +1,5 @@
 from utime import sleep_ms, ticks_ms, ticks_diff
-import wifiportal
+import wifiportal,ujson
 import leds, buttons, mqtt
 
 f = open('settings.json', 'r')
@@ -22,6 +22,7 @@ while True:
         print('Break')
         break
     except Exception as e:
+        raise(e)
         print(e)
         pass
     rest = ticks_diff(ticks_ms(),now)

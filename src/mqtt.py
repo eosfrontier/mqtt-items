@@ -7,14 +7,17 @@ class MQTT:
         self.leds = Leds
         self.btns = Btns
         self.name = config['name']
-        self.buttonnames = config['buttons']
-        self.buttonstates = [False]*len(self.buttonnames)
+        self.buttonnames = [bytes(bn,'utf-8') for bn in config['buttons']]
+        self.num = len(self.buttonnames)
+        self.buttonstates = [False]*self.num
         self.state = self._connect
 
         self.battery = machine.ADC(0)
         self.laststatus = ticks_ms()
         self.wait = 0
         self.ack = None
+
+        self.adc = machine.ADC(0)
 
         self.tstatus = b'%s/status' % config["name"]
         self.tset = b'%s/set' % config["name"]
@@ -26,13 +29,17 @@ class MQTT:
                 password = pwd["password"])
         self.client.set_callback(self._receive)
         self.client.set_last_will(topic=self.tstatus, msg=b'{"battery":0.0,"connected":false}', retain=True, qos=1)
-        self.client.subscribe(self.tset)
+
+    def check(self):
+        self.state()
     
     def _connect(self):
         try:
             self.client.connect()
+            self.client.subscribe(self.tset)
             self.state = self._check
-        except:
+        except Exception as e:
+            print('_connect', e)
             self.wait = 20
             self.state = self._retry
 
@@ -55,31 +62,34 @@ class MQTT:
                 if btns[i]:
                     pushed = True
         if pushed:
-            self._sendbtn('+'.join([self.buttonnames[b] for b in btns if b]))
+            if self._sendbtn(b'_'.join([self.buttonnames[i] for i in range(self.num) if btns[i]])):
+                self.buttonstates = btns
+        else:
             self.buttonstates = btns
                     
-    def _sendbtn(self, topic):
+    def _sendbtn(self, bname):
         try:
-            self.client.publish(topic = topic, msg=b'1', qos=1)
+            self.client.publish(topic = (self.tbtn % bname), msg=b'1', qos=1)
             return True
-        except:
-            self.state = _retry
+        except Exception as e:
+            print('_sendbtn', e)
             return False
 
     def _check_status(self):
         now = ticks_ms()
         if ticks_diff(now, self.laststatus) > (10 * 1000):
-            vlt = adc.read() * 0.0059
+            vlt = self.adc.read() * 0.0059
             try:
-                self.client.publish(topic = tstatus, msg=b'{"battery":%1.2f,"connected":true}' % vlt, retain=True, qos=1)
+                self.client.publish(topic = self.tstatus, msg=b'{"battery":%1.2f,"connected":true}' % vlt, retain=True, qos=1)
                 self.laststatus = now
-            except:
-                self.state = _retry
+            except Exception as e:
+                print('_check_status', e)
+                self.state = self._retry
 
     def _receive(self, topic, msg):
         if topic == self.tset:
             self._mqtt_set(msg)
 
     def _mqtt_set(self, msg):
-        self.leds.set(msg)
+        self.leds.set(msg.split(b','))
         self.ack = msg
