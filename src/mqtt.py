@@ -51,7 +51,7 @@ class MQTT:
 
     def _check(self):
         self.client.check_msg()
-        if self.ack:
+        if self.ack != None:
             self.client.publish(topic = self.tack, msg = self.ack, qos=1)
             self.ack = None
         self._check_status()
@@ -91,5 +91,8 @@ class MQTT:
             self._mqtt_set(msg)
 
     def _mqtt_set(self, msg):
-        self.leds.set(msg.split(b','))
+        if len(msg) > 0:
+            self.leds.set(msg.split(b','))
+        else:
+            self.leds.set([])
         self.ack = msg

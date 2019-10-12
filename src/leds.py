@@ -52,10 +52,13 @@ class Leds:
         self.np.write()
 
     def set(self, colors):
-        self.atim = [0,2000]
-        self.acol = [self.curcol,[self._parsecol(c) for c in colors]]
-        self.anim = self.a_set
-        self.tick = ticks_ms()
+        if len(colors) > 0:
+            self.atim = [0,2000]
+            self.acol = [self.curcol,[self._parsecol(c) for c in colors]]
+            self.anim = self.a_set
+            self.tick = ticks_ms()
+        else:
+            self.clear()
 
     def clear(self):
         self.atim = [0,2000]
