@@ -91,7 +91,11 @@ class MQTT:
             self._mqtt_set(msg)
 
     def _mqtt_set(self, msg):
-        if len(msg) > 0:
+        if msg == b'green':
+            self.leds.pulse_green()
+        elif msg == b'flashred':
+            self.leds.flash_red()
+        elif len(msg) > 0:
             self.leds.set(msg.split(b','))
         else:
             self.leds.set([])

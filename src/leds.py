@@ -14,8 +14,12 @@ class Leds:
         self.clear()
 
     def _parsecol(self,colors):
-        vals = [int(colors[i:i+2],16) for i in range(0,len(colors),2)]
-        return tuple([vals[i] for i in self.order])
+        try:
+            vals = [int(colors[i:i+2],16) for i in range(0,len(colors),2)]
+            return tuple([vals[i] for i in self.order])
+        except Exception as e:
+            print("Parse error on %s" % colors)
+            raise e
 
     def animate(self):
         if self.anim:
@@ -30,6 +34,17 @@ class Leds:
                 return
         self._setcols(self.acol[-1])
         self.anim = None
+
+    def a_repeat(self):
+        elaps = ticks_diff(ticks_ms(), self.tick)
+        for i in range(len(self.atim)-1):
+            if elaps < self.atim[i+1]:
+                self._setinter(self.acol[i+1],self.acol[i],
+                    (elaps-self.atim[i])/(self.atim[i+1]-self.atim[i]))
+                return
+        self.tick = self.tick + self.atim[-1]
+        self.acol[0] = self.acol[-1]
+        self.a_repeat()
 
     def _setcols(self,cols):
         nc = len(cols)
@@ -64,4 +79,24 @@ class Leds:
         self.atim = [0,2000]
         self.acol = [self.curcol,self.defcols]
         self.anim = self.a_set
+        self.tick = ticks_ms()
+
+    def pulse_green(self):
+        self.atim = [0,1000,2000,3000]
+        self.acol = [self.curcol,
+            [self._parsecol(x) for x in ['00ff00','00aa00','005500']],
+            [self._parsecol(x) for x in ['00aa00','005500','00ff00']],
+            [self._parsecol(x) for x in ['005500','00ff00','00aa00']]
+            ]
+        self.anim = self.a_repeat
+        self.tick = ticks_ms()
+
+    def flash_red(self):
+        self.atim = [0,500,1000,1500]
+        self.acol = [self.curcol,
+            [self._parsecol('ff0000')],
+            [self._parsecol('000000')],
+            [self._parsecol('ff0000')]
+            ]
+        self.anim = self.a_repeat
         self.tick = ticks_ms()
