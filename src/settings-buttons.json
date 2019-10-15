@@ -2,7 +2,7 @@
     "leds":{
         "num":3,
         "pin":0,
-        "order":"GRB",
+        "order":"RGB",
         "colors":["180000","001800","000018"]
     },"buttons":{
         "pins":[14,12,13]

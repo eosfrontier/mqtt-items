@@ -22,7 +22,6 @@ while True:
         print('Break')
         break
     except Exception as e:
-        raise(e)
         print(e)
         pass
     rest = ticks_diff(ticks_ms(),now)
