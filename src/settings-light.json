@@ -4,11 +4,14 @@
         "pin":0,
         "order":"RGB",
         "colors":["000000"]
-    },"buttons":{
+    },
+    "buttons":{
         "pins":[]
-    },"mqtt":{
+    },
+    "mqtt":{
         "server":"192.168.1.58",
         "name":"eos/portal/light",
         "buttons":[]
-    }
+    },
+    "fps":40
 }

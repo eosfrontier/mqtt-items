@@ -29,7 +29,7 @@ class Leds:
         elaps = ticks_diff(ticks_ms(), self.tick)
         for i in range(len(self.atim)-1):
             if elaps < self.atim[i+1]:
-                self._setinter(self.acol[i-1],self.acol[i],
+                self._setinter(self.acol[i+1],self.acol[i],
                     (elaps-self.atim[i])/(self.atim[i+1]-self.atim[i]))
                 return
         self._setcols(self.acol[-1])
@@ -47,6 +47,7 @@ class Leds:
         self.a_repeat()
 
     def _setcols(self,cols):
+        self.curcol = cols
         nc = len(cols)
         for n in range(self.num):
             self.np[n] = cols[n%nc]
@@ -54,17 +55,14 @@ class Leds:
 
     def _interp(self, a, b, frac):
         return (
-            int(a[0] * frac + b[0] * (1-frac)),
-            int(a[1] * frac + b[1] * (1-frac)),
-            int(a[2] * frac + b[2] * (1-frac)))
+            int((a[0] * frac) + (b[0] * (1-frac))),
+            int((a[1] * frac) + (b[1] * (1-frac))),
+            int((a[2] * frac) + (b[2] * (1-frac))))
 
     def _setinter(self, colsa, colsb, frac):
         na = len(colsa)
         nb = len(colsb)
-        self.curcol = [self._interp(colsa[n%na],colsb[n%nb],frac) for n in range(self.num)]
-        for n in range(self.num):
-            self.np[n] = self.curcol[n]
-        self.np.write()
+        self._setcols([self._interp(colsa[n%na],colsb[n%nb],frac) for n in range(self.num)])
 
     def set(self, colors):
         if len(colors) > 0:

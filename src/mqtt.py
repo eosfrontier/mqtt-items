@@ -11,6 +11,7 @@ class MQTT:
         self.num = len(self.buttonnames)
         self.buttonstates = [False]*self.num
         self.state = self._connect
+        self.loadavg = 0.0
 
         self.battery = machine.ADC(0)
         self.laststatus = ticks_ms()
@@ -26,9 +27,11 @@ class MQTT:
         self.client = MQTTClient(client_id = ubinascii.hexlify(machine.unique_id()),
                 server = config["server"],
                 user = pwd["user"],
-                password = pwd["password"])
+                password = pwd["password"],
+                keepalive = 10
+                )
         self.client.set_callback(self._receive)
-        self.client.set_last_will(topic=self.tstatus, msg=b'{"battery":0.0,"connected":false}', retain=True, qos=1)
+        self.client.set_last_will(topic=self.tstatus, msg=b'{"battery":0.0,"connected":false,"load":0.0}', retain=True, qos=1)
 
     def check(self):
         self.state()
@@ -52,7 +55,7 @@ class MQTT:
     def _check(self):
         self.client.check_msg()
         if self.ack != None:
-            self.client.publish(topic = self.tack, msg = self.ack, qos=1)
+            self.client.publish(topic = self.tack, msg = self.ack)
             self.ack = None
         self._check_status()
         btns = self.btns.read()
@@ -69,7 +72,7 @@ class MQTT:
                     
     def _sendbtn(self, bname):
         try:
-            self.client.publish(topic = (self.tbtn % bname), msg=b'1', qos=1)
+            self.client.publish(topic = (self.tbtn % bname), msg=b'1')
             return True
         except Exception as e:
             print('_sendbtn', e)
@@ -80,13 +83,14 @@ class MQTT:
         if ticks_diff(now, self.laststatus) > (10 * 1000):
             vlt = self.adc.read() * 0.0059
             try:
-                self.client.publish(topic = self.tstatus, msg=b'{"battery":%1.2f,"connected":true}' % vlt, retain=True, qos=1)
+                self.client.publish(topic = self.tstatus, msg=b'{"battery":%1.2f,"connected":true,"load":%1.2f}' % (vlt, self.loadavg), retain=True)
                 self.laststatus = now
             except Exception as e:
                 print('_check_status', e)
                 self.state = self._retry
 
     def _receive(self, topic, msg):
+        print('%s -> %s' % (topic, msg))
         if topic == self.tset:
             self._mqtt_set(msg)
 

@@ -13,6 +13,8 @@ Leds = leds.Leds(configs['leds'])
 Btns = buttons.Buttons(configs['buttons'])
 MQTT = mqtt.MQTT(configs['mqtt'], pwd, Leds, Btns)
 
+ms_per_frame = int(1000 / configs['fps'])
+
 while True:
     now = ticks_ms()
     try:
@@ -25,5 +27,6 @@ while True:
         print(e)
         pass
     rest = ticks_diff(ticks_ms(),now)
-    if rest < 50:
-        sleep_ms(50-rest)
+    MQTT.loadavg = (MQTT.loadavg * 0.99) + ((rest/ms_per_frame) * 0.01)
+    if rest < ms_per_frame:
+        sleep_ms(ms_per_frame-rest)
