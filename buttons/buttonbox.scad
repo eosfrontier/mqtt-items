@@ -32,10 +32,10 @@ module boxsq() {
     bt = 2;
     btw = 3.65;
     
-    color("gray")
+    *color("gray")
     sqfront(bw,bh,bt,btw*s2);
     
-    *color("gray")
+    color("gray")
     translate([0,0,-0.1])
     sqback(bw,bt,3,eh);
     
@@ -44,7 +44,7 @@ module boxsq() {
         translate([-41.4,n*(82.8/3)-41.4,0]) sqbutton(bh, btw*s2);
     }
     
-    *color("teal") translate([28,0,bh-bt-0.1]) rotate([0,0,180])batteryholder();
+    *color("teal") translate([26,-4.6,bh-bt-1.1]) rotate([0,0,180])batteryholder();
 }
 
 *rotate([0,180,0]) union() {
@@ -89,7 +89,11 @@ module sqfront(bw,bh,bt,btw) {
                 cur_prism(4, [
                     [bs2,bh+0.5,1-t],
                     [bs2,bh-0.5,-t],
-                    [bs2,bh-bt-0.5,-t]]);                
+                    [bs2,bh-bt-0.5,-t]]);
+        
+            #translate([26,-4.6,bh-bt-0.1])
+            translate([-1,-95/2-4,-4.5]) cube([8,3,2.5],true);
+        
         }
     }
     
@@ -125,8 +129,9 @@ module sqfront(bw,bh,bt,btw) {
     ));
     }
     
-    translate([28,0,bh-bt-0.1]) rotate([0,0,180]) batteryclips();
-    translate([-13,-27,bh-bt-0.1]) rotate([0,0,-90]) wemosd1();
+    translate([26,-4.6,bh-bt-1.1]) batteryclips_w();
+    
+    translate([-14.85,-27,bh-bt-0.1]) rotate([0,0,-90]) wemosd1(soff=1);
     
     translate([35,-bw/2+bt/2-tol,sheight-2-tol])
     rotate([0,0,180])
@@ -273,7 +278,7 @@ module sqbutton(height, bsize, btol=0.2, bbev=bbev) {
     rotate([0,0,45])
     difference() {
         cur_prism(4, [
-            [bs2,height+bth,-bbev-cwid],
+            [bs2,height+bth-1,-bbev-cwid+1],
             [bs2,height+bth-bbev,-cwid],
             [bs2,sheight+wid+2,-cwid],
             [bs2,sheight+2,0],
@@ -456,6 +461,17 @@ module batteryclips() {
     translate([ 14, 50.3,0]) batterytab(10);
 }
 
+module batteryclips_w() {
+    translate([-33/2,-95/2,0]) batterypin_w();
+    translate([-33/2, 95/2,0]) batterypin();
+    translate([ 33/2,-95/2,0]) batterypin_w();
+    translate([ 33/2, 95/2,0]) batterypin();
+    translate([-14,-50.6,0]) rotate([0,0,180]) batterytab_w(10);
+    translate([-14, 50.3,0]) batterytab(10);
+    translate([ 14,-50.6,0]) rotate([0,0,180]) batterytab_w(10);
+    translate([ 14, 50.3,0]) batterytab(10);
+}
+
 module batterypin() {
     rotate([0,0,360/48]) {
         translate([0,0,-1.9]) cylinder(4.0,2.25,2.25, $fn=24);
@@ -464,18 +480,31 @@ module batterypin() {
     }
 }
 
+module batterypin_w() {
+    rotate([0,0,360/48]) {
+        translate([0,0,-1.9]) cylinder(4.0,2.25,2.25, $fn=24);
+        translate([0,0,-2.5]) cylinder(1.2,1.1,1.1, $fn=24);
+    }
+}
+
 module batterytab(w) {
     translate([-w/2,0,0]) rotate([0,90,0]) linear_extrude(height=w) polygon([
-        [-2.1,0],[3.0,0],[3.8,-0.8],[6.5,0.5],[5.5,1.5],[-2.1,1.5]
+        [-2.1,0],[3.5,0],[4.2,-0.8],[7,0.5],[6,1.5],[-2.1,1.5]
     ]);
 }
 
-module wemosd1() {
+module batterytab_w(w) {
+    translate([-w/2,0,0]) rotate([0,90,0]) linear_extrude(height=w) polygon([
+        [-0.1,0],[3.5,0],[4.2,-0.8],[7,0.5],[6,1.5],[-0.1,1.5]
+    ]);
+}
+
+module wemosd1(soff=0) {
     *#translate([0,0,-2.4]) cube([34.6,25.4,4.8], true);
     // translate([-17.3,   0,0]) rotate([0,0,90]) mcutab(12);
     // translate([ 17.3,-7.2,0]) rotate([0,0,-90]) mcutab(8);
     translate([ 17.3, 0,0]) rotate([0,0,-90]) mcutab(15);
-    translate([-17.3,-9.2,0]) rotate([0,0, 90]) mcutab(8);
+    translate([-17.3,-9.2+soff/2,0]) rotate([0,0, 90]) mcutab(8-soff);
     translate([-17.3, 9.2,0]) rotate([0,0, 90]) mcutab(8);
 
     translate([ 10,-12.7-2/2,-7/2+0.1]) cube([7,2,7.2],true);
@@ -512,13 +541,14 @@ module batteryholder() {
     bw=100.5/2-cr;
     difference() {
         union() {
-            translate([1,0.2,-3]) linear_extrude(height=1) polygon(concat(
+            translate([1,0.2,-3.5]) linear_extrude(height=1.5) polygon(concat(
                 [for (an=[  0:10: 90]) [ bh+sin(an)*cr, bw+cos(an)*cr]],
                 [for (an=[ 90:10:180]) [ bh+sin(an)*cr,-bw+cos(an)*cr]],
                 [for (an=[180:10:270]) [-bh+sin(an)*cr,-bw+cos(an)*cr]],
                 [for (an=[270:10:360]) [-bh+sin(an)*cr, bw+cos(an)*cr]]
             ));
             translate([0, 6,-12]) cube([40,77,24], true);
+            translate([1,95/2,-4.5]) cube([7.5,6,2],true);
         }
         translate([-33/2,-95/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
         translate([-33/2, 95/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
