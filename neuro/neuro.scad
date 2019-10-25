@@ -1,5 +1,5 @@
-cang = 1;
-bang = 5;
+cang = 5;
+bang = 15;
 
 difference() {
     translate([-10,0,0]) quarterpipe();
