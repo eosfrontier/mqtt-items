@@ -1,10 +1,64 @@
-cang = 5;
-bang = 15;
+
+/* Fine
+    cang = 1;
+    bang = 5;
+    dang = 2.5;
+    dstp = 5;
+    pang = 10;
+    pbev = 15;
+    coang=82;
+// */
+ 
+// /* Coarse
+    cang = 5;
+    bang = 15;
+    dang = 5;
+    dstp = 3;
+    pang = 15;
+    pbev = 30;
+    coang=80;
+// */
+
+width = 180;
+height = 180;
+breadth = 100;
+thick = 15;
 
 difference() {
-    translate([-10,0,0]) quarterpipe();
-    translate([5,110,50]) rotate([-90,0,0])
-    #cylinder(35,35,35,$fn=60);
+    translate([-10,0,0]) quarterpipe_h();
+    translate([-10,0,0]) mirror([1,0,0]) {
+        cpoint(10, 15);
+        cline(10,15,15,20);
+        cpoint(15, 20);
+        cline(15,20,25,35);
+        cpoint(25, 35);
+        cline(25,35,35,20);
+        cpoint(30, 55);
+        cline(30,55,45,55);
+
+        cpoint(55,50);
+        cline(55,50,75,65);
+        cpoint(75,65);
+        cline(75,65,85,55);
+        cpoint(5,88);
+        cline(5,88,20,75);
+        cpoint(20,75);
+        cline(20,75,30,80);
+        cpoint(30,80);
+        cline(30,80,30,55);
+        cpoint(40,70);
+        cline(40,70,45,55);
+        
+        cpoint(15,50);
+        cline(15,50,25,35);
+        
+        cpoint(45,55);
+        cline(45,55,55,50);
+        cline(55,50,40,20);
+        cpoint(40,20);
+        cline(40,20,35,20);
+        cpoint(35,20);
+    }
 }
 
 union() {
@@ -20,7 +74,9 @@ union() {
             cpoint(25, 55);
             cline(25,55,45,55);
             cpoint(45,55);
-            cline(45,55,75,35);
+            cline(45,55,55,50);
+            cpoint(55,50);
+            cline(55,50,75,35);
             cpoint(75,35);
             cline(75,35,85,55);
             cpoint(5,85);
@@ -31,20 +87,28 @@ union() {
             cline(30,80,40,70);
             cpoint(40,70);
             cline(40,70,45,55);
+            
+            cpoint(15,45);
+            cline(15,45,25,35);
+            
+            cline(55,50,40,20);
+            cpoint(40,20);
+            cline(40,20,35,25);
+            cpoint(35,25);
         }
     }
-    translate([5,120,50]) disc();
+    translate([5,height,breadth/2]) disc();
 }
 
 
-module cpoint(a, z, t=5, d=2, rw=120+15, rh=120+15) {
+module cpoint(a, z, t=5, d=1.5, rw=width+thick, rh=height+thick) {
     translate([rw*sin(a),rh*cos(a), z])
     rotate([0,0,-a])
     translate([0,-d,0])
-    disc(t, d*2, d*1.5, 0);
+    disc(t, d*2, d*1.5, 0, ca=pang, ba=pbev);
 }
 
-module cline(a1, z1, a2, z2, t=2, rw=120+15, rh=120+15, a=cang) {
+module cline(a1, z1, a2, z2, t=1.5, rw=width+thick, rh=height+thick, a=cang) {
     if (a1 > a2) {
         cline_lr(a2, z2, a1, z1, t, rw, rh, a);
     } else {
@@ -57,7 +121,7 @@ module cline_lr(a1, z1, a2, z2, t, rw, rh, a) {
     abst = st>0.1?st:0.1;
     zdis = (z2-z1);
     zf = zdis/abst;
-    bsds = 360/bang;
+    bsds = 360/pbev;
     csds = ceil(abst/a)+1;
     // Afstand is een hoek, moet echte afstand worden (ongeveer)
     adis = st*rw*PI/180;
@@ -66,7 +130,7 @@ module cline_lr(a1, z1, a2, z2, t, rw, rh, a) {
     t2 = t*zdis / tnorm;
     aend = (st>0.1)?(st-0.1):0;
     polyhedron(
-        points = [for (ba=[bang:bang:360]) each concat(
+        points = [for (ba=[pbev:pbev:360]) each concat(
             [for (an=[0:a:aend])
              [(rw+t*sin(ba))*sin(an+a1)-t2*cos(ba)*cos(an+a1),
               (rh+t*sin(ba))*cos(an+a1)+t2*cos(ba)*sin(an+a1),
@@ -82,15 +146,15 @@ module cline_lr(a1, z1, a2, z2, t, rw, rh, a) {
             ));
 }
 
-module disc(r=30, t=20, bbv=3, tbv=10) {
-    csds = 360/cang;
-    bsds = 180/bang+2;
+module disc(r=30, t=20, bbv=3, tbv=10, ca=cang, ba=bang) {
+    csds = 360/ca;
+    bsds = 180/ba+2;
     polyhedron(
         points = concat(
-            [for (an=[-90:bang:0]) each circle(
-                r-tbv*(1-cos(an)), t-tbv*(1+sin(an)))],
-            [for (an=[0:bang:90]) each circle(
-                r-bbv*(1-cos(an)), bbv*(1-sin(an)))]
+            [for (an=[-90:ba:0]) each circle(
+                r-tbv*(1-cos(an)), t-tbv*(1+sin(an)), ca)],
+            [for (an=[0:ba:90]) each circle(
+                r-bbv*(1-cos(an)), bbv*(1-sin(an)), ca)]
         ),
         faces = concat(
             [for (s=[0:bsds-2]) each cquads(csds, csds*s)],
@@ -102,63 +166,205 @@ module disc(r=30, t=20, bbv=3, tbv=10) {
 function circle(r, h, a=cang) = 
     [for (an=[a:a:360]) [r*cos(an),h,r*sin(an)]];
 
-module quarterpipe(san=-90, rw=120, rh=120, s=100, t=15, bv=3, eb=5) {
-    csds = 180/cang+2+(180/bang+2);
-    bsds = 180/bang+2;
-    tsds = csds*(bsds-1);
+module quarterpipe(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5) {
+    csds = 180/cang+2+(180/bang+2); // curve + 2 corners
+    bsds = 180/bang+2; // bevel sides
+    tsds = csds*(bsds-1); // total (-1 for inside inxdex)
     polyhedron(
         points = concat(
-            [for (an=[-90:bang:0]) each concat(
-                qcircle(
-                rw+t-bv*(1+sin(an)), rh+t-bv*(1+sin(an)),
-                bv*(1-cos(an)), san
-                ),
-                bcircle(eb-bv*(1-cos(an)),
-                1, rh+t-bv*(1+sin(an)), eb,
-                san=-90
-                ),
-                bcircle(eb-bv*(1-cos(an)),
-                1, rh+t-bv*(1+sin(180-an)), s-eb,
-                san=0
-                ),
-                qcircle(
-                rw+t-bv*(1+sin(180-an)), rh+t-bv*(1+sin(180-an)),
-                s-bv*(1+cos(180-an)), san, a=-cang
-                )
-            )],
-            [for (an=[0:bang:90]) each concat(
-                qcircle(
-                rw+bv*(1-sin(an)), rh+bv*(1-sin(an)),
-                bv*(1-cos(an)), san
-                ),
-                bcircle(eb-bv*(1-cos(an)),
-                1, rh+bv*(1-sin(an)), eb,
-                san=-90
-                ),
-                bcircle(eb-bv*(1-cos(an)),
-                1, rh+bv*(1-sin(180-an)), s-eb,
-                san=0
-                ),
-                qcircle(
-                rw+bv*(1-sin(180-an)), rh+bv*(1-sin(180-an)),
-                s-bv*(1+cos(180-an)), san, a=-cang
-                )
-            )]
+            // Outside
+            [for (an=[-90:bang:0]) each 
+                qpipe_curve(an, san, rw+t-bv, rh+t-bv, s, bv, eb)],
+            // Inside
+            [for (an=[0:bang:90]) each
+                qpipe_curve(an, san, rw+bv, rh+bv, s, bv, eb)]
 
         ),
         faces = concat(
+            // sides
             [for (s=[0:bsds-2]) each cquads(csds, csds*s, csds*bsds)],
             [for (s=[1:csds/2-1]) each [
+                // outside
                 [s-1,s,csds-s],[s,csds-s-1,csds-s],
+                // inside
                 [tsds+s,tsds+s-1,tsds+csds-s],[tsds+s,tsds+csds-s,tsds+csds-s-1]]]
         ));        
 }
 
-function bcircle(r, x, y, z, san=0, a=bang) =
-    [for (an=[san+(a>0?0:90):a:san+(a>0?90:0)]) [x+r*cos(an),y,z+r*sin(an)]];
+function qpipe_curve(an, san, rw, rh, s, bv, eb) =
+    concat(
+        qcircle( // lower curve
+            rw-bv*sin(an), rh-bv*sin(an),
+            bv*(1-cos(an)), san
+        ),
+        bcircle( // lower corner
+            eb-bv*(1-cos(an)),
+            1, rh-bv*sin(an), eb,
+            san=-90
+        ),
+        bcircle( // upper corner
+            eb-bv*(1-cos(an)),
+            1, rh-bv*sin(an), s-eb,
+            san=0
+        ),
+        qcircle( // upper curve
+            rw-bv*sin(an), rh-bv*sin(an),
+            s-bv*(1-cos(an)), san, a=-cang
+        )
+    );
 
-function qcircle(rw, rh, s, san=0, a=cang) =
-    [for (an=[san+(a>0?0:90):a:san+(a>0?90:0)]) [rw*sin(an),rh*cos(an),s]];
+module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, cs=10) {
+    // curve + 2 corners
+    csds = (coang*2)/cang+2+(180/bang+2)+(90/bang+2)+(90/dang+1)+dstp*4-4+(90/dang+2);
+    bsds = 180/bang+2; // bevel sides
+    tsds = csds*(bsds-1); // total (-1 for inside inxdex)
+    cursds = ((180/bang+2)+(90/bang+2)+(90/dang+1))/2+1+dstp*2-2+(45/dang+1);
+    offsds = (45/dang)+dstp;
+    ofoff = ((45/dang)+dstp+(45/bang)+(90/bang)+dstp+(45/dang));
+    polyhedron(
+        points = concat(
+            // Outside
+            [for (an=[-90:bang:0]) each
+                qpipe_h_curve(an, san, rw+t-bv, rh+t-bv, s, bv, eb, cs)],
+            // Inside
+            [for (an=[0:bang:90]) each
+                qpipe_h_curve(an, san, rw+bv, rh+bv, s, bv, eb, cs)]
+
+        ),
+        faces = concat(
+            // sides
+            [for (s=[0:bsds-2]) each cquads(csds, csds*s, csds*bsds)],
+            [for (s=[1:csds/2-cursds]) each [
+                // outside
+                [s-1,s,csds-s],[s,csds-s-1,csds-s],
+                // inside
+                [tsds+s,tsds+s-1,tsds+csds-s],[tsds+s,tsds+csds-s,tsds+csds-s-1]]],
+            [[csds/2-ofoff-2,csds/2-ofoff-1,csds/2],
+             [csds/2+ofoff+1,csds/2+ofoff+2,csds/2],
+             [csds/2+ofoff+2,csds/2-ofoff-2,csds/2],
+             [tsds+csds/2-ofoff-1,tsds+csds/2-ofoff-2,tsds+csds/2],
+             [tsds+csds/2+ofoff+2,tsds+csds/2+ofoff+1,tsds+csds/2],
+             [tsds+csds/2-ofoff-2,tsds+csds/2+ofoff+2,tsds+csds/2]
+            ],
+            [for (s=[0:offsds]) each [
+                [csds/2-s-1,csds/2-s,csds/2-ofoff+s],
+                [csds/2-s,csds/2-ofoff+s-1,csds/2-ofoff+s],
+                [csds/2+s,csds/2+s+1,csds/2+ofoff-s],
+                [csds/2+s,csds/2+ofoff-s,csds/2+ofoff-s+1],
+            
+                [tsds+csds/2-s,tsds+csds/2-s-1,tsds+csds/2-ofoff+s],
+                [tsds+csds/2-s,tsds+csds/2-ofoff+s,tsds+csds/2-ofoff+s-1],
+                [tsds+csds/2+s+1,tsds+csds/2+s,tsds+csds/2+ofoff-s],
+                [tsds+csds/2+s,tsds+csds/2+ofoff-s+1,tsds+csds/2+ofoff-s]
+            ]],
+            [[for (s=[csds/2-ofoff+offsds:csds/2-offsds-1]) s]],
+            [[for (s=[csds/2+offsds+1:csds/2+ofoff-offsds]) s]],
+            [[for (s=[csds/2-offsds-1:-1:csds/2-ofoff+offsds]) tsds+s]],
+            [[for (s=[csds/2+ofoff-offsds:-1:csds/2+offsds+1]) tsds+s]]
+        ));        
+}
+
+function qpipe_h_curve(an, san, rw, rh, s, bv, eb, cs) =
+    concat(
+        qcircle( // lower curve
+            rw-bv*sin(an), rh-bv*sin(an),
+            bv*(1-cos(an)), san, ean=coang
+        ),
+        bcircle_m( // matching inside curve
+            (s-cs*2-eb*2)/2+bv,
+            15, rh-bv*sin(an),
+            bv*(1-cos(an)),
+            san=135, ean=45, a=-dang
+        ),
+        bline_c( // matching lower straight
+            rh-bv*sin(an),
+            15 - sin(135)*((s-cs*2-eb*2)/2+bv),
+            bv*(1-cos(an)),
+            1  + sin( 45)*(eb-bv),
+            bv*(1-cos(an)),
+            stp = dstp
+        ),
+        bcircle( // lower corner
+            eb-bv*(1-cos(an)),
+            1, rh-bv*sin(an), eb,
+            san=-90
+        ),
+        bcircle( // lower inside corner
+            eb-bv*(1-cos(an)),
+            1, rh-bv*sin(an), cs,
+            san=0, ean=45
+        ),
+        bline_c( // lower straight
+            rh-bv*sin(an),
+            1  + sin( 45)*(eb-bv*(1-cos(an))),
+            cs + cos( 45)*(eb-bv*(1-cos(an))),
+            15 - sin(135)*((s-cs*2-eb*2)/2+bv*(1-cos(an))),
+            s/2+ cos(135)*((s-cs*2-eb*2)/2+bv*(1-cos(an))),
+            stp = dstp
+        ),
+        bcircle_c( // inside curve
+            (s-cs*2-eb*2)/2+bv*(1-cos(an)),
+            15, rh-bv*sin(an), s/2,
+            san=135, ean=90, a=-dang
+        ),
+        bline_c( // upper straight
+            rh-bv*sin(an),
+            15 - sin( 45)*((s-cs*2-eb*2)/2+bv*(1-cos(an))),
+            s/2+ cos( 45)*((s-cs*2-eb*2)/2+bv*(1-cos(an))),
+            1  + sin(135)*(eb-bv*(1-cos(an))),
+            s-cs + cos(135)*(eb-bv*(1-cos(an))),
+            stp = dstp
+        ),
+        bcircle( // upper inside corner
+            eb-bv*(1-cos(an)),
+            1, rh-bv*sin(an), s-cs,
+            san=-45, ean=45
+        ),
+        bcircle( // upper corner
+            eb-bv*(1-cos(an)),
+            1, rh-bv*sin(an), s-eb,
+            san=0
+        ),
+        bline_c( // matching upper straight
+            rh-bv*sin(an),
+            1  + sin( 45)*(eb-bv),
+            s-bv*(1-cos(an)),
+            15 - sin(135)*((s-cs*2-eb*2)/2+bv*(1-cos(an))),
+            s-bv*(1-cos(an)),
+            stp = dstp
+        ),
+        bcircle_m( // matching inside curve
+            (s-cs*2-eb*2)/2+bv,
+            15, rh-bv*sin(an),
+            s-bv*(1-cos(an)),
+            san=180, ean=45, a=-dang
+        ),
+        qcircle( // upper curve
+            rw-bv*sin(an), rh-bv*sin(an),
+            s-bv*(1-cos(an)), san, a=-cang, ean=coang
+        )
+    );
+
+function bline_c(y, x1,z1,x2,z2,stp=dstp) =
+    [for (s=[1:stp-1]) [x1+(x2-x1)*s/stp,
+                sqrt(pow(y,2)-pow(x1+(x2-x1)*s/stp,2)),
+                z1+(z2-z1)*s/stp]];
+
+function bcircle(r, x, y, z, san=0, ean=90, a=bang) =
+    [for (an=[san+(a>0?0:ean):a:san+(a>0?ean:0)])
+        [x+r*cos(an),y,z+r*sin(an)]];
+    
+function bcircle_c(r, x, y, z, san=0, ean=90, a=bang) =
+    [for (an=[san+(a>0?0:ean):a:san+(a>0?ean:0)])
+        [x+r*cos(an),sqrt(pow(y,2)-pow(x+r*cos(an),2)),z+r*sin(an)]];
+
+function bcircle_m(r, x, y, z, san=0, ean=90, a=bang) =
+    [for (an=[san+(a>0?0:ean):a:san+(a>0?ean:0)])
+        [x+r*cos(an),sqrt(pow(y,2)-pow(x+r*cos(an),2)),z]];
+
+function qcircle(rw, rh, s, san=0, a=cang, ean=90) =
+    [for (an=[san+(a>0?0:ean):a:san+(a>0?ean:0)])
+        [rw*sin(an),rh*cos(an),s]];
 
 function cquads(n,o,s=9999999,ex=0) = concat(
     [for (i=[0:n-1-ex]) [(i+1)%n+o,i+o,(i+o+n)%s]],
