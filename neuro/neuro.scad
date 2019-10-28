@@ -215,12 +215,12 @@ function qpipe_curve(an, san, rw, rh, s, bv, eb) =
 
 module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, cs=10) {
     // curve + 2 corners
-    csds = (coang*2)/cang+2+(180/bang+2)+(90/bang+2)+(90/dang+1)+dstp*4-4+(90/dang+2);
+    csds = (coang*2)/cang+2+(180/bang+2)+(90/bang+2)+(100/dang+1)+dstp*4-4+(100/dang+2);
     bsds = 180/bang+2; // bevel sides
     tsds = csds*(bsds-1); // total (-1 for inside inxdex)
-    cursds = ((180/bang+2)+(90/bang+2)+(90/dang+1))/2+1+dstp*2-2+(45/dang+1);
-    offsds = (45/dang)+dstp;
-    ofoff = ((45/dang)+dstp+(45/bang)+(90/bang)+dstp+(45/dang));
+    cursds = ((180/bang+2)+(90/bang+2)+(100/dang+1))/2+1+dstp*2-2+(50/dang+1);
+    offsds = (50/dang)+dstp;
+    ofoff = ((50/dang)+dstp+(45/bang)+(90/bang)+dstp+(50/dang));
     polyhedron(
         points = concat(
             // Outside
@@ -274,11 +274,11 @@ function qpipe_h_curve(an, san, rw, rh, s, bv, eb, cs) =
             (s-cs*2-eb*2)/2+bv,
             15, rh-bv*sin(an),
             bv*(1-cos(an)),
-            san=135, ean=45, a=-dang
+            san=130, ean=50, a=-dang
         ),
         bline_c( // matching lower straight
             rh-bv*sin(an),
-            15 - sin(135)*((s-cs*2-eb*2)/2+bv),
+            15 - sin(140)*((s-cs*2-eb*2)/2+bv),
             bv*(1-cos(an)),
             1  + sin( 45)*(eb-bv),
             bv*(1-cos(an)),
@@ -298,19 +298,19 @@ function qpipe_h_curve(an, san, rw, rh, s, bv, eb, cs) =
             rh-bv*sin(an),
             1  + sin( 45)*(eb-bv*(1-cos(an))),
             cs + cos( 45)*(eb-bv*(1-cos(an))),
-            15 - sin(135)*((s-cs*2-eb*2)/2+bv*(1-cos(an))),
-            s/2+ cos(135)*((s-cs*2-eb*2)/2+bv*(1-cos(an))),
+            15 - sin(140)*((s-cs*2-eb*2)/2+bv*(1-cos(an))),
+            s/2+ cos(140)*((s-cs*2-eb*2)/2+bv*(1-cos(an))),
             stp = dstp
         ),
         bcircle_c( // inside curve
             (s-cs*2-eb*2)/2+bv*(1-cos(an)),
             15, rh-bv*sin(an), s/2,
-            san=135, ean=90, a=-dang
+            san=130, ean=100, a=-dang
         ),
         bline_c( // upper straight
             rh-bv*sin(an),
-            15 - sin( 45)*((s-cs*2-eb*2)/2+bv*(1-cos(an))),
-            s/2+ cos( 45)*((s-cs*2-eb*2)/2+bv*(1-cos(an))),
+            15 - sin( 40)*((s-cs*2-eb*2)/2+bv*(1-cos(an))),
+            s/2+ cos( 40)*((s-cs*2-eb*2)/2+bv*(1-cos(an))),
             1  + sin(135)*(eb-bv*(1-cos(an))),
             s-cs + cos(135)*(eb-bv*(1-cos(an))),
             stp = dstp
@@ -327,7 +327,7 @@ function qpipe_h_curve(an, san, rw, rh, s, bv, eb, cs) =
         ),
         bline_c( // matching upper straight
             rh-bv*sin(an),
-            1  + sin( 45)*(eb-bv),
+            1  + sin( 40)*(eb-bv),
             s-bv*(1-cos(an)),
             15 - sin(135)*((s-cs*2-eb*2)/2+bv*(1-cos(an))),
             s-bv*(1-cos(an)),
@@ -337,7 +337,7 @@ function qpipe_h_curve(an, san, rw, rh, s, bv, eb, cs) =
             (s-cs*2-eb*2)/2+bv,
             15, rh-bv*sin(an),
             s-bv*(1-cos(an)),
-            san=180, ean=45, a=-dang
+            san=180, ean=50, a=-dang
         ),
         qcircle( // upper curve
             rw-bv*sin(an), rh-bv*sin(an),
