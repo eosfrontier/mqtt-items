@@ -1,5 +1,5 @@
 
-/* Fine
+///* Fine
     cang = 1;
     bang = 5;
     dang = 2.5;
@@ -9,7 +9,7 @@
     coang=82;
 // */
  
-// /* Coarse
+ /* Coarse
     cang = 5;
     bang = 15;
     dang = 5;
@@ -61,7 +61,7 @@ difference() {
     }
 }
 
-union() {
+*union() {
     difference() {
         translate([10,0,0]) mirror([1,0,0]) quarterpipe();
         translate([10,0,0]) {
@@ -213,14 +213,17 @@ function qpipe_curve(an, san, rw, rh, s, bv, eb) =
         )
     );
 
-module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, cs=10) {
+module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, cs=10, bth=2) {
     // curve + 2 corners
     csds = (coang*2)/cang+2+(180/bang+2)+(90/bang+2)+(100/dang+1)+dstp*4-4+(100/dang+2);
-    bsds = 180/bang+2; // bevel sides
+    bsds = 180/bang+6; // bevel sides
     tsds = csds*(bsds-1); // total (-1 for inside inxdex)
+    osds = csds*(bsds-4); // Filling back edge
+    isds = csds*(bsds-3); // Filling back edge
     cursds = ((180/bang+2)+(90/bang+2)+(100/dang+1))/2+1+dstp*2-2+(50/dang+1);
     offsds = (50/dang)+dstp;
     ofoff = ((50/dang)+dstp+(45/bang)+(90/bang)+dstp+(50/dang));
+    ovoff = 2/cang;
     polyhedron(
         points = concat(
             // Outside
@@ -228,20 +231,41 @@ module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=
                 qpipe_h_curve(an, san, rw+t-bv, rh+t-bv, s, bv, eb, cs)],
             // Inside
             [for (an=[0:bang:90]) each
-                qpipe_h_curve(an, san, rw+bv, rh+bv, s, bv, eb, cs)]
+                qpipe_h_curve(an, san, rw+bv, rh+bv, s, bv, eb, cs)],
+            qpipe_h_curve(90, san, rw+bv, rh+bv, s, bv, eb, cs, o=10),
+            qpipe_h_curve(90, san, rw+bv+bth, rh+bv+bth, s, bv, eb, cs, o=10),
+            qpipe_h_curve(90, san, rw+bv+bth, rh+bv+bth, s, bv, eb, cs),
+
+            qpipe_h_curve(90, san, rw+t, rh+t, s, bv, eb, cs)
 
         ),
         faces = concat(
             // sides
-            [for (s=[0:bsds-2]) each cquads(csds, csds*s, csds*bsds)],
+            [for (s=[0:bsds-5]) each cquads(csds, csds*s, csds*bsds)],
+            cquads(csds, csds*(bsds-4), csds*bsds, ex=csds/2+cursds-ovoff),
+            cquads(csds, csds*(bsds-4)+csds/2+cursds-1+ovoff, csds*bsds, ex=csds/2+cursds-ovoff),
+            [[csds*(bsds-4)+csds/2+cursds-1+ovoff, csds*(bsds-4)+csds/2-cursds-ovoff, csds*(bsds-3)+csds/2-cursds-ovoff],
+             [csds*(bsds-4)+csds/2+cursds-1+ovoff, csds*(bsds-3)+csds/2-cursds-ovoff, csds*(bsds-3)+csds/2+cursds-1+ovoff]],
+            [for (s=[bsds-3:bsds-2]) each cquads(csds, csds*s, csds*bsds)],
             [for (s=[1:csds/2-cursds]) each [
                 // outside
                 [s-1,s,csds-s],[s,csds-s-1,csds-s],
                 // inside
                 [tsds+s,tsds+s-1,tsds+csds-s],[tsds+s,tsds+csds-s,tsds+csds-s-1]]],
+            ovoff=0?[]:[for (s=[csds/2-cursds-ovoff+1:csds/2-cursds]) each [
+                // inside
+                [isds+s-1,isds+s,isds+csds-s],[isds+s,isds+csds-s-1,isds+csds-s],
+                // outside
+                [osds+s,osds+s-1,osds+csds-s],[osds+s,osds+csds-s,osds+csds-s-1]]],
             [[csds/2-ofoff-2,csds/2-ofoff-1,csds/2],
              [csds/2+ofoff+1,csds/2+ofoff+2,csds/2],
              [csds/2+ofoff+2,csds/2-ofoff-2,csds/2],
+             [osds+csds/2-ofoff-1,osds+csds/2-ofoff-2,osds+csds/2],
+             [osds+csds/2+ofoff+2,osds+csds/2+ofoff+1,osds+csds/2],
+             [osds+csds/2-ofoff-2,osds+csds/2+ofoff+2,osds+csds/2],
+             [isds+csds/2-ofoff-2,isds+csds/2-ofoff-1,isds+csds/2],
+             [isds+csds/2+ofoff+1,isds+csds/2+ofoff+2,isds+csds/2],
+             [isds+csds/2+ofoff+2,isds+csds/2-ofoff-2,isds+csds/2],
              [tsds+csds/2-ofoff-1,tsds+csds/2-ofoff-2,tsds+csds/2],
              [tsds+csds/2+ofoff+2,tsds+csds/2+ofoff+1,tsds+csds/2],
              [tsds+csds/2-ofoff-2,tsds+csds/2+ofoff+2,tsds+csds/2]
@@ -251,7 +275,18 @@ module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=
                 [csds/2-s,csds/2-ofoff+s-1,csds/2-ofoff+s],
                 [csds/2+s,csds/2+s+1,csds/2+ofoff-s],
                 [csds/2+s,csds/2+ofoff-s,csds/2+ofoff-s+1],
+
+                [osds+csds/2-s,osds+csds/2-s-1,osds+csds/2-ofoff+s],
+                [osds+csds/2-s,osds+csds/2-ofoff+s,osds+csds/2-ofoff+s-1],
+                [osds+csds/2+s+1,osds+csds/2+s,osds+csds/2+ofoff-s],
+                [osds+csds/2+s,osds+csds/2+ofoff-s+1,osds+csds/2+ofoff-s],
             
+                [isds+csds/2-s-1,isds+csds/2-s,isds+csds/2-ofoff+s],
+                [isds+csds/2-s,isds+csds/2-ofoff+s-1,isds+csds/2-ofoff+s],
+                [isds+csds/2+s,isds+csds/2+s+1,isds+csds/2+ofoff-s],
+                [isds+csds/2+s,isds+csds/2+ofoff-s,isds+csds/2+ofoff-s+1],
+
+                
                 [tsds+csds/2-s,tsds+csds/2-s-1,tsds+csds/2-ofoff+s],
                 [tsds+csds/2-s,tsds+csds/2-ofoff+s,tsds+csds/2-ofoff+s-1],
                 [tsds+csds/2+s+1,tsds+csds/2+s,tsds+csds/2+ofoff-s],
@@ -259,16 +294,20 @@ module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=
             ]],
             [[for (s=[csds/2-ofoff+offsds:csds/2-offsds-1]) s]],
             [[for (s=[csds/2+offsds+1:csds/2+ofoff-offsds]) s]],
+            [[for (s=[csds/2-offsds-1:-1:csds/2-ofoff+offsds]) osds+s]],
+            [[for (s=[csds/2+ofoff-offsds:-1:csds/2+offsds+1]) osds+s]],
+            [[for (s=[csds/2-ofoff+offsds:csds/2-offsds-1]) isds+s]],
+            [[for (s=[csds/2+offsds+1:csds/2+ofoff-offsds]) isds+s]],
             [[for (s=[csds/2-offsds-1:-1:csds/2-ofoff+offsds]) tsds+s]],
             [[for (s=[csds/2+ofoff-offsds:-1:csds/2+offsds+1]) tsds+s]]
         ));        
 }
 
-function qpipe_h_curve(an, san, rw, rh, s, bv, eb, cs) =
+function qpipe_h_curve(an, san, rw, rh, s, bv, eb, cs, o=0) =
     concat(
         qcircle( // lower curve
             rw-bv*sin(an), rh-bv*sin(an),
-            bv*(1-cos(an)), san, ean=coang
+            bv*(1-cos(an))+o, san, ean=coang
         ),
         bcircle_m( // matching inside curve
             (s-cs*2-eb*2)/2+bv,
@@ -329,7 +368,7 @@ function qpipe_h_curve(an, san, rw, rh, s, bv, eb, cs) =
             rh-bv*sin(an),
             1  + sin( 40)*(eb-bv),
             s-bv*(1-cos(an)),
-            15 - sin(135)*((s-cs*2-eb*2)/2+bv*(1-cos(an))),
+            15 - sin(135)*((s-cs*2-eb*2)/2+bv),
             s-bv*(1-cos(an)),
             stp = dstp
         ),
@@ -341,7 +380,7 @@ function qpipe_h_curve(an, san, rw, rh, s, bv, eb, cs) =
         ),
         qcircle( // upper curve
             rw-bv*sin(an), rh-bv*sin(an),
-            s-bv*(1-cos(an)), san, a=-cang, ean=coang
+            s-bv*(1-cos(an))-o, san, a=-cang, ean=coang
         )
     );
 
