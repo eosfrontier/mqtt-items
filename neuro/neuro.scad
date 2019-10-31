@@ -1,5 +1,5 @@
 
-/* Fine
+///* Fine
     cang = 1;
     bang = 5;
     dang = 2.5;
@@ -9,7 +9,7 @@
     coang=82;
 // */
  
-// /* Coarse
+ /* Coarse
     cang = 5;
     bang = 15;
     dang = 5;
@@ -23,11 +23,15 @@ width = 170;
 height = 170;
 breadth = 100;
 thick = 15;
+wall = 2;
 
 rotate([0,0,95])
 difference() {
-    translate([-10,0,0]) quarterpipe_h();
-    *translate([-10,0,0]) mirror([1,0,0]) {
+    translate([-10,0,0]) {
+        quarterpipe_h();
+        for (an=[12.5:5:87.5]) rib(an);
+    }
+    translate([-10,0,0]) mirror([1,0,0]) {
         cpoint(10, 15);
         cline(10,15,15,20);
         cpoint(15, 20);
@@ -40,7 +44,9 @@ difference() {
         cpoint(55,50);
         cline(55,50,75,65);
         cpoint(75,65);
-        cline(75,65,85,55);
+        cline(75,65,90,55);
+        cpoint(90,55);
+        
         cpoint(5,88);
         cline(5,88,20,75);
         cpoint(20,75);
@@ -80,6 +86,8 @@ difference() {
             cline(55,50,75,35);
             cpoint(75,35);
             cline(75,35,85,55);
+            cpoint(85,55);
+            
             cpoint(5,85);
             cline(5,85,20,75);
             cpoint(20,75);
@@ -101,6 +109,16 @@ difference() {
     translate([5,height,breadth/2]) disc();
 }
 
+module rib(an, th=thick-2, rh=height+1, w=wall, z=breadth, zo=3, o=10) {
+    rotate([0,0,an]) translate([-w/2, rh+th, z-zo])
+    rotate([0,90,0]) linear_extrude(height=w)
+        polygon([
+            [0,0],[0,-th],[o,-th],[o+th,0]]);
+    rotate([0,0,an]) translate([w/2, rh+th, zo])
+    rotate([0,-90,0]) linear_extrude(height=w)
+        polygon([
+            [0,0],[0,-th],[o,-th],[o+th,0]]);
+}
 
 module cpoint(a, z, t=5, d=1.5, rw=width+thick, rh=height+thick) {
     translate([rw*sin(a),rh*cos(a), z])
@@ -112,8 +130,10 @@ module cpoint(a, z, t=5, d=1.5, rw=width+thick, rh=height+thick) {
 module cline(a1, z1, a2, z2, t=1.5, rw=width+thick, rh=height+thick, a=cang) {
     if (a1 > a2) {
         cline_lr(a2, z2, a1, z1, t, rw, rh, a);
+        //cline_lr(a2, z2, a1, z1, t-1, rw-2, rh-2, a);
     } else {
         cline_lr(a1, z1, a2, z2, t, rw, rh, a);
+        //cline_lr(a1, z1, a2, z2, t-1, rw-2, rh-2, a);
     }
 }
 
@@ -247,8 +267,8 @@ module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=
         faces = concat(
             // sides
             [for (s=[0:bsds-5]) each cquads(csds, csds*s, csds*bsds, ex=1)],
-            cquads(csds, csds*(bsds-4)+botsds, csds*bsds, ex=csds/2+cursds-ovoff+2+botsds),
-            cquads(csds, csds*(bsds-4)+csds/2+cursds-1+ovoff, csds*bsds, ex=csds/2+cursds-ovoff+2+botsds),
+            cquads(csds, csds*(bsds-4)+botsds, csds*bsds, ex=csds/2+cursds-ovoff+4+botsds),
+            cquads(csds, csds*(bsds-4)+csds/2+cursds-1+ovoff, csds*bsds, ex=csds/2+cursds-ovoff+4+botsds),
             [[csds*(bsds-4)+csds/2+cursds-1+ovoff, csds*(bsds-4)+csds/2-cursds-ovoff, csds*(bsds-3)+csds/2-cursds-ovoff],
              [csds*(bsds-4)+csds/2+cursds-1+ovoff, csds*(bsds-3)+csds/2-cursds-ovoff, csds*(bsds-3)+csds/2+cursds-1+ovoff]],
             cquads(csds, csds*(bsds-3), csds*bsds, ex=1),
