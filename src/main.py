@@ -1,5 +1,5 @@
 from utime import sleep_ms, ticks_ms, ticks_diff
-import wifiportal,ujson
+import ujson
 import leds, buttons, mqtt
 
 f = open('settings.json', 'r')

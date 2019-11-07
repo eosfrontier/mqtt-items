@@ -10,7 +10,8 @@ cwid = wid*s3/2;
 height = 30;
 bheight = 20;
 bott = 2;
-sheight = 9.5;
+tabheight = 7.5;
+sheight = 10;
 cang = 3;
 btol = 0.3;
 tol = 0.1;
@@ -28,14 +29,14 @@ boxsq();
 module boxsq() {
     bw = 110;
     bh = 30;
-    eh = sheight-2;
+    eh = tabheight;
     bt = 2;
     btw = 3.65;
     
-    *color("gray")
+    color("gray")
     sqfront(bw,bh,bt,btw*s2);
     
-    color("gray")
+    *color("gray")
     translate([0,0,-0.1])
     sqback(bw,bt,3,eh);
     
@@ -87,12 +88,12 @@ module sqfront(bw,bh,bt,btw) {
                 translate([-41.4,n*(82.8/3)-41.4,0])
                 rotate([0,0,45])
                 cur_prism(4, [
-                    [bs2,bh+0.5,1-t],
-                    [bs2,bh-0.5,-t],
-                    [bs2,bh-bt-0.5,-t]]);
+                    [bs2,bh+0.5,1-cwid],
+                    [bs2,bh-0.5,-cwid],
+                    [bs2,bh-bt-0.5,-cwid]]);
         
             #translate([26,-4.6,bh-bt-0.1])
-            translate([-1,-95/2-4,-4.5]) cube([8,3,2.5],true);
+            translate([-0.5,-95/2-4,-5.8]) cube([8.5,3,2.6],true);
         
         }
     }
@@ -101,8 +102,8 @@ module sqfront(bw,bh,bt,btw) {
         translate([-41.4,n*(82.8/3)-41.4,0])
         rotate([0,0,45])
         cur_donut(4, [
-            [bs2,sheight+2+bt,-t],
-            [bs2,bh-1,-t],
+            [bs2,sheight+2+wid,-cwid],
+            [bs2,bh-1,-cwid],
             [bs2,bh-1,0.2],
             [bs2,sheight+2,0.2],
             [bs2,sheight+2,0]]);                
@@ -133,22 +134,22 @@ module sqfront(bw,bh,bt,btw) {
     
     translate([-14.85,-27,bh-bt-0.1]) rotate([0,0,-90]) wemosd1(soff=1);
     
-    translate([35,-bw/2+bt/2-tol,sheight-2-tol])
+    translate([35,-bw/2+bt/2-tol,tabheight-tol])
     rotate([0,0,180])
     bottomtablip();
-    translate([-15,-bw/2+bt/2-tol,sheight-2-tol])
+    translate([-15,-bw/2+bt/2-tol,tabheight-tol])
     rotate([0,0,180])
     bottomtablip();
     
-    translate([35,bw/2-bt/2+tol,sheight-2-tol])
+    translate([35,bw/2-bt/2+tol,tabheight-tol])
     bottomtablip();
-    translate([-15,bw/2-bt/2+tol,sheight-2-tol])
+    translate([-15,bw/2-bt/2+tol,tabheight-tol])
     bottomtablip();
     
-    translate([bw/2-bt/2+tol,30,sheight-2-tol])
+    translate([bw/2-bt/2+tol,30,tabheight-tol])
     rotate([0,0,-90])
     bottomtablip();
-    translate([bw/2-bt/2+tol,-30,sheight-2-tol])
+    translate([bw/2-bt/2+tol,-30,tabheight-tol])
     rotate([0,0,-90])
     bottomtablip();
     
@@ -198,22 +199,22 @@ module sqback(bw,bt,et,eh) {
     }
 
     
-    translate([35,-bw/2+bt/2,sheight-2])
+    translate([35,-bw/2+bt/2,tabheight])
     rotate([0,0,180])
     bottomtab();
-    translate([-15,-bw/2+bt/2,sheight-2])
+    translate([-15,-bw/2+bt/2,tabheight])
     rotate([0,0,180])
     bottomtab();
     
-    translate([35,bw/2-bt/2,sheight-2])
+    translate([35,bw/2-bt/2,tabheight])
     bottomtab();
-    translate([-15,bw/2-bt/2,sheight-2])
+    translate([-15,bw/2-bt/2,tabheight])
     bottomtab();
     
-    translate([bw/2-bt/2,30,sheight-2])
+    translate([bw/2-bt/2,30,tabheight])
     rotate([0,0,-90])
     bottomtab();
-    translate([bw/2-bt/2,-30,sheight-2])
+    translate([bw/2-bt/2,-30,tabheight])
     rotate([0,0,-90])
     bottomtab();
 
@@ -455,10 +456,10 @@ module batteryclips() {
     translate([-33/2, 95/2,0]) batterypin();
     translate([ 33/2,-95/2,0]) batterypin();
     translate([ 33/2, 95/2,0]) batterypin();
-    translate([-14,-50.6,0]) rotate([0,0,180]) batterytab(10);
-    translate([-14, 50.3,0]) batterytab(10);
-    translate([ 14,-50.6,0]) rotate([0,0,180]) batterytab(10);
-    translate([ 14, 50.3,0]) batterytab(10);
+    translate([-15,-50.6,0]) rotate([0,0,180]) batterytab(15);
+    translate([-15, 50.3,0]) batterytab(15);
+    translate([ 15,-50.6,0]) rotate([0,0,180]) batterytab(15);
+    translate([ 15, 50.3,0]) batterytab(15);
 }
 
 module batteryclips_w() {
@@ -466,10 +467,10 @@ module batteryclips_w() {
     translate([-33/2, 95/2,0]) batterypin();
     translate([ 33/2,-95/2,0]) batterypin_w();
     translate([ 33/2, 95/2,0]) batterypin();
-    translate([-14,-50.6,0]) rotate([0,0,180]) batterytab_w(10);
-    translate([-14, 50.3,0]) batterytab(10);
-    translate([ 14,-50.6,0]) rotate([0,0,180]) batterytab_w(10);
-    translate([ 14, 50.3,0]) batterytab(10);
+    translate([-15,-50.6,0]) rotate([0,0,180]) batterytab_w(15);
+    translate([-15, 50.3,0]) batterytab(15);
+    translate([ 15,-50.6,0]) rotate([0,0,180]) batterytab_w(15);
+    translate([ 15, 50.3,0]) batterytab(15);
 }
 
 module batterypin() {
@@ -548,7 +549,7 @@ module batteryholder() {
                 [for (an=[270:10:360]) [-bh+sin(an)*cr, bw+cos(an)*cr]]
             ));
             translate([0, 6,-12]) cube([40,77,24], true);
-            translate([1,95/2,-4.5]) cube([7.5,6,2],true);
+            translate([0,95/2,-4.5]) cube([7.5,6,2],true);
         }
         translate([-33/2,-95/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
         translate([-33/2, 95/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);

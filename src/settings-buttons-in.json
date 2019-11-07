@@ -1,15 +1,15 @@
 {
     "leds":{
-        "num":3,
+        "num":4,
         "pin":0,
         "order":"RGB",
-        "colors":["180000","001800","000020"]
+        "colors":["180000","001800","000020","101000"]
     },"buttons":{
-        "pins":[14,12,13]
+        "pins":[4,14,12,13]
     },"mqtt":{
         "server":"192.168.1.58",
         "name":"eos/portal/buttons_in",
-        "buttons":["b1","b2","b3"]
+        "buttons":["b1","b2","b3","b4"]
     },
     "fps":40
 }
