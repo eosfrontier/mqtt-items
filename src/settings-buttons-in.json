@@ -3,13 +3,13 @@
         "num":4,
         "pin":0,
         "order":"RGB",
-        "colors":["180000","001800","000020","101000"]
+        "colors":["101000","000020","001800","180000"]
     },"buttons":{
         "pins":[4,14,12,13]
     },"mqtt":{
         "server":"192.168.1.58",
         "name":"eos/portal/buttons_in",
-        "buttons":["b1","b2","b3","b4"]
+        "buttons":["b4","b3","b2","b1"]
     },
     "fps":40
 }

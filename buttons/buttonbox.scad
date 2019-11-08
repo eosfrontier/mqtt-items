@@ -132,7 +132,7 @@ module sqfront(bw,bh,bt,btw) {
     
     translate([26,-4.6,bh-bt-1.1]) batteryclips_w();
     
-    translate([-14.85,-27,bh-bt-0.1]) rotate([0,0,-90]) wemosd1(soff=1);
+    translate([-14.5,-30,bh-bt-0.1]) rotate([0,0,-90]) wemosd1(soff=1);
     
     translate([35,-bw/2+bt/2-tol,tabheight-tol])
     rotate([0,0,180])
@@ -508,10 +508,10 @@ module wemosd1(soff=0) {
     translate([-17.3,-9.2+soff/2,0]) rotate([0,0, 90]) mcutab(8-soff);
     translate([-17.3, 9.2,0]) rotate([0,0, 90]) mcutab(8);
 
-    translate([ 10,-12.7-2/2,-7/2+0.1]) cube([7,2,7.2],true);
-    translate([ 10, 12.7+2/2,-7/2+0.1]) cube([7,2,7.2],true);
-    translate([-10,-12.7-2/2,-7/2+0.1]) cube([7,2,7.2],true);
-    translate([ -6, 12.7+2/2,-7/2+0.1]) cube([7,2,7.2],true);
+    translate([ 10,-12.8-2/2,-7/2+0.1]) cube([7,2,7.2],true);
+    translate([ 10, 12.8+2/2,-7/2+0.1]) cube([7,2,7.2],true);
+    translate([-10,-12.8-2/2,-7/2+0.1]) cube([7,2,7.2],true);
+    translate([ -6, 12.8+2/2,-7/2+0.1]) cube([7,2,7.2],true);
 }
 
 module mcutab(w) {
