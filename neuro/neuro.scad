@@ -1,5 +1,5 @@
 
-///* Fine
+ /* Fine
     cang = 1;
     bang = 5;
     dang = 2.5;
@@ -9,7 +9,7 @@
     coang=82;
 // */
  
- /* Coarse
+// /* Coarse
     cang = 5;
     bang = 15;
     dang = 5;
@@ -24,54 +24,129 @@ height = 170;
 breadth = 100;
 thick = 15;
 wall = 2;
+exof = 10;
 
-rotate([0,0,95])
-difference() {
-    translate([-10,0,0]) {
-        quarterpipe_h();
-        for (an=[12.5:5:87.5]) rib(an);
-    }
-    translate([-10,0,0]) mirror([1,0,0]) {
-        cpoint(10, 15);
-        cline(10,15,15,20);
-        cpoint(15, 20);
-        cline(15,20,25,35);
-        cpoint(25, 35);
-        cline(25,35,35,20);
-        cpoint(30, 55);
-        cline(30,55,45,55);
+butwid = 45;
+buthi = 45;
+knobr = 25;
+butsz = 120;
 
-        cpoint(55,50);
-        cline(55,50,75,65);
-        cpoint(75,65);
-        cline(75,65,90,55);
-        cpoint(90,55);
-        
-        cpoint(5,88);
-        cline(5,88,20,75);
-        cpoint(20,75);
-        cline(20,75,30,80);
-        cpoint(30,80);
-        cline(30,80,30,55);
-        cpoint(40,70);
-        cline(40,70,45,55);
-        
-        cpoint(15,50);
-        cline(15,50,25,35);
-        
-        cpoint(45,55);
-        cline(45,55,55,50);
-        cline(55,50,40,20);
-        cpoint(40,20);
-        cline(40,20,35,20);
-        cpoint(35,20);
+boxheight = 40;
+boxang = 30;
+boxsl = tan(boxang)*sin(45);
+
+//rotate([0,0,95])
+*rotate([90,0,0]) front_l();
+*rotate([90,0,0]) front_r();
+
+sidebox();
+*mirror([1,0,0]) sidebox();
+
+module buttons_l() {
+    difference() {
+        rotate([0,0,45]) sidebox();
     }
 }
 
-*union() {
+module sidebox() {
+    tw = width+thick+exof;
+    z = boxheight+tw*boxsl;
+    t = wall;
+    ht = wall * sqrt(2);
+    csds = 360/bang+6;
+    bsds = 90/bang+4;
+    eb = 5;
+    bv = 3;
+    bof=0.3;
     difference() {
-        translate([10,0,0]) mirror([1,0,0]) quarterpipe();
-        translate([10,0,0]) {
+        polyhedron(
+            points = concat(
+                sb_curve(0, z-ht, boxsl, eb, 0, tw, t),
+                sb_curve(0, 0, 0, eb, 0, tw, t),
+                sb_curve(0, 0, 0, eb, 0, tw),
+                [for (an=[0:bang:90]) each sb_curve(an, z, boxsl, eb, bv, tw)]
+            ), faces = concat(
+                [for (s=[0:bsds-2]) each cquads(csds,csds*s,csds*bsds)],
+                [[for (s=[0:csds-1]) s],
+                 [for (s=[csds-1:-1:0]) s+(csds*(bsds-1))]]
+            ));
+        translate([tw-butsz*bof, butsz*bof, boxheight-ht-0.5])
+        rotate([0,boxang,45]) cylinder(wall+1, knobr, knobr, $fn=360/dang);
+        translate([tw-butsz*(1-bof), butsz*(1-bof), boxheight-ht-0.5])
+        rotate([0,boxang,45]) cylinder(wall+1, knobr, knobr, $fn=360/dang);
+    }
+}
+
+function sb_curve(an, z, zsl, eb, bv, w, t=0, bw=butwid, bh=buthi, bs=butsz) = concat(
+    bcircle_s(
+        eb-bv*(1-cos(an))-t, w-eb, eb, z-bv*(1-sin(an)), zsl, 0, 90),
+    bcircle_s(
+        eb-bv*(1-cos(an))-t, w-eb, bh-eb, z-bv*(1-sin(an)), zsl, 90, 135),
+    bcircle_s(
+        eb-bv*(1-cos(an))-t, w-bs+bh-eb, bs-eb, z-bv*(1-sin(an)), zsl, 135, 180),
+    bcircle_s(
+        eb-bv*(1-cos(an))-t, w-bs+eb, bs-eb, z-bv*(1-sin(an)), zsl, 180, 270),
+    bcircle_s(
+        eb-bv*(1-cos(an))-t, w-bs+eb, bs-bw+eb, z-bv*(1-sin(an)), zsl, 270, 315),
+    bcircle_s(
+        eb-bv*(1-cos(an))-t, w-bw+eb, eb, z-bv*(1-sin(an)), zsl, 315, 360)
+    );
+
+function bcircle_s(r, x, y, z, zsl, san, ean, a=bang) = 
+    [for (an=[san:(san<ean?a:-a):ean])
+        [x+r*sin(an),y-r*cos(an),(z-(x+y+r*(sin(an)-cos(an)))*zsl)]];
+
+module front_l() {
+    translate([-exof,30,0]) difference() {
+        union() {
+            quarterpipe_h();
+            for (an=[12.5:5:87.5]) rib(an);
+        }
+        mirror([1,0,0]) {
+            cpoint(10, 15);
+            cline(10,15,15,20);
+            cpoint(15, 20);
+            cline(15,20,25,35);
+            cpoint(25, 35);
+            cline(25,35,35,20);
+            cpoint(30, 55);
+            cline(30,55,45,55);
+    
+            cpoint(55,50);
+            cline(55,50,75,65);
+            cpoint(75,65);
+            cline(75,65,90,55);
+            cpoint(90,55);
+            
+            cpoint(5,88);
+            cline(5,88,20,75);
+            cpoint(20,75);
+            cline(20,75,30,80);
+            cpoint(30,80);
+            cline(30,80,30,55);
+            cpoint(40,70);
+            cline(40,70,45,55);
+            
+            cpoint(15,50);
+            cline(15,50,25,35);
+            
+            cpoint(45,55);
+            cline(45,55,55,50);
+            cline(55,50,40,20);
+            cpoint(40,20);
+            cline(40,20,35,20);
+            cpoint(35,20);
+        }
+    }
+}
+
+module front_r() {
+    translate([exof,0,0]) difference() {
+        union() {
+            mirror([1,0,0]) quarterpipe();
+            translate([5,height,breadth/2]) disc();
+        }
+        {
             cpoint(5, 15);
             cline(5,15,15,15);
             cpoint(15, 15);
@@ -106,7 +181,6 @@ difference() {
             cpoint(35,25);
         }
     }
-    translate([5,height,breadth/2]) disc();
 }
 
 module rib(an, th=thick-2, rh=height+1, w=wall, z=breadth, zo=3, o=10) {
@@ -235,6 +309,8 @@ function qpipe_curve(an, san, rw, rh, s, bv, eb) =
     );
 
 module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, cs=10, bth=2, ics=20) {
+    
+
     // just the curve
     jsds = (180/bang+2)+(90/bang+2)+(100/dang+1);
     // curve + 2 corners
@@ -243,11 +319,14 @@ module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=
     tsds = csds*(bsds-1); // total (-1 for inside inxdex)
     osds = csds*(bsds-4); // Filling back edge
     isds = csds*(bsds-3); // Filling back edge
+    
+    // closed off end segments
+    ovoff = ceil(2/cang);
+    
     cursds = jsds/2+1+dstp*2-2+(50/dang+1);
     offsds = (50/dang)+dstp;
     botsds = 90/bang+90/dang+2;
     ofoff = ((50/dang)+dstp+(45/bang)+(90/bang)+dstp+(50/dang));
-    ovoff = ceil(2/cang);
     ios = ics+6;
     polyhedron(
         points = concat(
@@ -267,8 +346,8 @@ module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=
         faces = concat(
             // sides
             [for (s=[0:bsds-5]) each cquads(csds, csds*s, csds*bsds, ex=1)],
-            cquads(csds, csds*(bsds-4)+botsds, csds*bsds, ex=csds/2+cursds-ovoff+4+botsds),
-            cquads(csds, csds*(bsds-4)+csds/2+cursds-1+ovoff, csds*bsds, ex=csds/2+cursds-ovoff+4+botsds),
+            cquads(csds, csds*(bsds-4)+botsds, csds*bsds, ex=csds/2+cursds+botsds+ovoff),
+            cquads(csds, csds*(bsds-4)+csds/2+cursds-1+ovoff, csds*bsds, ex=csds/2+cursds+botsds+ovoff),
             [[csds*(bsds-4)+csds/2+cursds-1+ovoff, csds*(bsds-4)+csds/2-cursds-ovoff, csds*(bsds-3)+csds/2-cursds-ovoff],
              [csds*(bsds-4)+csds/2+cursds-1+ovoff, csds*(bsds-3)+csds/2-cursds-ovoff, csds*(bsds-3)+csds/2+cursds-1+ovoff]],
             cquads(csds, csds*(bsds-3), csds*bsds, ex=1),

@@ -23,8 +23,8 @@ crv = 10;
 
 taboff = trioff-bsize-cwid-1.114-tol;
 
-boxsq();
-*boxtri();
+*boxsq();
+boxtri();
 
 module boxsq() {
     bw = 110;
@@ -57,10 +57,10 @@ module boxsq() {
 module boxtri() {
     color("gray")
     front2();
-    color("gray")
-    translate([0,0,-tol]) bottom2();
-    switches(180);
-    color("teal") translate([0,-17,height-wid-0.1]) rotate([0,0,180]) batteryholder();
+    *color("gray")
+    *translate([0,0,-tol]) bottom2();
+    *switches(180);
+    *color("teal") translate([0,-19.8,height-wid-1.1]) rotate([0,0,180]) batteryholder();
 }
 
 *rotate([0,180,0]) union() {
@@ -364,8 +364,10 @@ module front2() {
                 [[for (n=[sides-1:-1:0]) n+sides*2]]
                 )
             );
-            *#translate([0,0,height-0.4]) slitgroup(2,3,6);
+            #translate([0,0,height-0.2]) slitgroup(0.5,4.5,6);
         }
+        #translate([0,-20,height-wid-1.1])
+        translate([-0.5,-95/2-4,-4.8]) cube([8.5,3,2.6],true);
     }
     for (n=[360/trivec:360/trivec:360]) {
         rotate([0,0,n])
@@ -386,8 +388,9 @@ module front2() {
             ) );
                 
     }
-    translate([0,-17,height-wid-0.1]) batteryclips();
+    translate([0,-19.7,height-wid-1.1]) batteryclips_w();
     translate([-50,25,height-wid-0.1]) rotate([0,0,-120]) wemosd1();
+    
     
     for (n = [360/trivec:360/trivec:360]) {
         rotate([0,0,n]) {
@@ -549,7 +552,7 @@ module batteryholder() {
                 [for (an=[270:10:360]) [-bh+sin(an)*cr, bw+cos(an)*cr]]
             ));
             translate([0, 6,-12]) cube([40,77,24], true);
-            translate([0,95/2,-4.5]) cube([7.5,6,2],true);
+            translate([0.5,95/2,-4.5]) cube([7.5,6,2],true);
         }
         translate([-33/2,-95/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
         translate([-33/2, 95/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
