@@ -1,5 +1,5 @@
 
- /* Fine
+ // /* Fine
     cang = 1;
     bang = 5;
     dang = 2.5;
@@ -9,7 +9,7 @@
     coang=82;
 // */
  
-// /* Coarse
+  /* Coarse
     cang = 5;
     bang = 15;
     dang = 5;
@@ -39,14 +39,90 @@ boxsl = tan(boxang)*sin(45);
 *rotate([90,0,0]) front_l();
 *rotate([90,0,0]) front_r();
 
-sidebox();
-*mirror([1,0,0]) sidebox();
+*buttons_l();
+*mirror([1,0,0]) buttons_l();
+
+rbutton();
+*rotspline();
 
 module buttons_l() {
-    difference() {
-        rotate([0,0,45]) sidebox();
+    sidebox();
+    boxbutton(0);
+    boxbutton(1);
+}
+
+module boxbutton(nm=0) {
+    tw = width+thick+exof;
+    z = boxheight+tw*boxsl;
+    ht = wall * sqrt(2);
+    bof=0.31;
+    btr = nm?1-bof:bof;
+    translate([tw-butsz*btr, butsz*btr, boxheight-ht-0.5])
+    rotate([0,boxang,45]) rbutton();
+}
+
+module rbutton(r=knobr-0.3, ca=dang, t=15, b=10, ba=bang, tbv=5, bbv=5) {
+    csds = 360/ca;
+    bsds = 180/ba+9;
+    rotate([90,0,0]) translate([0,-t+7,0]) difference() {
+        polyhedron(
+            points = concat(
+                [for (an=[-90:ba:0]) each circle(
+                    r-tbv*(1-cos(an)), t-tbv*(1+sin(an)), ca)],
+                [for (an=[0:ba:45]) each circle(
+                    r-bbv*(1-cos(an)), bbv*(1-sin(an)), ca)],
+                [for (an=[45:ba:90]) each circle(
+                    r-b-bbv*(1-cos(an)), -b+bbv*(1-sin(an)), ca)],
+                circle(2, -b, ca),
+                circle(2, 0, ca),
+                circle(r-5, 0, ca),
+                circle(r-3, 2, ca),
+                circle(r-3, t-4, ca),
+                circle(r-5, t-2, ca)
+            ),
+            faces = concat(
+                [for (s=[0:bsds-2]) each cquads(csds, csds*s)],
+                [[for (s=[0:csds-1]) s],
+                 [for (s=[csds-1:-1:0]) s+csds*(bsds-1)]]
+            ));
+        translate([0,-b-1,0]) rotate([-90,0,0]) rotspline();
+        translate([14,t+9,0]) rotate([90,0,0]) sphere(10, $fn=360/dang);     
     }
 }
+
+module rotspline() {
+    outr = 6.3/2;
+    inr = 5.3/2;
+    h1 = 6;
+    h2 = 6.5;
+    h3 = 10;
+    csds = 18*2;
+    bsds = 5;
+    polyhedron(
+        points = concat(
+            rstar(1, 1, h3+2),
+            rstar(outr, inr, h3),
+            rstar(outr, inr, h3-h1),
+            rstar(outr, outr, h3-h2),
+            rstar(outr, outr, 0)
+        ), faces = concat(
+            [for (s=[0:bsds-2]) each cquads_r(csds, csds*s, csds*bsds)],
+            [[for (s=[0:csds-1]) s],
+             [for (s=[0:csds-1]) csds*bsds-s-1]]
+        ));
+}
+
+function rstar(r1, r2, z, n=18) =
+    [for (an = [360/n:360/n:360]) each
+        [[r1*sin(an-180/n),r1*cos(an-180/n),z],
+         [r2*sin(an),r2*cos(an),z]]];
+    
+function cquads_r(n,o,s=9999999,ex=0) = concat(
+    [for (i=[0:2:n-1-ex]) [(i+1)%n+o,i+o,(i+o+n)%s]],
+    [for (i=[0:2:n-1-ex]) [(i+1)%n+o,(i+o+n)%s,((i+1)%n+o+n)%s]],
+    [for (i=[1:2:n-1-ex]) [(i+1)%n+o,i+o,((i+1)%n+o+n)%s]],
+    [for (i=[1:2:n-1-ex]) [i+o,(i+o+n)%s,((i+1)%n+o+n)%s]]
+);
 
 module sidebox() {
     tw = width+thick+exof;
@@ -57,7 +133,7 @@ module sidebox() {
     bsds = 90/bang+4;
     eb = 5;
     bv = 3;
-    bof=0.3;
+    bof=0.31;
     difference() {
         polyhedron(
             points = concat(
