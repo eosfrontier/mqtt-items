@@ -1,5 +1,5 @@
 
- // /* Fine
+/* Fine
     cang = 1;
     bang = 5;
     dang = 2.5;
@@ -9,7 +9,7 @@
     coang=82;
 // */
  
-  /* Coarse
+// /* Coarse
     cang = 5;
     bang = 15;
     dang = 5;
@@ -36,16 +36,16 @@ boxang = 30;
 boxsl = tan(boxang)*sin(45);
 
 //rotate([0,0,95])
-*rotate([90,0,0]) front_l();
+rotate([90,0,0]) front_l();
 *rotate([90,0,0]) front_r();
 
-*buttons_l();
-*mirror([1,0,0]) buttons_l();
+buttons_r();
+mirror([1,0,0]) buttons_r();
 
-rbutton();
+*rbutton();
 *rotspline();
 
-module buttons_l() {
+module buttons_r() {
     sidebox();
     boxbutton(0);
     boxbutton(1);
@@ -86,7 +86,7 @@ module rbutton(r=knobr-0.3, ca=dang, t=15, b=10, ba=bang, tbv=5, bbv=5) {
                  [for (s=[csds-1:-1:0]) s+csds*(bsds-1)]]
             ));
         translate([0,-b-1,0]) rotate([-90,0,0]) rotspline();
-        translate([14,t+9,0]) rotate([90,0,0]) sphere(10, $fn=360/dang);     
+        translate([12,t-1,0]) rotate([-90,0,0]) cylinder(1.5, 5,7, $fn=360/dang);     
     }
 }
 
@@ -173,7 +173,7 @@ function bcircle_s(r, x, y, z, zsl, san, ean, a=bang) =
         [x+r*sin(an),y-r*cos(an),(z-(x+y+r*(sin(an)-cos(an)))*zsl)]];
 
 module front_l() {
-    translate([-exof,30,0]) difference() {
+    translate([-exof,50,0]) difference() {
         union() {
             quarterpipe_h();
             for (an=[12.5:5:87.5]) rib(an);
@@ -259,7 +259,7 @@ module front_r() {
     }
 }
 
-module rib(an, th=thick-2, rh=height+1, w=wall, z=breadth, zo=3, o=10) {
+module rib(an, th=thick-2, rh=height+0.1, w=wall, z=breadth, zo=3, o=10) {
     rotate([0,0,an]) translate([-w/2, rh+th, z-zo])
     rotate([0,90,0]) linear_extrude(height=w)
         polygon([
@@ -384,13 +384,13 @@ function qpipe_curve(an, san, rw, rh, s, bv, eb) =
         )
     );
 
-module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, cs=10, bth=2, ics=20) {
+module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, cs=10, bth=2, ics=30) {
     
 
     // just the curve
     jsds = (180/bang+2)+(90/bang+2)+(100/dang+1);
     // curve + 2 corners
-    csds = (coang*2)/cang+2+jsds+(180/dang+2)+(180/bang+2)+dstp*4-4+(100/dang+2);
+    csds = (coang*2)/cang+2+jsds+(180/bang+2)+dstp*4-4+(100/dang+2);
     bsds = 180/bang+6; // bevel sides
     tsds = csds*(bsds-1); // total (-1 for inside inxdex)
     osds = csds*(bsds-4); // Filling back edge
@@ -401,7 +401,7 @@ module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=
     
     cursds = jsds/2+1+dstp*2-2+(50/dang+1);
     offsds = (50/dang)+dstp;
-    botsds = 90/bang+90/dang+2;
+    botsds = 90/bang+1;
     ofoff = ((50/dang)+dstp+(45/bang)+(90/bang)+dstp+(50/dang));
     ios = ics+6;
     polyhedron(
@@ -503,16 +503,12 @@ module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=
 
 function qpipe_h_curve(an, san, rw, rh, s, bv, eb, cs, ics, io=0, th=0, bth=0, o=0) =
     concat(
-        io ? qcircle( // lower base edge inside
-            eb-bth-bv*sin(an+180), eb-bth-bv*sin(an+180),
-            bv*(1-cos(an))+o, (rw+ics+th-bth-bv*2)*sin(san), -io, san=90-san, a=-bang
-            ) : qcircle( // lower base edge outside
-            eb-bv*sin(180-an)-bth, eb-bv*sin(180-an)-bth,
-            bv*(1-cos(an))+o, (rw+ics+bth)*sin(san), -ics-eb, san=san, a=bang
-        ),
-        qcircle( // lower base curve
-            (io?eb-bth:ics)-bv*sin(an+180), (io?eb-bth:ics+bth)-bv*sin(an+180),
-            bv*(1-cos(an))+o, (rw+(io?eb-bth:ics))*sin(san), -io, san=-san, a=-dang
+        io ? qcircle( // lower base curve
+            bv-bv*sin(an+180), bv-bv*sin(an+180),
+            bv*(1-cos(an))+o, (rw+bv)*sin(san), -ics, san=-san, a=-bang
+        ) : qcircle( // lower base curve
+            bv-bv*sin(an), bv-bv*sin(an),
+            bv*(1-cos(an))+o, (rw-bv)*sin(san), -ics, san=-san+90, a=bang
         ),
         qcircle( // lower curve
             rw-bv*sin(an), rh-bv*sin(an),
@@ -591,17 +587,13 @@ function qpipe_h_curve(an, san, rw, rh, s, bv, eb, cs, ics, io=0, th=0, bth=0, o
             rw-bv*sin(an), rh-bv*sin(an),
             s-bv*(1-cos(an))-o, san=san, a=-cang, ean=coang
         ),
-        qcircle( // upper base curve
-            (io?eb-bth:ics)-bv*sin(an+180), (io?eb-bth:ics+bth)-bv*sin(an+180),
-            s-bv*(1-cos(an))-o, (rw+(io?eb-bth:ics))*sin(san), -io, san=-san, a=dang
-        ),
-        io ? qcircle( // upper base edge inside
-            eb-bth-bv*sin(an+180), eb-bth-bv*sin(an+180),
-            s-bv*(1-cos(an))-o, (rw+ics+th-bth-bv*2)*sin(san), -io, san=90-san, a=bang
-            ) : qcircle( // upper base edge outside
-            eb-bv*sin(180-an)-bth, eb-bv*sin(180-an)-bth,
-            s-bv*(1-cos(an))-o, (rw+ics+bth)*sin(san), -ics-eb, san=san, a=-bang
-        )
+        io ? qcircle( // upper base curve
+            bv-bv*sin(an+180), bv-bv*sin(an+180),
+            s-bv*(1-cos(an))-o, (rw+bv)*sin(san), -ics, san=-san, a=bang
+        ) : qcircle( // upper base curve
+            bv-bv*sin(an), bv-bv*sin(an),
+            s-bv*(1-cos(an))-o, (rw-bv)*sin(san), -ics, san=-san+90, a=-bang
+        ) 
     );
 
 function bline_c(y, x1,z1,x2,z2,stp=dstp) =
