@@ -1,5 +1,5 @@
 
-/* Fine
+// /* Fine
     cang = 1;
     bang = 5;
     dang = 2.5;
@@ -9,7 +9,7 @@
     coang=82;
 // */
  
-// /* Coarse
+ /* Coarse
     cang = 5;
     bang = 15;
     dang = 5;
@@ -36,16 +36,15 @@ boxang = 30;
 boxsl = tan(boxang)*sin(45);
 
 //rotate([0,0,95])
-*rotate([90,0,0]) front_l();
+rotate([90,0,0]) front_l();
 rotate([90,0,0]) front_r();
 
-*color("teal") translate([0,130,30]) rotate([-90,90,0]) batteryholder();
+color("teal") translate([0,130,30]) rotate([-90,90,0]) batteryholder();
 
-*buttons_r();
-*mirror([1,0,0]) buttons_r();
+buttons_r();
+mirror([1,0,0]) buttons_r();
 
 *rbutton();
-*rotspline();
 
 module buttons_r() {
     translate([0,0.1,0]) {
@@ -224,10 +223,11 @@ module front_r() {
     translate([exof,50,0]) difference() {
         union() {
             mirror([1,0,0]) quarterpipe();
+            mirror([1,0,0]) for (an=[2.5:5:87.5]) rib(an);
             translate([-5,height,breadth/2]) topdisc();
         }
-        translate([-5,height+wall,breadth/2]) disc(r=26, t=16);
-        *union() {
+        translate([-5,height+wall,breadth/2]) disc(r=28, t=16);
+        union() {
             cpoint(5, 15);
             cline(5,15,15,15);
             cpoint(15, 15);
@@ -351,9 +351,23 @@ function circle(r, h, a=cang) =
     [for (an=[a:a:360]) [r*cos(an),h,r*sin(an)]];
 
 module quarterpipe(rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, ics=30, bth=2) {
+    // just the curve
+    jsds = (180/bang+2)+(90/bang+2)+(100/dang+1);
+
     csds = 180/cang+2+(180/bang+2)+(180/bang+2); // curve + 2 corners
     bsds = 180/bang+6; // bevel sides
+    
     tsds = csds*(bsds-1); // total (-1 for inside index)
+    osds = csds*(bsds-4); // Filling back edge
+    isds = csds*(bsds-3); // Filling back edge
+    
+    botsds = 90/bang+1;
+    
+    // closed off end segments
+    ovoff = ceil(2/cang);
+    
+    cursds = (90/bang+1);
+
     polyhedron(
         points = concat(
             // Outside
@@ -369,7 +383,37 @@ module quarterpipe(rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, ics=30, 
         ),
         faces = concat(
             // sides
-            [for (s=[0:bsds-2]) each cquads(csds, csds*s, csds*bsds, ex=1)],
+            [for (s=[0:bsds-5]) each cquads(csds, csds*s, csds*bsds, ex=1)],
+            cquads(csds, csds*(bsds-4)+botsds, csds*bsds, ex=csds/2+cursds+botsds+ovoff),
+            cquads(csds, csds*(bsds-4)+csds/2+cursds-1+ovoff, csds*bsds, ex=csds/2+cursds+botsds+ovoff),
+            [[csds*(bsds-4)+csds/2+cursds-1+ovoff, csds*(bsds-4)+csds/2-cursds-ovoff, csds*(bsds-3)+csds/2-cursds-ovoff],
+             [csds*(bsds-4)+csds/2+cursds-1+ovoff, csds*(bsds-3)+csds/2-cursds-ovoff, csds*(bsds-3)+csds/2+cursds-1+ovoff]],
+            cquads(csds, csds*(bsds-3), csds*bsds, ex=1),
+            cquads(csds, csds*(bsds-2), csds*bsds, ex=1),
+
+            [[isds-1,0,csds-1],[isds-1,isds-csds,0],
+             [isds-csds-1,isds-1,csds-1],[isds-csds,isds-csds*2,0],
+             [isds+csds-1,isds+csds*2-1,isds+csds*3-1],[isds+csds*2,isds+csds,isds],
+             [isds,isds+csds-1,isds+csds*2],[isds+csds-1,isds+csds*3-1,isds+csds*2]],
+            [for (s=[0:floor((bsds-6)/2)-1]) each [
+                [csds*s,osds-(csds*(s+1)),csds*(s+1)],
+                [csds*(s+1),osds-(csds*(s+1)),osds-(csds*(s+2))],
+                [osds-(csds*(s+1))+csds-1,csds*s+csds-1,csds*(s+1)+csds-1],
+                [osds-(csds*(s+1))+csds-1,csds*(s+1)+csds-1,osds-(csds*(s+2))+csds-1]
+                ]],
+            [for (s=[1:botsds]) each [
+                // inside
+                [isds+s-1,isds+s,isds+csds-s],[isds+s,isds+csds-s-1,isds+csds-s],
+                // outside
+                [osds+s,osds+s-1,osds+csds-s],[osds+s,osds+csds-s,osds+csds-s-1]]],
+            [for (s=[csds/2-cursds-ovoff+1:csds/2-1]) each [
+                // inside
+                [isds+s-1,isds+s,isds+csds-s],[isds+s,isds+csds-s-1,isds+csds-s],
+                // outside
+                [osds+s,osds+s-1,osds+csds-s],[osds+s,osds+csds-s,osds+csds-s-1]]],
+
+            [[osds+botsds,isds+csds-botsds-1,isds+botsds],
+             [osds+botsds,osds+csds-botsds-1,isds+csds-botsds-1]],
             [for (s=[1:csds/2-1]) each [
                 // outside
                 [s-1,s,csds-s],[s,csds-s-1,csds-s],
