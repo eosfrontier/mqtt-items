@@ -26,29 +26,33 @@ thick = 15;
 wall = 2;
 exof = 10;
 
-butwid = 45;
-buthi = 45;
+butwid = 50;
+buthi = 50;
 knobr = 25;
-butsz = 120;
+butsz = 140;
 
 boxheight = 40;
 boxang = 30;
 boxsl = tan(boxang)*sin(45);
 
 //rotate([0,0,95])
-rotate([90,0,0]) front_l();
-*rotate([90,0,0]) front_r();
+*rotate([90,0,0]) front_l();
+rotate([90,0,0]) front_r();
 
-buttons_r();
-mirror([1,0,0]) buttons_r();
+*color("teal") translate([0,130,30]) rotate([-90,90,0]) batteryholder();
+
+*buttons_r();
+*mirror([1,0,0]) buttons_r();
 
 *rbutton();
 *rotspline();
 
 module buttons_r() {
+    translate([0,0.1,0]) {
     sidebox();
     boxbutton(0);
     boxbutton(1);
+    }
 }
 
 module boxbutton(nm=0) {
@@ -217,12 +221,13 @@ module front_l() {
 }
 
 module front_r() {
-    translate([exof,0,0]) difference() {
+    translate([exof,50,0]) difference() {
         union() {
             mirror([1,0,0]) quarterpipe();
-            translate([5,height,breadth/2]) disc();
+            translate([-5,height,breadth/2]) topdisc();
         }
-        {
+        translate([-5,height+wall,breadth/2]) disc(r=26, t=16);
+        *union() {
             cpoint(5, 15);
             cline(5,15,15,15);
             cpoint(15, 15);
@@ -256,6 +261,14 @@ module front_r() {
             cline(40,20,35,25);
             cpoint(35,25);
         }
+    }
+}
+
+module topdisc(r=30, t=20) {
+    h = thick - 3;
+    difference() {
+        disc(r, t);
+        #translate([r/2+2,h/2-0.1,0]) cube([r,h+0.1,2*r], true);
     }
 }
 
@@ -337,23 +350,26 @@ module disc(r=30, t=20, bbv=3, tbv=10, ca=cang, ba=bang) {
 function circle(r, h, a=cang) = 
     [for (an=[a:a:360]) [r*cos(an),h,r*sin(an)]];
 
-module quarterpipe(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5) {
-    csds = 180/cang+2+(180/bang+2); // curve + 2 corners
-    bsds = 180/bang+2; // bevel sides
-    tsds = csds*(bsds-1); // total (-1 for inside inxdex)
+module quarterpipe(rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, ics=30, bth=2) {
+    csds = 180/cang+2+(180/bang+2)+(180/bang+2); // curve + 2 corners
+    bsds = 180/bang+6; // bevel sides
+    tsds = csds*(bsds-1); // total (-1 for inside index)
     polyhedron(
         points = concat(
             // Outside
             [for (an=[-90:bang:0]) each 
-                qpipe_curve(an, san, rw+t-bv, rh+t-bv, s, bv, eb)],
+                qpipe_curve(an, rw+t-bv, rh+t-bv, s, bv, eb, ics, 0)],
             // Inside
             [for (an=[0:bang:90]) each
-                qpipe_curve(an, san, rw+bv, rh+bv, s, bv, eb)]
-
+                qpipe_curve(an, rw+bv, rh+bv, s, bv, eb, ics, ics)],
+            qpipe_curve(90, rw+bv, rh+bv, s, bv, eb, ics, ics, o=10),
+            qpipe_curve(90, rw+bv+bth, rh+bv+bth, s, bv, eb, ics, ics, o=10, bth=bth),
+            qpipe_curve(90, rw+bv+bth, rh+bv+bth, s, bv, eb, ics, ics, bth=bth),
+            qpipe_curve(-90, rw+t-bv-bth, rh+t-bv-bth, s, bv, eb, ics, bth=bth)
         ),
         faces = concat(
             // sides
-            [for (s=[0:bsds-2]) each cquads(csds, csds*s, csds*bsds)],
+            [for (s=[0:bsds-2]) each cquads(csds, csds*s, csds*bsds, ex=1)],
             [for (s=[1:csds/2-1]) each [
                 // outside
                 [s-1,s,csds-s],[s,csds-s-1,csds-s],
@@ -362,11 +378,18 @@ module quarterpipe(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5)
         ));        
 }
 
-function qpipe_curve(an, san, rw, rh, s, bv, eb) =
+function qpipe_curve(an, rw, rh, s, bv, eb, ics, io=0, o=0, bth=0) =
     concat(
+        io ? qcircle( // lower base curve
+            bv-(bv-bth)*sin(an+180), bv-(bv-bth)*sin(an+180),
+            bv*(1-cos(an))+o, -(rw+(bv-bth)), -ics, san=90, a=-bang
+        ) : qcircle( // lower base curve
+            bv-(bv-bth)*sin(an), bv-(bv-bth)*sin(an),
+            bv*(1-cos(an))+o, -(rw-(bv-bth)), -ics, san=180, a=bang
+        ),
         qcircle( // lower curve
             rw-bv*sin(an), rh-bv*sin(an),
-            bv*(1-cos(an)), san
+            bv*(1-cos(an))+o, san=-90
         ),
         bcircle( // lower corner
             eb-bv*(1-cos(an)),
@@ -380,7 +403,14 @@ function qpipe_curve(an, san, rw, rh, s, bv, eb) =
         ),
         qcircle( // upper curve
             rw-bv*sin(an), rh-bv*sin(an),
-            s-bv*(1-cos(an)), san, a=-cang
+            s-bv*(1-cos(an))-o, san=-90, a=-cang
+        ),
+        io ? qcircle( // upper base curve
+            bv-(bv-bth)*sin(an+180), bv-(bv-bth)*sin(an+180),
+            s-bv*(1-cos(an))-o, -(rw+(bv-bth)), -ics, san=90, a=bang
+        ) : qcircle( // upper base curve
+            bv-(bv-bth)*sin(an), bv-(bv-bth)*sin(an),
+            s-bv*(1-cos(an))-o, -(rw-(bv-bth)), -ics, san=180, a=-bang
         )
     );
 
@@ -621,3 +651,25 @@ function cquads(n,o,s=9999999,ex=0) = concat(
     [for (i=[0:n-1-ex]) [(i+1)%n+o,i+o,(i+o+n)%s]],
     [for (i=[0:n-1-ex]) [(i+1)%n+o,(i+o+n)%s,((i+1)%n+o+n)%s]]
 );
+
+module batteryholder() {
+    cr=5;
+    bh=50/2-cr;
+    bw=100.5/2-cr;
+    difference() {
+        union() {
+            translate([1,0.2,-3.5]) linear_extrude(height=1.5) polygon(concat(
+                [for (an=[  0:10: 90]) [ bh+sin(an)*cr, bw+cos(an)*cr]],
+                [for (an=[ 90:10:180]) [ bh+sin(an)*cr,-bw+cos(an)*cr]],
+                [for (an=[180:10:270]) [-bh+sin(an)*cr,-bw+cos(an)*cr]],
+                [for (an=[270:10:360]) [-bh+sin(an)*cr, bw+cos(an)*cr]]
+            ));
+            translate([0, 6,-12]) cube([40,77,24], true);
+            translate([0.5,95/2,-4.5]) cube([7.5,6,2],true);
+        }
+        translate([-33/2,-95/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
+        translate([-33/2, 95/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
+        translate([ 33/2,-95/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
+        translate([ 33/2, 95/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
+    }
+}

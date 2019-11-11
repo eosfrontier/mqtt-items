@@ -45,7 +45,7 @@ module boxsq() {
         translate([-41.4,n*(82.8/3)-41.4,0]) sqbutton(bh, btw*s2);
     }
     
-    *color("teal") translate([26,-4.6,bh-bt-1.1]) rotate([0,0,180])batteryholder();
+    *color("teal") translate([26,-4.6,bh-bt-1.1]) rotate([0,0,180]) batteryholder();
 }
 
 *rotate([0,180,0]) union() {
