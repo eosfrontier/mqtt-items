@@ -25,8 +25,10 @@ breadth = 100;
 thick = 15;
 wall = 2;
 exof = 10;
+edgebev = 3;
 
 indof = 20;
+cutof = 20;
 
 butwid = 50;
 buthi = 50;
@@ -376,14 +378,14 @@ module quarterpipe(rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, ics=30, 
         points = concat(
             // Outside
             [for (an=[-90:bang:0]) each 
-                qpipe_curve(an, rw+t-bv, rh+t-bv, s, bv, eb, ics, 0)],
+                qpipe_curve(an, rw+t-bv, rh+t-bv, s, t, bv, eb, ics, 0)],
             // Inside
             [for (an=[0:bang:90]) each
-                qpipe_curve(an, rw+bv, rh+bv, s, bv, eb, ics, ics)],
-            qpipe_curve(90, rw+bv, rh+bv, s, bv, eb, ics, ics, o=10),
-            qpipe_curve(90, rw+bv+bth, rh+bv+bth, s, bv, eb, ics, ics, o=10, bth=bth),
-            qpipe_curve(90, rw+bv+bth, rh+bv+bth, s, bv, eb, ics, ics, bth=bth),
-            qpipe_curve(-90, rw+t-bv-bth, rh+t-bv-bth, s, bv, eb, ics, bth=bth)
+                qpipe_curve(an, rw+bv, rh+bv, s, t, bv, eb, ics, ics)],
+            qpipe_curve(90, rw+bv, rh+bv, s, t, bv, eb, ics, ics, o=10),
+            qpipe_curve(90, rw+bv+bth, rh+bv+bth, s, t, bv, eb, ics, ics, o=10, bth=bth),
+            qpipe_curve(90, rw+bv+bth, rh+bv+bth, s, t, bv, eb, ics, ics, bth=bth),
+            qpipe_curve(-90, rw+t-bv-bth, rh+t-bv-bth, s, t, bv, eb, ics, bth=bth)
         ),
         faces = concat(
             // sides
@@ -426,29 +428,9 @@ module quarterpipe(rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, ics=30, 
         ));        
 }
 
-function qpipe_curve(an, rw, rh, s, bv, eb, ics, io=0, o=0, bth=0) =
+function qpipe_curve(an, rw, rh, s, t, bv, eb, ics, io=0, o=0, bth=0) =
     concat(
-        io ? qcircle( // lower base curve
-            bv-(bv-bth)*sin(an+180), bv-(bv-bth)*sin(an+180),
-            bv*(1-cos(an))+o, -(rw+(bv-bth)), -ics, san=90, a=-bang
-        ) : qcircle( // lower base curve
-            bv-(bv-bth)*sin(an), bv-(bv-bth)*sin(an),
-            bv*(1-cos(an))+o, -(rw-(bv-bth)), -ics, san=180, a=bang
-        ),
-        scircle( // outcut incorner
-            0,
-            -rh+bv*sin(an), -eb*2, bv-bv*cos(an),
-            san=-90
-        ),
-        scircle( // outcut corner
-            0,
-            -rh+bv*sin(an), -eb, bv-bv*cos(an),
-            san=-90
-        ),
-        qcircle( // lower curve
-            rw-bv*sin(an), rh-bv*sin(an),
-            bv*(1-cos(an))+o, san=-90
-        ),
+        curve_lower(an,rw,rh,s,t,bv,eb,ics,io,o,bth),
         bcircle( // lower corner
             eb-bv*(1-cos(an)),
             1, rh-bv*sin(an), eb,
@@ -459,26 +441,54 @@ function qpipe_curve(an, rw, rh, s, bv, eb, ics, io=0, o=0, bth=0) =
             1, rh-bv*sin(an), s-eb,
             san=0
         ),
+        curve_upper(an,rw,rh,s,t,bv,eb,ics,io,o,bth)
+    );
+
+function curve_lower(an, rw, rh, s, t, bv, eb, ics, io, o, bth, coang=90) = concat(
+        io ? qcircle( // lower base curve
+            (t/2-bv)-bv*sin(an+180)-bth, (t/2-bv)-bv*sin(an+180)-bth,
+            bv*(1-cos(an))+o, -(rw+((t/2-bv)-bth)), -ics, san=90, a=-bang
+        ) : qcircle( // lower base curve
+            (t/2-bv)-bv*sin(an)-bth, (t/2-bv)-bv*sin(an)-bth,
+            bv*(1-cos(an))+o, -(rw-((t/2-bv)-bth)), -ics, san=180, a=bang
+        ),
+        scircle( // outcut incorner
+            0,
+            -rh+bv*sin(an), cutof-ics-eb, bv-bv*cos(an),
+            san=-90
+        ),
+        scircle( // outcut corner
+            0,
+            -rh+bv*sin(an), cutof-ics, bv-bv*cos(an),
+            san=-90
+        ),
+        qcircle( // lower curve
+            rw-bv*sin(an), rh-bv*sin(an),
+            bv*(1-cos(an))+o, san=-90, ean=coang
+        )
+    );
+
+function curve_upper(an, rw, rh, s, t, bv, eb, ics, io, o, bth, coang=90) = concat(
         qcircle( // upper curve
             rw-bv*sin(an), rh-bv*sin(an),
-            s-bv*(1-cos(an))-o, san=-90, a=-cang
+            s-bv*(1-cos(an))-o, san=-90, ean=coang, a=-cang
         ),
         scircle( // outcut corner
             eb-bv*(1-cos(an)),
-            -rh+bv*sin(an), -eb, s-eb,
+            -rh+bv*sin(an), cutof-ics, s-eb,
             san=90
         ),
         scircle( // outcut incorner
             bv-bv*(cos(an)),
-            -rh+bv*sin(an), -eb*2, s-indof,
+            -rh+bv*sin(an), cutof-ics-eb, s-indof,
             san=-90, a=-bang
         ),
         io ? qcircle( // upper base curve
-            bv-(bv-bth)*sin(an+180), bv-(bv-bth)*sin(an+180),
-            s-bv*(1-cos(an))-o-indof, -(rw+(bv-bth)), -ics, san=90, a=bang
+            (t/2-bv)-bv*sin(an+180)-bth, (t/2-bv)-bv*sin(an+180)-bth,
+            s-bv*(1-cos(an))-o-indof, -(rw+((t/2-bv)-bth)), -ics, san=90, a=bang
         ) : qcircle( // upper base curve
-            bv-(bv-bth)*sin(an), bv-(bv-bth)*sin(an),
-            s-bv*(1-cos(an))-o-indof, -(rw-(bv-bth)), -ics, san=180, a=-bang
+            (t/2-bv)-bv*sin(an)-bth, (t/2-bv)-bv*sin(an)-bth,
+            s-bv*(1-cos(an))-o-indof, -(rw-((t/2-bv)-bth)), -ics, san=180, a=-bang
         )
     );
 
@@ -506,15 +516,15 @@ module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=
         points = concat(
             // Outside
             [for (an=[-90:bang:0]) each
-                qpipe_h_curve(an, san, rw+t-bv, rh+t-bv, s, bv, eb, cs, ics)],
+                qpipe_h_curve(an, rw+t-bv, rh+t-bv, s, t, bv, eb, cs, ics)],
             // Inside
             [for (an=[0:bang:90]) each
-                qpipe_h_curve(an, san, rw+bv, rh+bv, s, bv, eb, cs, ics, ios, t)],
-            qpipe_h_curve(90, san, rw+bv, rh+bv, s, bv, eb, cs, ics, ios, t, o=10),
-            qpipe_h_curve(90, san, rw+bv+bth, rh+bv+bth, s, bv, eb, cs, ics, ios, t, bth, o=10),
-            qpipe_h_curve(90, san, rw+bv+bth, rh+bv+bth, s, bv, eb, cs, ics, ios, t, bth),
+                qpipe_h_curve(an, rw+bv, rh+bv, s, t, bv, eb, cs, ics, ios, t)],
+            qpipe_h_curve(90, rw+bv, rh+bv, s, t, bv, eb, cs, ics, ios, t, o=10),
+            qpipe_h_curve(90, rw+bv+bth, rh+bv+bth, s, t, bv, eb, cs, ics, ios, t, bth, o=10),
+            qpipe_h_curve(90, rw+bv+bth, rh+bv+bth, s, t, bv, eb, cs, ics, ios, t, bth),
 
-            qpipe_h_curve(-90, san, rw+t-bv-bth, rh+t-bv-bth, s, bv, eb, cs, ics, bth=bth)
+            qpipe_h_curve(-90, rw+t-bv-bth, rh+t-bv-bth, s, t, bv, eb, cs, ics, bth=bth)
 
         ),
         faces = concat(
@@ -599,29 +609,9 @@ module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=
         ));        
 }
 
-function qpipe_h_curve(an, san, rw, rh, s, bv, eb, cs, ics, io=0, th=0, bth=0, o=0) =
+function qpipe_h_curve(an, rw, rh, s, t, bv, eb, cs, ics, io=0, th=0, bth=0, o=0) =
     concat(
-        io ? qcircle( // lower base curve
-            bv-bv*sin(an+180), bv-bv*sin(an+180),
-            bv*(1-cos(an))+o, (rw+bv)*sin(san), -ics, san=-san, a=-bang
-        ) : qcircle( // lower base curve
-            bv-bv*sin(an), bv-bv*sin(an),
-            bv*(1-cos(an))+o, (rw-bv)*sin(san), -ics, san=-san+90, a=bang
-        ),
-        scircle( // outcut incorner
-            0,
-            -rh+bv*sin(an), -eb*2, bv-bv*cos(an),
-            san=-90
-        ),
-        scircle( // outcut corner
-            0,
-            -rh+bv*sin(an), -eb, bv-bv*cos(an),
-            san=-90
-        ),
-        qcircle( // lower curve
-            rw-bv*sin(an), rh-bv*sin(an),
-            bv*(1-cos(an))+o, san=san, ean=coang
-        ),
+        curve_lower(an,rw,rh,s,t,bv,eb,ics,io,o,bth,coang),
         bcircle_m( // matching inside curve
             (s-cs*2-eb*2)/2+bv,
             15, rh-bv*sin(an),
@@ -691,27 +681,7 @@ function qpipe_h_curve(an, san, rw, rh, s, bv, eb, cs, ics, io=0, th=0, bth=0, o
             s-bv*(1-cos(an)),
             san=180, ean=50, a=-dang
         ),
-        qcircle( // upper curve
-            rw-bv*sin(an), rh-bv*sin(an),
-            s-bv*(1-cos(an))-o, san=san, a=-cang, ean=coang
-        ),
-        scircle( // outcut corner
-            eb-bv*(1-cos(an)),
-            -rh+bv*sin(an), -eb, s-eb,
-            san=90
-        ),
-        scircle( // outcut incorner
-            bv-bv*(cos(an)),
-            -rh+bv*sin(an), -eb*2, s-indof,
-            san=-90, a=-bang
-        ),
-        io ? qcircle( // upper base curve
-            bv-bv*sin(an+180), bv-bv*sin(an+180),
-            s-bv*(1-cos(an))-o-indof, (rw+bv)*sin(san), -ics, san=-san, a=bang
-        ) : qcircle( // upper base curve
-            bv-bv*sin(an), bv-bv*sin(an),
-            s-bv*(1-cos(an))-o-indof, (rw-bv)*sin(san), -ics, san=-san+90, a=-bang
-        ) 
+        curve_upper(an,rw,rh,s,t,bv,eb,ics,io,o,bth,coang)
     );
 
 function bline_c(y, x1,z1,x2,z2,stp=dstp) =
