@@ -43,18 +43,113 @@ boxsl = tan(boxang)*sin(45);
 rotate([90,0,0]) front_l();
 rotate([90,0,0]) front_r();
 
-*color("teal") translate([0,130,30]) rotate([-90,90,0]) batteryholder();
-
 buttons_r();
 mirror([1,0,0]) buttons_r();
 
+hinge_r();
+mirror([1,0,0]) hinge_r();
+
+*color("teal") translate([0,130,30]) rotate([-90,90,0]) batteryholder();
+
 *rbutton();
+
+module hinge_r(w = breadth, ew=25, bv=edgebev) {
+    csds = 360/bang+5;
+    bsds = 180/bang+2;
+    bsh = bsds/2-1;
+    tsds = csds*bsds;
+
+    exsds = (90/cang-1);
+
+    translate([exof,0,9.5])
+    polyhedron(
+        points = concat(
+            [for (an=[-90:bang:0]) each
+                hinge_curve(an,0,-1, bv)],
+            [for (an=[0:bang:90]) each
+                hinge_curve(an,-w,1, bv)]
+                ),
+        faces = concat(
+            [for (s=[0:bsds-2]) each cquads(csds, csds*s, csds*bsds)],
+            [[for (s=[0:csds-1]) s],
+             [for (s=[tsds-1:-1:tsds-csds]) s]]
+         ));
+    translate([exof,0,9.5]) hinge_side1();
+}
+
+module hinge_side1(hsw = 20, w = breadth, x = width+thick, bv=edgebev, tol=0.1) {
+    csds = (45/bang+45/dang+6);
+    bsds = (90/bang+2);
+    tsds = bsds*csds;
+    polyhedron(
+        points = concat(
+            hinge_s_curve1(0, x, hsw, w, -10, bv),
+            [for (an=[0:bang:90]) each hinge_s_curve1(an, x, hsw, w, -tol, bv)]
+            ),
+        faces = concat(
+            [for (s=[0:bsds-2]) each cquads(csds, csds*s)],
+            [[for (s=[0:csds-1]) s],
+             [for (s=[tsds-1:-1:tsds-csds]) s]]
+        )
+    );
+}
+
+module hinge_side2(hsw = 20, w = butwid, x = width+thick, bv=edgebev, eb=5, tol=0.1) {
+    csds = (45/dang+4);
+    bsds = (90/bang+2);
+    tsds = bsds*csds;
+    polyhedron(
+        points = concat(
+            hinge_s_curve2(0, x, hsw, w, -10, bv, eb),
+            [for (an=[0:bang:90]) each hinge_s_curve2(an, x, hsw, w, -tol, bv, eb)]
+            ),
+        faces = concat(
+            [for (s=[0:bsds-2]) each cquads(csds, csds*s)],
+            [[for (s=[0:csds-1]) s],
+             [for (s=[tsds-1:-1:tsds-csds]) s]]
+        )
+    );
+}
+
+function hinge_s_curve1(an, x, hsw, w, z, bv, hb=10) = concat(
+    qcircle(bv*cos(an), bv*cos(an),
+        z+bv*sin(an), x-bv, -w+bv, san=135, ean=45, a=-bang),
+    qcircle(hb-bv+bv*cos(an), hb-bv+bv*cos(an),
+        z+bv*sin(an), x+hsw-hb, -w+hsw+hb, san=90, ean=45, a=-dang),
+    [[x+hsw-bv+bv*cos(an), 0, z+bv*sin(an)],
+     [x-bv-12, 0, z+bv*sin(an)],
+     [x-bv-12, -10, z+bv*sin(an)],
+     [x-bv, -10, z+bv*sin(an)] ]
+);
+    
+function hinge_s_curve2(an, x, hsw, w, z, bv, eb, hb=10) = concat(
+    [[x-eb, w-eb+(eb-bv+bv*cos(an))*sqrt(2), z+bv*sin(an)],
+     [x-eb, 0, z+bv*sin(an)],
+     [x+hsw-bv+bv*cos(an), 0, z+bv*sin(an)]],
+    qcircle(hb-bv+bv*cos(an), hb-bv+bv*cos(an),
+        z+bv*sin(an), x+hsw-hb, w-hsw-eb+(eb-hb)*(sqrt(2)-1), san=45, ean=45, a=-dang)
+);
+
+function hinge_curve(an, o, bs, bv, tc=1.5, bh=10, bw=thick, th=35, eb=10.5, rw=width, tol=0.1) = concat(
+    [[rw+bw-bv*(1-cos(an)),o+bs*bv-bv*sin(an),-bh]],
+    bcircle(
+        bv*cos(an),
+        rw+bw-bv, o+bs*bv-bv*sin(an), -tol, a=bang),
+    bcircle_e(
+        eb-bv+tc-tc*cos(an)+tol, eb-bv*cos(an)+tol,
+        rw+eb-bv, o+bs*bv-bv*sin(an), eb, san=-180,a=-bang),
+    bcircle(
+        tc*cos(an),
+        rw-tc-tol, o+bs*tc-tc*sin(an), th, ean=180, a=bang),
+    [[rw-tc-tc*cos(an)-tol,o+bs*tc-tc*sin(an),-bh]]
+);
 
 module buttons_r() {
     translate([0,0.1,0]) {
     sidebox();
     boxbutton(0);
     boxbutton(1);
+    translate([exof,0,9.5]) hinge_side2();
     }
 }
 
@@ -492,7 +587,7 @@ function curve_upper(an, rw, rh, s, t, bv, eb, ics, io, o, bth, coang=90) = conc
         )
     );
 
-module quarterpipe_h(san=-90, rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, cs=10, bth=2, ics=30) {
+module quarterpipe_h(rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, cs=10, bth=2, ics=30) {
     
 
     // just the curve
@@ -696,6 +791,10 @@ function scircle(r, x, y, z, san=0, ean=90, a=bang) =
 function bcircle(r, x, y, z, san=0, ean=90, a=bang) =
     [for (an=[san+(a>0?0:ean):a:san+(a>0?ean:0)])
         [x+r*cos(an),y,z+r*sin(an)]];
+    
+function bcircle_e(rx, rz, x, y, z, san=0, ean=90, a=bang) =
+    [for (an=[san+(a>0?0:ean):a:san+(a>0?ean:0)])
+        [x+rx*cos(an),y,z+rz*sin(an)]];
     
 function bcircle_c(r, x, y, z, san=0, ean=90, a=bang) =
     [for (an=[san+(a>0?0:ean):a:san+(a>0?ean:0)])
