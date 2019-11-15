@@ -1,5 +1,5 @@
 
-///* Fine
+/* Fine
     cang = 1;
     bang = 5;
     dang = 2.5;
@@ -9,7 +9,7 @@
     coang=82;
 // */
  
-/* Coarse
+///* Coarse
     cang = 5;
     bang = 15;
     dang = 5;
@@ -60,7 +60,7 @@ module complete() {
 *rbutton();
 *rotate([90,0,0]) hinge_r();
 front_r();
-
+*front_l();
 
 module hinge_r(w = breadth, bv=edgebev) {
     csds = 360/bang+5;
@@ -312,8 +312,8 @@ module front_l() {
             quarterpipe_h();
             for (an=[12.5:5:87.5]) rib(an);
         }
-        translate([-width-thick/2,-30,breadth-indof+1]) rotate([0,0,90]) cylinder(9, 4.5, 4.5, true, $fn=360/dang);
-        translate([-width-thick/2,-30,0]) rotate([0,0,90]) cylinder(9, 4.5, 4.5, true, $fn=360/dang);
+        translate([-width-thick/2,-30,breadth-indof-edgebev+0.2]) rotate([0,0,90]) cylinder(edgebev, 4.5, 4.5, $fn=360/dang);
+        translate([-width-thick/2,-30,-0.5]) rotate([0,0,-90]) cylinder(edgebev+1, 4.5, 4.5, $fn=360/dang);
         mirror([1,0,0]) {
             cpoint(10, 15);
             cline(10,15,15,20);
@@ -360,8 +360,8 @@ module front_r() {
             mirror([1,0,0]) for (an=[2.5:5:87.5]) rib(an);
             translate([-5,height,breadth/2]) topdisc();
         }
-        translate([width+thick/2,-30,breadth-indof+1]) rotate([0,0,90]) cylinder(9, 4.5, 4.5, true, $fn=360/dang);
-        translate([width+thick/2,-30,0]) rotate([0,0,90]) cylinder(9, 4.5, 4.5, true, $fn=360/dang);
+        translate([width+thick/2,-30,breadth-indof-edgebev+0.2]) rotate([0,0,90]) cylinder(edgebev, 4.5, 4.5, $fn=360/dang);
+        translate([width+thick/2,-30,-0.5]) rotate([0,0,-90]) cylinder(edgebev+1, 4.5, 4.5, $fn=360/dang);
         translate([-5,height+wall,breadth/2]) disc(r=28, t=16);
         union() {
             cpoint(5, 15);
