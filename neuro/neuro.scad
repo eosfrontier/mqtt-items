@@ -61,8 +61,8 @@ module hinge_r(w = breadth, ew=25, bv=edgebev) {
 
     exsds = (90/cang-1);
 
-    translate([exof,0,9.5])
-    polyhedron(
+    translate([exof,0,9.5]) {
+        polyhedron(
         points = concat(
             [for (an=[-90:bang:0]) each
                 hinge_curve(an,0,-1, bv)],
@@ -74,7 +74,20 @@ module hinge_r(w = breadth, ew=25, bv=edgebev) {
             [[for (s=[0:csds-1]) s],
              [for (s=[tsds-1:-1:tsds-csds]) s]]
          ));
-    translate([exof,0,9.5]) hinge_side1();
+        polyhedron(
+        points = concat(
+            [for (an=[-90:bang:0]) each
+                hinge_curve(an,-w+cutof-0.1,-1, bv, sho=indof+2.5, eb=5, oc=8)],
+            [for (an=[0:bang:90]) each
+                hinge_curve(an,-w,1, bv, sho=indof+2.5, eb=5, oc=8)]
+                ),
+        faces = concat(
+            [for (s=[0:bsds-2]) each cquads(csds, csds*s, csds*bsds)],
+            [[for (s=[0:csds-1]) s],
+             [for (s=[tsds-1:-1:tsds-csds]) s]]
+         ));
+        hinge_side1();
+    }
 }
 
 module hinge_side1(hsw = 20, w = breadth, x = width+thick, bv=edgebev, tol=0.1) {
@@ -111,18 +124,18 @@ module hinge_side2(hsw = 20, w = butwid, x = width+thick, bv=edgebev, eb=5, tol=
     );
 }
 
-function hinge_s_curve1(an, x, hsw, w, z, bv, hb=10) = concat(
+function hinge_s_curve1(an, x, hsw, w, z, bv, hb=20) = concat(
     qcircle(bv*cos(an), bv*cos(an),
         z+bv*sin(an), x-bv, -w+bv, san=135, ean=45, a=-bang),
     qcircle(hb-bv+bv*cos(an), hb-bv+bv*cos(an),
-        z+bv*sin(an), x+hsw-hb, -w+hsw+hb, san=90, ean=45, a=-dang),
+        z+bv*sin(an), x+hsw-hb, -w+hsw+hb*0.4, san=90, ean=45, a=-dang),
     [[x+hsw-bv+bv*cos(an), 0, z+bv*sin(an)],
      [x-bv-12, 0, z+bv*sin(an)],
      [x-bv-12, -10, z+bv*sin(an)],
      [x-bv, -10, z+bv*sin(an)] ]
 );
     
-function hinge_s_curve2(an, x, hsw, w, z, bv, eb, hb=10) = concat(
+function hinge_s_curve2(an, x, hsw, w, z, bv, eb, hb=20) = concat(
     [[x-eb, w-eb+(eb-bv+bv*cos(an))*sqrt(2), z+bv*sin(an)],
      [x-eb, 0, z+bv*sin(an)],
      [x+hsw-bv+bv*cos(an), 0, z+bv*sin(an)]],
@@ -130,14 +143,14 @@ function hinge_s_curve2(an, x, hsw, w, z, bv, eb, hb=10) = concat(
         z+bv*sin(an), x+hsw-hb, w-hsw-eb+(eb-hb)*(sqrt(2)-1), san=45, ean=45, a=-dang)
 );
 
-function hinge_curve(an, o, bs, bv, tc=1.5, bh=10, bw=thick, th=35, eb=10.5, rw=width, tol=0.1) = concat(
+function hinge_curve(an, o, bs, bv, sho=0, oc=3, tc=1.5, bh=10, bw=thick, th=35, eb=10.5, rw=width, tol=0.1) = concat(
     [[rw+bw-bv*(1-cos(an)),o+bs*bv-bv*sin(an),-bh]],
     bcircle(
-        bv*cos(an),
-        rw+bw-bv, o+bs*bv-bv*sin(an), -tol, a=bang),
+        oc-bv+bv*cos(an),
+        rw+bw-oc, o+bs*bv-bv*sin(an), sho-tol+bv-oc, a=bang),
     bcircle_e(
         eb-bv+tc-tc*cos(an)+tol, eb-bv*cos(an)+tol,
-        rw+eb-bv, o+bs*bv-bv*sin(an), eb, san=-180,a=-bang),
+        rw+eb-bv, o+bs*bv-bv*sin(an), sho+eb, san=-180,a=-bang),
     bcircle(
         tc*cos(an),
         rw-tc-tol, o+bs*tc-tc*sin(an), th, ean=180, a=bang),
