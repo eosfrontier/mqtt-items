@@ -53,39 +53,44 @@ mirror([1,0,0]) hinge_r();
 
 *rbutton();
 
-module hinge_r(w = breadth, ew=25, bv=edgebev) {
+module hinge_r(w = breadth, bv=edgebev) {
     csds = 360/bang+5;
-    bsds = 180/bang+2;
+    bsds = 90/bang+2;
     bsh = bsds/2-1;
     tsds = csds*bsds;
+
+    bsds2 = 180/bang+2;
+    tsds2 = csds*bsds2;
 
     exsds = (90/cang-1);
 
     translate([exof,0,9.5]) {
         polyhedron(
         points = concat(
-            [for (an=[-90:bang:0]) each
-                hinge_curve(an,0,-1, bv)],
+            hinge_curve(0,0,0,bv),
             [for (an=[0:bang:90]) each
                 hinge_curve(an,-w,1, bv)]
                 ),
         faces = concat(
-            [for (s=[0:bsds-2]) each cquads(csds, csds*s, csds*bsds)],
+            [for (s=[0:bsds-2]) each cquads(csds, csds*s, tsds)],
             [[for (s=[0:csds-1]) s],
              [for (s=[tsds-1:-1:tsds-csds]) s]]
          ));
-        polyhedron(
-        points = concat(
-            [for (an=[-90:bang:0]) each
-                hinge_curve(an,-w+cutof-0.1,-1, bv, sho=indof+2.5, eb=5, oc=8)],
-            [for (an=[0:bang:90]) each
-                hinge_curve(an,-w,1, bv, sho=indof+2.5, eb=5, oc=8)]
-                ),
-        faces = concat(
-            [for (s=[0:bsds-2]) each cquads(csds, csds*s, csds*bsds)],
-            [[for (s=[0:csds-1]) s],
-             [for (s=[tsds-1:-1:tsds-csds]) s]]
-         ));
+        difference() {
+            polyhedron(
+            points = concat(
+                [for (an=[-90:bang:0]) each
+                    hinge_curve(an,-w+cutof-0.1,-1, bv, sho=indof+2.5, eb=5, oc=8)],
+                [for (an=[0:bang:90]) each
+                    hinge_curve(an,-w,1, bv, sho=indof+2.5, eb=5, oc=8)]
+                    ),
+            faces = concat(
+                [for (s=[0:bsds2-2]) each cquads(csds, csds*s, tsds2)],
+                [[for (s=[0:csds-1]) s],
+                 [for (s=[tsds2-1:-1:tsds2-csds]) s]]
+             ));
+            #translate([width+thick/2,-w+indof,10.5]) rotate([90,0,0]) cylinder(11.5, 4.6, 4.6, true, $fn=360/dang);
+        }
         hinge_side1();
     }
 }
@@ -143,7 +148,7 @@ function hinge_s_curve2(an, x, hsw, w, z, bv, eb, hb=20) = concat(
         z+bv*sin(an), x+hsw-hb, w-hsw-eb+(eb-hb)*(sqrt(2)-1), san=45, ean=45, a=-dang)
 );
 
-function hinge_curve(an, o, bs, bv, sho=0, oc=3, tc=1.5, bh=10, bw=thick, th=35, eb=10.5, rw=width, tol=0.1) = concat(
+function hinge_curve(an, o, bs, bv, sho=0, oc=3, tc=1.5, bh=10, bw=thick, th=32.5, eb=10.5, rw=width, tol=0.1) = concat(
     [[rw+bw-bv*(1-cos(an)),o+bs*bv-bv*sin(an),-bh]],
     bcircle(
         oc-bv+bv*cos(an),
@@ -292,7 +297,10 @@ module front_l() {
         union() {
             quarterpipe_h();
             for (an=[12.5:5:87.5]) rib(an);
+            translate([-width-thick/2,-30,breadth-indof+2]) rotate([0,0,90]) cylinder(6, 4.5, 4.5, true, $fn=360/dang);
         }
+        translate([-width-thick/2,-30,breadth-indof+1]) rotate([0,0,90]) cylinder(9, 3, 3, true, $fn=360/dang);
+        translate([-width-thick/2,-30,0]) rotate([0,0,90]) cylinder(9, 3, 3, true, $fn=360/dang);
         mirror([1,0,0]) {
             cpoint(10, 15);
             cline(10,15,15,20);
@@ -337,7 +345,10 @@ module front_r() {
             mirror([1,0,0]) quarterpipe();
             mirror([1,0,0]) for (an=[2.5:5:87.5]) rib(an);
             translate([-5,height,breadth/2]) topdisc();
+            translate([width+thick/2,-30,breadth-indof+2]) rotate([0,0,90]) cylinder(6, 4.5, 4.5, true, $fn=360/dang);
         }
+        translate([width+thick/2,-30,breadth-indof+1]) rotate([0,0,90]) cylinder(9, 3, 3, true, $fn=360/dang);
+        translate([width+thick/2,-30,0]) rotate([0,0,90]) cylinder(9, 3, 3, true, $fn=360/dang);
         translate([-5,height+wall,breadth/2]) disc(r=28, t=16);
         union() {
             cpoint(5, 15);
@@ -587,8 +598,8 @@ function curve_upper(an, rw, rh, s, t, bv, eb, ics, io, o, bth, coang=90) = conc
             san=90
         ),
         scircle( // outcut incorner
-            bv-bv*(cos(an)),
-            -rh+bv*sin(an), cutof-ics-eb, s-indof,
+            eb-bv*(cos(an)),
+            -rh+bv*sin(an), cutof-ics-eb-eb+bv, s-indof-bv+eb,
             san=-90, a=-bang
         ),
         io ? qcircle( // upper base curve
