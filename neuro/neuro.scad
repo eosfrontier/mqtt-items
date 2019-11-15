@@ -1,5 +1,5 @@
 
- /* Fine
+///* Fine
     cang = 1;
     bang = 5;
     dang = 2.5;
@@ -9,7 +9,7 @@
     coang=82;
 // */
  
-// /* Coarse
+/* Coarse
     cang = 5;
     bang = 15;
     dang = 5;
@@ -39,19 +39,28 @@ boxheight = 40;
 boxang = 30;
 boxsl = tan(boxang)*sin(45);
 
-//rotate([0,0,95])
-//rotate([90,0,0]) front_l();
-rotate([90,0,0]) front_r();
+*complete();
 
-//buttons_r();
-mirror([1,0,0]) buttons_r();
+module complete() {
 
-//hinge_r();
-mirror([1,0,0]) hinge_r();
+    //rotate([0,0,95])
+    //rotate([90,0,0]) front_l();
+    rotate([90,0,0]) front_r();
 
-*color("teal") translate([0,130,30]) rotate([-90,90,0]) batteryholder();
+    //buttons_r();
+    mirror([1,0,0]) buttons_r();
 
+    //hinge_r();
+    mirror([1,0,0]) hinge_r();
+
+    *color("teal") translate([0,130,30]) rotate([-90,90,0]) batteryholder();
+}
+
+// To print
 *rbutton();
+*rotate([90,0,0]) hinge_r();
+front_r();
+
 
 module hinge_r(w = breadth, bv=edgebev) {
     csds = 360/bang+5;
@@ -156,9 +165,9 @@ function hinge_curve(an, o, bs, bv, sho=0, oc=3, tc=1.5, bh=10, bw=thick, th=32.
         eb-bv+tc-tc*cos(an)+tol, eb-bv*cos(an)+tol,
         rw+eb-bv, o+bs*bv-bv*sin(an), sho+eb, san=-180,a=-bang),
     bcircle(
-        tc*cos(an),
-        rw-tc-tol, o+bs*tc-tc*sin(an), th, ean=180, a=bang),
-    [[rw-tc-tc*cos(an)-tol,o+bs*tc-tc*sin(an),-bh]]
+        tc*cos(an)+0.05,
+        rw-tc-tol-0.05, o+bs*bv-bv*sin(an), th, ean=180, a=bang),
+    [[rw-tc-0.05-tc*cos(an)-tol,o+bs*bv-bv*sin(an),-bh]]
 );
 
 module buttons_r() {
@@ -347,6 +356,7 @@ module front_r() {
     translate([exof,50,0]) difference() {
         union() {
             mirror([1,0,0]) quarterpipe();
+            mirror([1,0,0]) rib(2.5);
             mirror([1,0,0]) for (an=[2.5:5:87.5]) rib(an);
             translate([-5,height,breadth/2]) topdisc();
         }
@@ -569,10 +579,10 @@ function qpipe_curve(an, rw, rh, s, t, bv, eb, ics, io=0, o=0, bth=0) =
 function curve_lower(an, rw, rh, s, t, bv, eb, ics, io, o, bth, coang=90) = concat(
         io ? qcircle( // lower base curve
             (t/2-bv)-bv*sin(an+180)-bth, (t/2-bv)-bv*sin(an+180)-bth,
-            bv*(1-cos(an))+o, -(rw+((t/2-bv)-bth)), -ics, san=90, a=-bang
+            bv*(1-cos(an))+o, -(rw+((t/2-bv)-bth))+0.01, -ics, san=90, a=-bang
         ) : qcircle( // lower base curve
             (t/2-bv)-bv*sin(an)-bth, (t/2-bv)-bv*sin(an)-bth,
-            bv*(1-cos(an))+o, -(rw-((t/2-bv)-bth)), -ics, san=180, a=bang
+            bv*(1-cos(an))+o, -(rw-((t/2-bv)-bth))-0.01, -ics, san=180, a=bang
         ),
         scircle( // outcut incorner
             0,
@@ -607,10 +617,10 @@ function curve_upper(an, rw, rh, s, t, bv, eb, ics, io, o, bth, coang=90) = conc
         ),
         io ? qcircle( // upper base curve
             (t/2-bv)-bv*sin(an+180)-bth, (t/2-bv)-bv*sin(an+180)-bth,
-            s-bv*(1-cos(an))-o-indof, -(rw+((t/2-bv)-bth)), -ics, san=90, a=bang
+            s-bv*(1-cos(an))-o-indof, -(rw+((t/2-bv)-bth))+0.01, -ics, san=90, a=bang
         ) : qcircle( // upper base curve
             (t/2-bv)-bv*sin(an)-bth, (t/2-bv)-bv*sin(an)-bth,
-            s-bv*(1-cos(an))-o-indof, -(rw-((t/2-bv)-bth)), -ics, san=180, a=-bang
+            s-bv*(1-cos(an))-o-indof, -(rw-((t/2-bv)-bth))-0.01, -ics, san=180, a=-bang
         )
     );
 
