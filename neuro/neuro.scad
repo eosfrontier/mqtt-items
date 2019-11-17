@@ -47,7 +47,7 @@ centerwidth = (width+thick+exof)*2 - butsz - butwid;
 
 buttonsp = 75;
 
-*complete();
+complete();
 
 module complete() {
 
@@ -67,8 +67,7 @@ module complete() {
 *buttons_r();
 
 // To print
-//rotate([90,-45,0])
-sidebox();
+*rotate([90,-45,0]) sidebox();
 *rbutton();
 *rotate([90,0,0]) hinge_r();
 *front_r();
@@ -187,8 +186,8 @@ function hinge_s_curve1(an, x, hsw, w, z, bv, hb=20) = concat(
 );
     
 function hinge_s_curve2(an, x, hsw, w, z, bv, eb, hb=20) = concat(
-    [[x-eb, w-eb+(eb-bv+bv*cos(an))*sqrt(2), z+bv*sin(an)],
-     [x-eb, 0, z+bv*sin(an)],
+    [[x+2-eb, w-2-eb+(eb-bv+bv*cos(an))*sqrt(2), z+bv*sin(an)],
+     [x+2-eb, 0, z+bv*sin(an)],
      [x+hsw-bv+bv*cos(an), 0, z+bv*sin(an)]],
     qcircle(hb-bv+bv*cos(an), hb-bv+bv*cos(an),
         z+bv*sin(an), x+hsw-hb, w-hsw-eb+(eb-hb)*(sqrt(2)-1), san=45, ean=45, a=-dang)
