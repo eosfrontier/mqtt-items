@@ -37,7 +37,7 @@ butsz = 140;
 
 basehi = 9.5;
 
-boxheight = 50;
+boxheight = 51;
 boxang = 30;
 boxsl = tan(boxang)*sin(45);
 
@@ -359,6 +359,7 @@ module sidebox() {
     eb = 5;
     bv = 3;
     btr = (buttonsp/2)/sqrt(2);
+    supr = 64/sqrt(2);
     difference() {
         union() {
             polyhedron(
@@ -377,21 +378,35 @@ module sidebox() {
             translate([exof,0,basehi]) hinge_side2();
         }
         translate([tw-butsz/2+btr, butsz/2-btr, boxheight-ht-0.5])
-        rotate([0,boxang,45]) cylinder(wall+1, knobr, knobr, $fn=360/dang);
+        rotate([0,boxang,45]) translate([0,0,0.63]) cylinder(wall+1, knobr, knobr, $fn=360/dang);
         translate([tw-butsz/2-btr, butsz/2+btr, boxheight-ht-0.5])
-        rotate([0,boxang,45]) cylinder(wall+1, knobr, knobr, $fn=360/dang);
-        translate([width+thick/2+exof,0,20]) rotate([90,0,0]) cylinder(11.5, 3, 3, true, $fn=360/dang);
+        rotate([0,boxang,45]) translate([0,0,0.63]) cylinder(wall+1, knobr, knobr, $fn=360/dang);
+        translate([width+thick/2+exof, 0,20]) rotate([90,0,0]) cylinder(11.5, 3, 3, true, $fn=360/dang);
         translate([width+thick/2+exof,-4,20]) rotate([90,0,0]) cylinder(0.6, 2.9, 3.6, $fn=360/dang);
         #sidebox_cutout();
     }
     translate([tw-butsz/2, butsz/2, boxheight-ht-0.5]) rotate([0,boxang, 45]) difference() {
-        color("lightblue") translate([-2.02, 0, -24.2]) cube([42.04, 130, 3], true);
-        translate([0,  buttonsp/2, -24.2]) cylinder(3.2, 4.5, 4.5, true);
-        translate([0, -buttonsp/2, -24.2]) cylinder(3.2, 4.5, 4.5, true);
+        translate([-2.02, 0, -24.2]) cube([42.04, 130, 3], true);
+        translate([0,  buttonsp/2, -24]) cylinder(3, 4.5, 4.5, true, $fn=360/pang);
+        translate([0, -buttonsp/2, -24]) cylinder(3, 4.5, 4.5, true, $fn=360/pang);
     }
     translate([tw-butsz/2, butsz/2, boxheight-33.585]) rotate([0,0,45]) {
-        color("blue") translate([17.8, 0, 0]) cube([28.4, 130, 3], true);
+        translate([17.8, 0, 0]) cube([28.4, 130, 3], true);
     }
+    translate([tw-butsz/2, butsz/2, 0]) rotate([0,0,45]) sb_support();
+    translate([tw-butsz/2+supr, butsz/2-supr, 0]) rotate([0,0,45]) sb_support();
+    translate([tw-butsz/2-supr, butsz/2+supr, 0]) rotate([0,0,45]) sb_support();
+}
+
+module sb_support() {
+    pw = (buthi+butwid-11.5)/sqrt(2);
+    ph = boxheight-21;
+    phs = tan(boxang)*pw;
+    th = 1;
+    polyhedron(
+        points= [[pw/2,-th, 0],[pw/2,-th, ph],[-pw/2,-th, ph+phs],[-pw/2,-th, phs],
+                 [pw/2, th, 0],[pw/2, th, ph],[-pw/2, th, ph+phs],[-pw/2, th, phs]],
+        faces = [[3,2,1,0],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7],[6,7,4,5]]);
 }
 
 function sb_curve(an, z, zsl, eb, bv, w, t=0, bw=butwid, bh=buthi, bs=butsz) = concat(
