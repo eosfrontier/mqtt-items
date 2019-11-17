@@ -28,7 +28,7 @@ exof = 10;
 edgebev = 3;
 
 indof = 20;
-cutof = 20;
+cutof = 14;
 
 butwid = 50;
 buthi = 50;
@@ -37,9 +37,13 @@ butsz = 140;
 
 basehi = 9.5;
 
-boxheight = 40;
+boxheight = 50;
 boxang = 30;
 boxsl = tan(boxang)*sin(45);
+
+centerwidth = (width+thick+exof)*2 - butsz - butwid;
+
+buttonsp = 75;
 
 *complete();
 
@@ -54,15 +58,41 @@ module complete() {
     hinge_r();
     mirror([1,0,0]) hinge_r();
 
-    *color("teal") translate([0,130,30]) rotate([-90,90,0]) batteryholder();
+    color("teal") translate([0,125,27]) rotate([-90,90,0]) batteryholder();
+    *color("teal") translate([125,75,0]) rotate([180,0,45]) batteryholder();
 }
 
-// To print
 *buttons_r();
+
+// To print
+sidebox();
 *rbutton();
-rotate([90,0,0]) hinge_r();
+*rotate([90,0,0]) hinge_r();
 *front_r();
 *front_l();
+
+
+// The modules
+
+module center_p(w = centerwidth) {
+    csds = (60/bang+1)+(30/cang+1)+(180/bang+2)+(30/cang+1)+2;
+    bsds = (180/bang+2);
+    tsds = csds*bsds;
+    polyhedron(points = concat( 
+        [for (an=[-90:bang:0]) each center_curve(an, -w/2)],
+        [for (an=[ 0:bang:90]) each center_curve(an, w/2)]
+        ), faces = concat(
+        [for (s=[0:bsds-2]) each cquads(csds, csds*s, tsds)],
+        [[for (s=[0:csds-1]) s],
+         [for (s=[tsds-1:-1:tsds-csds]) s]]
+        ));
+}
+
+function center_curve(an, x, y=butsz, h=buthi, bv=edgebev) = concat(
+    [[x+bv*cos(an), y+bv*sin(an), 0],[x+bv*cos(an),y+h-bv*sin(an),0]]/*,
+    scircle(
+        bv*cos(an), x, y+h-*/
+);
 
 module hinge_r(w = breadth, bv=edgebev) {
     csds = 360/bang+5;
@@ -91,9 +121,9 @@ module hinge_r(w = breadth, bv=edgebev) {
             polyhedron(
                 points = concat(
                     [for (an=[-90:bang:0]) each
-                        hinge_curve(an,-w+cutof-0.1,-1, bv, sho=indof+2.5, eb=5, oc=8)],
+                        hinge_curve(an,-w+indof-0.1,-1, bv, sho=cutof+2.5, eb=5, oc=8)],
                     [for (an=[0:bang:90]) each
-                        hinge_curve(an,-w,1, bv, sho=indof+2.5, eb=5, oc=8)]
+                        hinge_curve(an,-w,1, bv, sho=cutof+2.5, eb=5, oc=8)]
                         ),
                 faces = concat(
                     [for (s=[0:bsds2-2]) each cquads(csds, csds*s, tsds2)],
@@ -223,26 +253,31 @@ function hinge_c_curve2(an, z, hsw=20, hb=20, w=buthi, x=width+thick, t=wall, bv
 
 module buttons_r() {
     translate([0,0.1,0]) {
-        difference() {
-            union() {
-                sidebox();
-                translate([exof,0,basehi]) hinge_side2();
-            }
-            #sidebox_cutout();
-        }
-        boxbutton(0);
-        boxbutton(1);
+        sidebox();
+        boxbutton(-buttonsp/2);
+        boxbutton( buttonsp/2);
+        boxbutton_hw(-buttonsp/2);
+        boxbutton_hw( buttonsp/2);
     }
 }
 
-module boxbutton(nm=0) {
+module boxbutton(off=0) {
     tw = width+thick+exof;
     z = boxheight+tw*boxsl;
     ht = wall * sqrt(2);
-    bof=0.31;
-    btr = nm?1-bof:bof;
-    translate([tw-butsz*btr, butsz*btr, boxheight-ht-0.5])
+    btr = off/sqrt(2);
+    translate([tw-butsz/2+btr, butsz/2-btr, boxheight-ht-0.5])
     rotate([0,boxang,45]) rbutton();
+}
+
+module boxbutton_hw(off=0) {
+    tw = width+thick+exof;
+    z = boxheight+tw*boxsl;
+    ht = wall * sqrt(2);
+    btr = off/sqrt(2);
+    color("teal")
+    translate([tw-butsz/2+btr, butsz/2-btr, boxheight-ht-0.5])
+    rotate([0,boxang,45]) rbutton_hw();
 }
 
 module rbutton(r=knobr-0.3, ca=dang, t=15, b=10, ba=bang, tbv=5, bbv=5) {
@@ -272,6 +307,12 @@ module rbutton(r=knobr-0.3, ca=dang, t=15, b=10, ba=bang, tbv=5, bbv=5) {
         translate([0,-b-1,0]) rotate([-90,0,0]) rotspline();
         translate([12,t-1,0]) rotate([-90,0,0]) cylinder(1.5, 5,7, $fn=360/dang);     
     }
+}
+
+module rbutton_hw() {
+    translate([0,0,-26]) cylinder(33.01, 3, 3);
+    translate([0,0,-26]) cylinder(6.5, 4.4, 4.4);
+    translate([0,0,-26-7.3/2]) cube([14, 15, 7.3], true);
 }
 
 module rotspline() {
@@ -317,7 +358,7 @@ module sidebox() {
     bsds = 90/bang+4;
     eb = 5;
     bv = 3;
-    bof=0.31;
+    btr = (buttonsp/2)/sqrt(2);
     difference() {
         union() {
             polyhedron(
@@ -333,13 +374,23 @@ module sidebox() {
             ));
             translate([width+thick/2+exof,-1,20]) rotate([90,0,0]) cylinder(6, 4.4, 4.4, true, $fn=360/dang);
             translate([width+thick/2+exof,-4,20]) rotate([90,0,0]) cylinder(0.5, 4.4, 3.9, $fn=360/dang);
+            translate([exof,0,basehi]) hinge_side2();
         }
-        translate([tw-butsz*bof, butsz*bof, boxheight-ht-0.5])
+        translate([tw-butsz/2+btr, butsz/2-btr, boxheight-ht-0.5])
         rotate([0,boxang,45]) cylinder(wall+1, knobr, knobr, $fn=360/dang);
-        translate([tw-butsz*(1-bof), butsz*(1-bof), boxheight-ht-0.5])
+        translate([tw-butsz/2-btr, butsz/2+btr, boxheight-ht-0.5])
         rotate([0,boxang,45]) cylinder(wall+1, knobr, knobr, $fn=360/dang);
         translate([width+thick/2+exof,0,20]) rotate([90,0,0]) cylinder(11.5, 3, 3, true, $fn=360/dang);
         translate([width+thick/2+exof,-4,20]) rotate([90,0,0]) cylinder(0.6, 2.9, 3.6, $fn=360/dang);
+        #sidebox_cutout();
+    }
+    translate([tw-butsz/2, butsz/2, boxheight-ht-0.5]) rotate([0,boxang, 45]) difference() {
+        color("lightblue") translate([-2.02, 0, -24.2]) cube([42.04, 130, 3], true);
+        translate([0,  buttonsp/2, -24.2]) cylinder(3.2, 4.5, 4.5, true);
+        translate([0, -buttonsp/2, -24.2]) cylinder(3.2, 4.5, 4.5, true);
+    }
+    translate([tw-butsz/2, butsz/2, boxheight-33.585]) rotate([0,0,45]) {
+        color("blue") translate([17.8, 0, 0]) cube([28.4, 130, 3], true);
     }
 }
 
