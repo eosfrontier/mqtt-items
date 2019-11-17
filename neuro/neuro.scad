@@ -37,6 +37,8 @@ butsz = 140;
 
 basehi = 9.5;
 
+tabhi = 18;
+
 boxheight = 51;
 boxang = 30;
 boxsl = tan(boxang)*sin(45);
@@ -65,6 +67,7 @@ module complete() {
 *buttons_r();
 
 // To print
+//rotate([90,-45,0])
 sidebox();
 *rbutton();
 *rotate([90,0,0]) hinge_r();
@@ -355,7 +358,7 @@ module sidebox() {
     t = wall;
     ht = wall * sqrt(2);
     csds = 360/bang+6;
-    bsds = 90/bang+4;
+    bsds = 90/bang+7;
     eb = 5;
     bv = 3;
     btr = (buttonsp/2)/sqrt(2);
@@ -365,6 +368,9 @@ module sidebox() {
             polyhedron(
             points = concat(
                 sb_curve(0, z-ht, boxsl, eb, 0, tw, t),
+                sb_curve(0, tabhi+0.5, 0, eb, 0, tw, t),
+                sb_curve(0, tabhi, 0, eb, 0, tw, t+0.5),
+                sb_curve(0, tabhi-1, 0, eb, 0, tw, t),
                 sb_curve(0, 0, 0, eb, 0, tw, t),
                 sb_curve(0, 0, 0, eb, 0, tw),
                 [for (an=[0:bang:90]) each sb_curve(an, z, boxsl, eb, bv, tw)]
