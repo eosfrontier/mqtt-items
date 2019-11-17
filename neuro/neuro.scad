@@ -378,17 +378,17 @@ module sidebox() {
             translate([exof,0,basehi]) hinge_side2();
         }
         translate([tw-butsz/2+btr, butsz/2-btr, boxheight-ht-0.5])
-        rotate([0,boxang,45]) translate([0,0,0.63]) cylinder(wall+1, knobr, knobr, $fn=360/dang);
+        rotate([0,boxang,45]) translate([0,0,0.83]) cylinder(wall+1, knobr, knobr, $fn=360/dang);
         translate([tw-butsz/2-btr, butsz/2+btr, boxheight-ht-0.5])
-        rotate([0,boxang,45]) translate([0,0,0.63]) cylinder(wall+1, knobr, knobr, $fn=360/dang);
+        rotate([0,boxang,45]) translate([0,0,0.83]) cylinder(wall+1, knobr, knobr, $fn=360/dang);
         translate([width+thick/2+exof, 0,20]) rotate([90,0,0]) cylinder(11.5, 3, 3, true, $fn=360/dang);
         translate([width+thick/2+exof,-4,20]) rotate([90,0,0]) cylinder(0.6, 2.9, 3.6, $fn=360/dang);
         #sidebox_cutout();
     }
     translate([tw-butsz/2, butsz/2, boxheight-ht-0.5]) rotate([0,boxang, 45]) difference() {
         translate([-2.02, 0, -24.2]) cube([42.04, 130, 3], true);
-        translate([0,  buttonsp/2, -24]) cylinder(3, 4.5, 4.5, true, $fn=360/pang);
-        translate([0, -buttonsp/2, -24]) cylinder(3, 4.5, 4.5, true, $fn=360/pang);
+        translate([0,  buttonsp/2, -23.8]) cylinder(3, 4.5, 4.5, true, $fn=360/pang);
+        translate([0, -buttonsp/2, -23.8]) cylinder(3, 4.5, 4.5, true, $fn=360/pang);
     }
     translate([tw-butsz/2, butsz/2, boxheight-33.585]) rotate([0,0,45]) {
         translate([17.8, 0, 0]) cube([28.4, 130, 3], true);
