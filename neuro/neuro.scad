@@ -40,6 +40,7 @@ basehi = 9.5;
 tabhi = 18;
 
 boxheight = 51;
+ribheight = 30;
 boxang = 30;
 boxsl = tan(boxang)*sin(45);
 
@@ -61,7 +62,7 @@ module complete() {
     mirror([1,0,0]) hinge_r();
 
     color("teal") translate([0,125,27]) rotate([-90,90,0]) batteryholder();
-    *color("teal") translate([125,75,0]) rotate([180,0,45]) batteryholder();
+    *color("teal") translate([118,68,0]) rotate([180,0,45]) batteryholder();
 }
 
 *buttons_r();
@@ -282,7 +283,7 @@ module boxbutton_hw(off=0) {
     rotate([0,boxang,45]) rbutton_hw();
 }
 
-module rbutton(r=knobr-0.3, ca=dang, t=15, b=10, ba=bang, tbv=5, bbv=5) {
+module rbutton(r=knobr-0.5, ca=dang, t=15, b=10, ba=bang, tbv=5, bbv=5) {
     csds = 360/ca;
     bsds = 180/ba+9;
     rotate([90,0,0]) translate([0,-t+7,0]) difference() {
@@ -378,16 +379,16 @@ module sidebox() {
                 [[for (s=[0:csds-1]) s],
                  [for (s=[csds-1:-1:0]) s+(csds*(bsds-1))]]
             ));
-            translate([width+thick/2+exof,-1,20]) rotate([90,0,0]) cylinder(6, 4.4, 4.4, true, $fn=360/dang);
-            translate([width+thick/2+exof,-4,20]) rotate([90,0,0]) cylinder(0.5, 4.4, 3.9, $fn=360/dang);
+            translate([width+thick/2+exof,-1,20]) rotate([90,0,0]) cylinder(6, 4.9, 4.9, true, $fn=360/dang);
+            translate([width+thick/2+exof,-4,20]) rotate([90,0,0]) cylinder(0.5, 4.9, 4.4, $fn=360/dang);
             translate([exof,0,basehi]) hinge_side2();
         }
         translate([tw-butsz/2+btr, butsz/2-btr, boxheight-ht-0.5])
         rotate([0,boxang,45]) translate([0,0,0.83]) cylinder(wall+1, knobr, knobr, $fn=360/dang);
         translate([tw-butsz/2-btr, butsz/2+btr, boxheight-ht-0.5])
         rotate([0,boxang,45]) translate([0,0,0.83]) cylinder(wall+1, knobr, knobr, $fn=360/dang);
-        translate([width+thick/2+exof, 0,20]) rotate([90,0,0]) cylinder(11.5, 3, 3, true, $fn=360/dang);
-        translate([width+thick/2+exof,-4,20]) rotate([90,0,0]) cylinder(0.6, 2.9, 3.6, $fn=360/dang);
+        translate([width+thick/2+exof, 0,20]) rotate([90,0,0]) cylinder(11.5, 3.9, 3.9, true, $fn=360/dang);
+        translate([width+thick/2+exof,-4,20]) rotate([90,0,0]) cylinder(0.6, 3.6, 4.2, $fn=360/dang);
         #sidebox_cutout();
     }
     translate([tw-butsz/2, butsz/2, boxheight-ht-0.5]) rotate([0,boxang, 45]) difference() {
@@ -401,17 +402,33 @@ module sidebox() {
     translate([tw-butsz/2, butsz/2, 0]) rotate([0,0,45]) sb_support();
     translate([tw-butsz/2+supr, butsz/2-supr, 0]) rotate([0,0,45]) sb_support();
     translate([tw-butsz/2-supr, butsz/2+supr, 0]) rotate([0,0,45]) sb_support();
+    for (s=[-supr:supr/4:supr]) {
+        translate([tw-butsz/2+s, butsz/2-s, 0]) rotate([0,0,45]) sb_support_2();
+    }
+    translate([tw-butsz/2+supr*1.25, butsz/2-supr*1.25, 0]) rotate([0,0,45]) sb_support_2(12);
 }
 
 module sb_support() {
     pw = (buthi+butwid-11.5)/sqrt(2);
-    ph = boxheight-21;
+    ph = ribheight;
     phs = tan(boxang)*pw;
     th = 1;
+    translate([0, 0, boxheight-ph-21])
     polyhedron(
         points= [[pw/2,-th, 0],[pw/2,-th, ph],[-pw/2,-th, ph+phs],[-pw/2,-th, phs],
                  [pw/2, th, 0],[pw/2, th, ph],[-pw/2, th, ph+phs],[-pw/2, th, phs]],
         faces = [[3,2,1,0],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7],[6,7,4,5]]);
+}
+
+module sb_support_2(ph = boxheight-32) {
+    pw1 = (buthi+butwid-11.5)/sqrt(2)/2;
+    pw = ph / tan(50);
+    pw2 = pw1 - pw;
+    th = 0.4;
+    polyhedron(
+        points= [[pw1,-th, 0],[pw1,-th, ph],[pw2,-th, ph],
+                 [pw1, th, 0],[pw1, th, ph],[pw2, th, ph]],
+        faces = [[2,1,0],[0,1,4,3],[1,2,5,4],[2,0,3,5],[3,4,5]]);
 }
 
 function sb_curve(an, z, zsl, eb, bv, w, t=0, bw=butwid, bh=buthi, bs=butsz) = concat(
@@ -438,9 +455,10 @@ module front_l() {
         union() {
             quarterpipe_h();
             for (an=[12.5:5:87.5]) rib(an);
+            translate([width+thick/2,-30,0]) rotate([0,0,-90]) cylinder(edgebev, 5.5, 5.5, $fn=360/dang);
         }
         translate([-width-thick/2,-30,breadth-indof-edgebev+0.2]) rotate([0,0,90]) cylinder(edgebev, 4.5, 4.5, $fn=360/dang);
-        translate([-width-thick/2,-30,-0.5]) rotate([0,0,-90]) cylinder(edgebev+1, 4.5, 4.5, $fn=360/dang);
+        translate([-width-thick/2,-30,-0.5]) rotate([0,0,-90]) cylinder(edgebev+1, 5.0, 5.0, $fn=360/dang);
         mirror([1,0,0]) {
             cpoint(10, 15);
             cline(10,15,15,20);
@@ -486,9 +504,10 @@ module front_r() {
             mirror([1,0,0]) rib(2.5);
             mirror([1,0,0]) for (an=[2.5:5:87.5]) rib(an);
             translate([-5,height,breadth/2]) topdisc();
+            translate([width+thick/2,-30,0]) rotate([0,0,-90]) cylinder(edgebev, 5.5, 5.5, $fn=360/dang);
         }
         translate([width+thick/2,-30,breadth-indof-edgebev+0.2]) rotate([0,0,90]) cylinder(edgebev, 4.5, 4.5, $fn=360/dang);
-        translate([width+thick/2,-30,-0.5]) rotate([0,0,-90]) cylinder(edgebev+1, 4.5, 4.5, $fn=360/dang);
+        translate([width+thick/2,-30,-0.5]) rotate([0,0,-90]) cylinder(edgebev+1, 5.0, 5.0, $fn=360/dang);
         translate([-5,height+wall,breadth/2]) disc(r=28, t=16);
         union() {
             cpoint(5, 15);
