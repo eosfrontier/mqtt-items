@@ -61,8 +61,9 @@ module complete() {
     hinge_r();
     mirror([1,0,0]) hinge_r();
 
-    color("teal") translate([0,125,27]) rotate([-90,90,0]) batteryholder();
+    *color("teal") translate([0,125,27]) rotate([-90,90,0]) batteryholder();
     *color("teal") translate([118,68,0]) rotate([180,0,45]) batteryholder();
+    color("teal") translate([2.5,110,27]) rotate([0,0,-90]) batteryholder_1();
 }
 
 *buttons_r();
@@ -455,7 +456,7 @@ module front_l() {
         union() {
             quarterpipe_h();
             for (an=[12.5:5:87.5]) rib(an);
-            translate([width+thick/2,-30,0]) rotate([0,0,-90]) cylinder(edgebev, 5.5, 5.5, $fn=360/dang);
+            translate([-width-thick/2,-30,0]) rotate([0,0,-90]) cylinder(edgebev, 5.5, 5.5, $fn=360/dang);
         }
         translate([-width-thick/2,-30,breadth-indof-edgebev+0.2]) rotate([0,0,90]) cylinder(edgebev, 4.5, 4.5, $fn=360/dang);
         translate([-width-thick/2,-30,-0.5]) rotate([0,0,-90]) cylinder(edgebev+1, 5.0, 5.0, $fn=360/dang);
@@ -1015,5 +1016,28 @@ module batteryholder() {
         translate([-33/2, 95/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
         translate([ 33/2,-95/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
         translate([ 33/2, 95/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
+    }
+}
+
+module batteryholder_1() {
+    cr=2;
+    bh=26.2/2-cr;
+    bw=99.2/2-cr;
+    difference() {
+        union() {
+            translate([0,0.2,-3.5]) linear_extrude(height=1.5) polygon(concat(
+                [for (an=[  0:10: 90]) [ bh+sin(an)*cr, bw+cos(an)*cr]],
+                [for (an=[ 90:10:180]) [ bh+sin(an)*cr,-bw+cos(an)*cr]],
+                [for (an=[180:10:270]) [-bh+sin(an)*cr,-bw+cos(an)*cr]],
+                [for (an=[270:10:360]) [-bh+sin(an)*cr, bw+cos(an)*cr]]
+            ));
+            translate([0, 6,-12]) cube([20,77,24], true);
+            translate([10.2,38.9,-1.0]) cube([6,7.5,2],true);
+            translate([0.5,-95/2,-7]) cube([13.5,14,7],true);
+        }
+        translate([-22/2,-94.5/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
+        translate([-22/2, 94.5/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
+        translate([ 22/2,-94.5/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
+        translate([ 22/2, 94.5/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
     }
 }
