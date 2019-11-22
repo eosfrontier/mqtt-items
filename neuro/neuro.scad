@@ -42,6 +42,7 @@ butsz = 140;
 basehi = 9.5;
 
 tabhi = 18;
+stabhi = 7.5;
 
 boxheight = 51;
 ribheight = 30;
@@ -84,7 +85,7 @@ module complete() {
 *front_r();
 *front_l();
 
-*center_p();
+center_p();
 
 hinge_r();
 translate([0,0.1,0]) sidebox();
@@ -183,7 +184,7 @@ module hinge_r(w = breadth, bv=edgebev) {
             translate([width+thick/2,-w+indof+4.25,10.5]) rotate([90,0,0]) cylinder(1, 3.4, 4.4, true, $fn=360/dang);
             hinge_side1();
         }
-        translate([-exof,0,-basehi]) #hinge_cutout();
+        translate([-exof,0,-basehi]) hinge_cutout();
         translate([-exof, 0, -basehi]) hingeholes();
     }
 }
@@ -257,11 +258,14 @@ function hinge_curve(an, o, bs, bv, sho=0, oc=3, tc=1.5, bh=basehi, bw=thick, th
 
 module hinge_cutout() {
     csds = (90/dang+5);
-    bsds = (90/bang+2);
+    bsds = (90/bang+5);
     tsds = csds*bsds;
     polyhedron(
         points = concat(
             hinge_c_curve1(0, -0.1),
+            hinge_c_curve1(0, stabhi-1),
+            hinge_c_curve1(0, stabhi, t=wall+0.5),
+            hinge_c_curve1(0, stabhi+0.5),
             [for (an=[0:bang:90]) each hinge_c_curve1(an, 9.5)]
         ), faces = concat(
             [for (s=[0:bsds-2]) each cquads(csds, csds*s, csds*bsds)],
@@ -287,7 +291,7 @@ module sidebox_cutout() {
 
 function hinge_c_curve1(an, z, hsw=20, hb=20, w=breadth, x=width+thick, t=wall, bv=edgebev-wall) = concat(
     [ [x+hsw+9-t+bv*cos(an), -t, z+bv*sin(an)],
-      [x-6, -t, z+bv*sin(an)], [x-6, -w+bv+t-bv*cos(an), z+bv*sin(an)] ],
+      [x-8+t, -t, z+bv*sin(an)], [x-8+t, -w+bv+t-bv*cos(an), z+bv*sin(an)] ],
     qcircle(bv*cos(an), bv*cos(an),
         z+bv*sin(an), x+hsw-hb+9-t, -w+bv+t, san=135, ean=45, a=-dang),
     qcircle(hb-bv+bv*cos(an)-t, hb-bv+bv*cos(an)-t,
