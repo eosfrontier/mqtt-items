@@ -68,11 +68,14 @@ module complete() {
     mirror([1,0,0]) hinge_r();
 
     center_p();
-    translate([0, 0, -0.1]) center_bottom();
 
     *color("teal") translate([0,125,27]) rotate([-90,90,0]) batteryholder();
     *color("teal") translate([118,68,0]) rotate([180,0,45]) batteryholder();
-    color("teal") translate([-2.5,112.1,0]) rotate([180,0,-90]) batteryholder_1();
+
+    translate([0,50,0]) {
+    translate([0, 0, -0.1]) center_bottom();
+    color("teal") translate([2.5,112.1,0]) rotate([180,0,90]) batteryholder_1();
+    }
 
     *color("teal") translate([130,75.1,11]) rotate([180+boxang,0,135]) atmega();
 }
@@ -98,19 +101,23 @@ module center_bottom(w = centerwidth, b = centerthick, t = wall, tol=0.1) {
     bsds = 6;
     tsds = csds*bsds;
     y = butsz-buthi+5.1;
-    polyhedron(
+    difference() {
+        polyhedron(
         points = concat(
             cb_curve(w-tol*2, b, -t, y),
             cb_curve(w-tol*2, b, 0, y),
             cb_curve(w-t*2-tol*2, b-t*2-tol*2, 0, y+t+tol),
-            cb_curve(w-t*2-tol*2, b-t*2-tol*2, t, y+t+tol),
-            cb_curve(w-t*4-tol*4, b-t*4-tol*4, t, y+t*2+tol*2),
+            cb_curve(w-t*2-tol*2, b-t*2-tol*2, 2, y+t+tol),
+            cb_curve(w-t*4-tol*4, b-t*4-tol*4, 2, y+t*2+tol*2),
             cb_curve(w-t*4-tol*4, b-t*4-tol*4, 0, y+t*2+tol*2)),
         faces = concat(
             [for (s=[0:bsds-2]) each cquads(csds, csds*s, tsds)],
             [[for (s=[0:csds-1]) s],
              [for (s=[tsds-1:-1:tsds-csds]) s]]
              ));
+
+        #translate([w/2-13.5, y+b-t-t/2, 2]) cube([9, t+1, 4], true);
+    }
     /* TODO: tabs */
 }
 
@@ -147,8 +154,16 @@ module center_p(w = centerwidth, b = centerthick, h = 40, eh=40, t=wall, st=cent
         centerholes(f =  1);
         centerholes(f = -1);
 
-        translate([w/2-13, y+b-t/2, 25]) rotate([90,0,0]) cylinder(t+1, 10, 10, true, $fn=360/pang);
+        translate([-w/2+14, y+b-t/2, 25]) switchhole();
+        #translate([w/2-13.5, y+b-t/2, 2]) cube([9, t+1, 4], true);
     }
+}
+
+module switchhole(t=wall) {
+    rotate([90,0,0]) cylinder(t+1, 10, 10, true, $fn=360/dang);
+    translate([-10,0,0]) cube([1, t+1, 2], true);
+    translate([0,0, 10]) cube([4, t+1, 1], true);
+    translate([0,0,-10]) cube([4, t+1, 1], true);
 }
 
 function center_curve(an, y, w, b, h, eh, st, bv=edgebev) = concat(
@@ -1136,8 +1151,8 @@ module centerholes(t=wall, o=-1, f=1) {
         cube([t+1, 10, 25], true);
         translate([0, -10, -18]) rotate([0,90,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
         translate([0,  10, -18]) rotate([0,90,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
-        translate([0, -10,   5]) rotate([0,90,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
-        translate([0,  10,   5]) rotate([0,90,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
+        translate([0, -10,   8]) rotate([0,90,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
+        translate([0,  10,   8]) rotate([0,90,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
     }
 }
 
