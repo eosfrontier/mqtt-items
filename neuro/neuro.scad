@@ -50,11 +50,11 @@ boxang = 30;
 boxsl = tan(boxang)*sin(45);
 
 centerwidth = (width+thick+exof-butsz-0.1)*2;
-centerthick = 32;
+centerthick = 34;
 
 buttonsp = 75;
 
-*complete();
+complete();
 
 module complete() {
 
@@ -68,10 +68,11 @@ module complete() {
     mirror([1,0,0]) hinge_r();
 
     center_p();
+    translate([0, 0, -0.1]) center_bottom();
 
     *color("teal") translate([0,125,27]) rotate([-90,90,0]) batteryholder();
     *color("teal") translate([118,68,0]) rotate([180,0,45]) batteryholder();
-    *color("teal") translate([2.5,111.1,27]) rotate([0,0,-90]) batteryholder_1();
+    color("teal") translate([-2.5,112.1,0]) rotate([180,0,-90]) batteryholder_1();
 
     *color("teal") translate([130,75.1,11]) rotate([180+boxang,0,135]) atmega();
 }
@@ -85,10 +86,36 @@ module complete() {
 *front_r();
 *front_l();
 
-center_p();
+*center_p();
 
-hinge_r();
-translate([0,0.1,0]) sidebox();
+*hinge_r();
+*translate([0,0.1,0]) sidebox();
+
+// Bottom covers
+
+module center_bottom(w = centerwidth, b = centerthick, t = wall, tol=0.1) {
+    csds = 4;
+    bsds = 6;
+    tsds = csds*bsds;
+    y = butsz-buthi+5.1;
+    polyhedron(
+        points = concat(
+            cb_curve(w-tol*2, b, -t, y),
+            cb_curve(w-tol*2, b, 0, y),
+            cb_curve(w-t*2-tol*2, b-t*2-tol*2, 0, y+t+tol),
+            cb_curve(w-t*2-tol*2, b-t*2-tol*2, t, y+t+tol),
+            cb_curve(w-t*4-tol*4, b-t*4-tol*4, t, y+t*2+tol*2),
+            cb_curve(w-t*4-tol*4, b-t*4-tol*4, 0, y+t*2+tol*2)),
+        faces = concat(
+            [for (s=[0:bsds-2]) each cquads(csds, csds*s, tsds)],
+            [[for (s=[0:csds-1]) s],
+             [for (s=[tsds-1:-1:tsds-csds]) s]]
+             ));
+    /* TODO: tabs */
+}
+
+function cb_curve(w, b, h, y) = [[-w/2,y,h],[w/2,y,h],[w/2,y+b,h],[-w/2,y+b,h]];
+
 
 // The modules
 
@@ -100,13 +127,13 @@ module center_p(w = centerwidth, b = centerthick, h = 40, eh=40, t=wall, st=cent
     difference() {
         union() {
             polyhedron(points = concat( 
-                [for (an=[-90:bang:0]) each center_curve(an, y, w, b, h, eh, st)],
+                [for (an=[-90:bang:0]) each center_curve(an, y, w, b, h, eh+30, st)],
                 center_curve(0, y, w, b, 0, 0, st),
                 center_curve(0, y+t, w-t*2, b-t*2, 0, 0, st, bv=edgebev-t),
                 center_curve(0, y+t, w-t*2, b-t*2, tabhi-1, 0, st, bv=edgebev-t),
                 center_curve(0, y+t+0.5, w-t*2, b-t*2-1, tabhi, 0, st, bv=edgebev-t-0.5),
                 center_curve(0, y+t, w-t*2, b-t*2, tabhi+0.5, 0, st, bv=edgebev-t),
-                [for (an=[0:-bang:-90]) each center_curve(an, y+t, w-t*2, b-t*2, h, eh, st, bv=edgebev-t)]
+                [for (an=[0:-bang:-90]) each center_curve(an, y+t, w-t*2, b-t*2, h, eh+30, st, bv=edgebev-t)]
                 ), faces = concat(
                 [for (s=[0:bsds-2]) each cquads(csds, csds*s, tsds)],
                 [for (s=[0:csds/2-1]) each [[s, s+1, csds-s-1],[s, csds-s-1, csds-s]]],
@@ -115,16 +142,18 @@ module center_p(w = centerwidth, b = centerthick, h = 40, eh=40, t=wall, st=cent
             translate([0, y, h+eh+10]) disc(r=40, t=b+5);
         }
         translate([0, y+t, h+eh+10]) disc(r=38, t=b+5-t*2);
-        translate([0, y+b/2, h+eh-10]) cube([64.4, b-t*2, 40], true);
+        translate([0, y+b/2, h+eh-10]) cube([51.6, b-t*2, 40], true);
 
         centerholes(f =  1);
         centerholes(f = -1);
+
+        translate([w/2-13, y+b-t/2, 25]) rotate([90,0,0]) cylinder(t+1, 10, 10, true, $fn=360/pang);
     }
 }
 
 function center_curve(an, y, w, b, h, eh, st, bv=edgebev) = concat(
-    [for (x=[ 1:-2/st:-1]) [ x*w/2, y  +bv-bv*cos(an), h-bv*sin(an) + eh-eh*(x*x) ]],
-    [for (x=[-1: 2/st: 1]) [ x*w/2, y+b-bv+bv*cos(an), h-bv*sin(an) + eh-eh*(x*x) ]]
+    [for (x=[ 1:-2/st:-1]) [ x*w/2, y  +bv-bv*cos(an), h-bv*sin(an) + eh*((1-abs(x))*(1-abs(x))) ]],
+    [for (x=[-1: 2/st: 1]) [ x*w/2, y+b-bv+bv*cos(an), h-bv*sin(an) + eh*((1-abs(x))*(1-abs(x))) ]]
 );
 
 /*
