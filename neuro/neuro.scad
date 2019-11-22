@@ -37,6 +37,8 @@ buthi = 50;
 knobr = 25;
 butsz = 140;
 
+
+
 basehi = 9.5;
 
 tabhi = 18;
@@ -47,10 +49,11 @@ boxang = 30;
 boxsl = tan(boxang)*sin(45);
 
 centerwidth = (width+thick+exof-butsz-0.1)*2;
+centerthick = 32;
 
 buttonsp = 75;
 
-complete();
+*complete();
 
 module complete() {
 
@@ -67,7 +70,9 @@ module complete() {
 
     *color("teal") translate([0,125,27]) rotate([-90,90,0]) batteryholder();
     *color("teal") translate([118,68,0]) rotate([180,0,45]) batteryholder();
-    color("teal") translate([2.5,111.1,27]) rotate([0,0,-90]) batteryholder_1();
+    *color("teal") translate([2.5,111.1,27]) rotate([0,0,-90]) batteryholder_1();
+
+    *color("teal") translate([130,75.1,11]) rotate([180+boxang,0,135]) atmega();
 }
 
 *buttons_r();
@@ -81,12 +86,14 @@ module complete() {
 
 *center_p();
 
+hinge_r();
+translate([0,0.1,0]) sidebox();
 
 // The modules
 
-module center_p(w = centerwidth, b = 32, h = 40, eh=40, t=wall, st=centersteps) {
+module center_p(w = centerwidth, b = centerthick, h = 40, eh=40, t=wall, st=centersteps) {
     csds = 2*st+2;
-    bsds = (180/bang+4);
+    bsds = (180/bang+7);
     tsds = csds*bsds;
     y = butsz-buthi+5.1;
     difference() {
@@ -95,6 +102,9 @@ module center_p(w = centerwidth, b = 32, h = 40, eh=40, t=wall, st=centersteps) 
                 [for (an=[-90:bang:0]) each center_curve(an, y, w, b, h, eh, st)],
                 center_curve(0, y, w, b, 0, 0, st),
                 center_curve(0, y+t, w-t*2, b-t*2, 0, 0, st, bv=edgebev-t),
+                center_curve(0, y+t, w-t*2, b-t*2, tabhi-1, 0, st, bv=edgebev-t),
+                center_curve(0, y+t+0.5, w-t*2, b-t*2-1, tabhi, 0, st, bv=edgebev-t-0.5),
+                center_curve(0, y+t, w-t*2, b-t*2, tabhi+0.5, 0, st, bv=edgebev-t),
                 [for (an=[0:-bang:-90]) each center_curve(an, y+t, w-t*2, b-t*2, h, eh, st, bv=edgebev-t)]
                 ), faces = concat(
                 [for (s=[0:bsds-2]) each cquads(csds, csds*s, tsds)],
@@ -104,7 +114,10 @@ module center_p(w = centerwidth, b = 32, h = 40, eh=40, t=wall, st=centersteps) 
             translate([0, y, h+eh+10]) disc(r=40, t=b+5);
         }
         translate([0, y+t, h+eh+10]) disc(r=38, t=b+5-t*2);
-        #translate([0, y+b/2, h+eh-10]) cube([64.4, b-t*2, 40], true);
+        translate([0, y+b/2, h+eh-10]) cube([64.4, b-t*2, 40], true);
+
+        centerholes(f =  1);
+        centerholes(f = -1);
     }
 }
 
@@ -171,6 +184,7 @@ module hinge_r(w = breadth, bv=edgebev) {
             hinge_side1();
         }
         translate([-exof,0,-basehi]) #hinge_cutout();
+        translate([-exof, 0, -basehi]) hingeholes();
     }
 }
 
@@ -422,7 +436,10 @@ module sidebox() {
         rotate([0,boxang,45]) translate([0,0,0.83]) cylinder(wall+1, knobr, knobr, $fn=360/dang);
         translate([width+thick/2+exof, 0,20]) rotate([90,0,0]) cylinder(11.5, 3.9, 3.9, true, $fn=360/dang);
         translate([width+thick/2+exof,-4,20]) rotate([90,0,0]) cylinder(0.6, 3.6, 4.2, $fn=360/dang);
-        #sidebox_cutout();
+        sidebox_cutout();
+
+        centerholes(t+1, +1);
+        hingeholes(1);
     }
     translate([tw-butsz/2, butsz/2, boxheight-ht-0.5]) rotate([0,boxang, 45]) difference() {
         translate([-2.02, 0, -24.2]) cube([42.04, 130, 3], true);
@@ -1029,6 +1046,11 @@ function cquads(n,o,s=9999999,ex=0) = concat(
     [for (i=[0:n-1-ex]) [(i+1)%n+o,(i+o+n)%s,((i+1)%n+o+n)%s]]
 );
 
+module atmega() {
+    cube([18, 33, 3.2], true);
+    translate([0, 15, 0.4]) cube([7.5, 5, 4], true);
+}
+
 module batteryholder() {
     cr=5;
     bh=50/2-cr;
@@ -1072,4 +1094,21 @@ module batteryholder_1() {
         translate([ 22/2,-94.5/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
         translate([ 22/2, 94.5/2,-4.5]) cylinder(3,1.5,1.5, $fn=24);
     }
+}
+
+module centerholes(t=wall, o=-1, f=1) {
+    y = butsz-buthi+5.1 + centerthick/2;
+    x = f*(centerwidth/2+o);
+    translate([x, y, 25]) {
+        cube([t+1, 10, 25], true);
+        translate([0, -10, -18]) rotate([0,90,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
+        translate([0,  10, -18]) rotate([0,90,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
+        translate([0, -10,   5]) rotate([0,90,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
+        translate([0,  10,   5]) rotate([0,90,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
+    }
+}
+
+module hingeholes(o=-1, t=wall) {
+    translate([width+thick/2+7, o*t/2, 6]) rotate([90,0,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
+    translate([width+thick/2+32, o*t/2, 6]) rotate([90,0,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
 }
