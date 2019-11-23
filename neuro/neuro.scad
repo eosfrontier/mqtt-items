@@ -1,4 +1,4 @@
-/* Fine
+///* Fine
     cang = 1;
     bang = 5;
     dang = 2.5;
@@ -9,7 +9,7 @@
     coang=82;
 // */
  
-///* Coarse
+/* Coarse
     cang = 5;
     bang = 15;
     dang = 5;
@@ -84,7 +84,6 @@ if (complete) {
     // To print
     *rotate([90,-45,0]) sidebox();
     *rbutton();
-    *rotate([90,0,0]) hinge_r();
     *front_r();
     *front_l();
 
@@ -94,8 +93,9 @@ if (complete) {
     *translate([0,0.1,0]) sidebox();
     *translate([0,0.1,-50.1]) sidebox_bottom();
 
-    hinge_r();
-    translate([0,0, -0.1]) hinge_bottom();
+    rotate([90,0,0]) hinge_r();
+    *hinge_r();
+    *translate([0,0, -0.1]) hinge_bottom();
 }
 
 // Bottom covers
@@ -377,7 +377,7 @@ module hinge_r(w = breadth, bv=edgebev) {
             hinge_side1();
         }
         translate([-exof,0,-basehi]) hinge_cutout();
-        translate([-exof, 0, -basehi]) hingeholes();
+        translate([-exof, 0.7, -basehi]) hingeholes();
     }
 }
 
