@@ -1,4 +1,3 @@
-
 /* Fine
     cang = 1;
     bang = 5;
@@ -90,6 +89,7 @@ module complete() {
 *front_l();
 
 *center_p();
+*center_bottom();
 
 *hinge_r();
 *translate([0,0.1,0]) sidebox();
@@ -121,8 +121,8 @@ module center_bottom(w = centerwidth, b = centerthick, t = wall, tol=0.1) {
     }
     translate([-w/2+18, y+b-t-8.5, 0]) {
         translate([0,0,1.45]) cube([12, 4, 3.1], true);
-        translate([-5,3,1.45]) cube([2, 6, 3.1], true);
-        translate([ 5,3,1.45]) cube([2, 6, 3.1], true);
+        translate([-5,3,1.45]) cube([2, 8, 3.1], true);
+        translate([ 5,3,1.45]) cube([2, 8, 3.1], true);
         translate([ 4.2,0,3]) cylinder(2, 1.4, 1.4, $fn=360/pang);
         translate([-4.2,0,3]) cylinder(2, 1.4, 1.4, $fn=360/pang);
         translate([ 4.2,0,5]) cylinder(0.5, 1.4, 0.9, $fn=360/pang);
@@ -145,7 +145,7 @@ module musb_tab(h=4.6, w=8) {
 
 module box_tab(h=tabhi+0.1, w=20) {
     rotate([0,-90,0]) translate([0,0,-w/2]) linear_extrude(height=w) polygon([
-        [-1,0],[h,0],[h+0.5,0.5],[h+2,-0.5],[h+1, -1.5],[-1,-1.5]
+        [-1,0],[h,0],[h+0.6,0.6],[h+2,-0.5],[h+1, -1.5],[-1,-1.5]
     ]);
 }
 
@@ -165,9 +165,9 @@ module center_p(w = centerwidth, b = centerthick, h = 40, eh=40, t=wall, st=cent
                 [for (an=[-90:bang:0]) each center_curve(an, y, w, b, h, eh+30, st)],
                 center_curve(0, y, w, b, 0, 0, st),
                 center_curve(0, y+t, w-t*2, b-t*2, 0, 0, st, bv=edgebev-t),
-                center_curve(0, y+t, w-t*2, b-t*2, tabhi-1, 0, st, bv=edgebev-t),
-                center_curve(0, y+t+0.5, w-t*2, b-t*2-1, tabhi, 0, st, bv=edgebev-t-0.5),
-                center_curve(0, y+t, w-t*2, b-t*2, tabhi+0.5, 0, st, bv=edgebev-t),
+                center_curve(0, y+t, w-t*2, b-t*2, tabhi-1.2, 0, st, bv=edgebev-t),
+                center_curve(0, y+t+0.6, w-t*2, b-t*2-1.2, tabhi, 0, st, bv=edgebev-t-0.6),
+                center_curve(0, y+t, w-t*2, b-t*2, tabhi+0.6, 0, st, bv=edgebev-t),
                 [for (an=[0:-bang:-90]) each center_curve(an, y+t, w-t*2, b-t*2, h, eh+30, st, bv=edgebev-t)]
                 ), faces = concat(
                 [for (s=[0:bsds-2]) each cquads(csds, csds*s, tsds)],
@@ -189,9 +189,15 @@ module center_p(w = centerwidth, b = centerthick, h = 40, eh=40, t=wall, st=cent
     translate([0, y+t, 0]) mirror([1,0,0]) battery_slot();
 }
 
-module battery_slot(l=100, l2=18, w=29.2, h=4.5, t=1) {
-    translate([0,0,l2]) linear_extrude(height=l-l2) polygon([
-        [w/2, -0.5],[w/2, h],[w/2-0.5, h],[w/2-0.5, h+t],[w/2+2.5,h+t],[w/2+2.5,-0.5]
+module battery_slot(l=100, l2=15, w=29.2, h=4.5, t=1, s=2.5, e=0.5) {
+    translate([w/2,0,l2+h+t]) rotate([0,90,0]) linear_extrude(height=s) polygon([
+        [0,0],[0,h+t],[e,h+t],[e+h+t,0]
+    ]);
+    translate([w/2,h,l2+h+t]) rotate([-90,0,0]) linear_extrude(height=t) polygon([
+        [-e,0],[0,0],[0,e]
+    ]);
+    translate([w/2,0,l2+h+t]) linear_extrude(height=l-l2-h-t) polygon([
+        [0, -e],[0, h],[-e, h],[-e, h+t],[s,h+t],[s,-e]
     ]);
 }
 
