@@ -50,7 +50,7 @@ boxang = 30;
 boxsl = tan(boxang)*sin(45);
 
 centerwidth = (width+thick+exof-butsz-0.1)*2;
-centerthick = 34;
+centerthick = 32;
 
 buttonsp = 75;
 
@@ -71,11 +71,11 @@ module complete() {
 
     *color("teal") translate([0,125,27]) rotate([-90,90,0]) batteryholder();
     *color("teal") translate([118,68,0]) rotate([180,0,45]) batteryholder();
+    *color("teal") translate([2.5,113.6,0]) rotate([180,0,90]) batteryholder_1();
 
-    translate([0,50,0]) {
     translate([0, 0, -0.1]) center_bottom();
-    color("teal") translate([2.5,112.1,0]) rotate([180,0,90]) batteryholder_1();
-    }
+
+    color("teal") translate([0,butsz-buthi+5.5+wall,50.0]) rotate([-90,0,180]) batteryholder_1();
 
     *color("teal") translate([130,75.1,11]) rotate([180+boxang,0,135]) atmega();
 }
@@ -107,8 +107,8 @@ module center_bottom(w = centerwidth, b = centerthick, t = wall, tol=0.1) {
             cb_curve(w-tol*2, b, -t, y),
             cb_curve(w-tol*2, b, 0, y),
             cb_curve(w-t*2-tol*2, b-t*2-tol*2, 0, y+t+tol),
-            cb_curve(w-t*2-tol*2, b-t*2-tol*2, 2, y+t+tol),
-            cb_curve(w-t*4-tol*4, b-t*4-tol*4, 2, y+t*2+tol*2),
+            cb_curve(w-t*2-tol*2, b-t*2-tol*2, 5, y+t+tol),
+            cb_curve(w-t*4-tol*4, b-t*4-tol*4, 5, y+t*2+tol*2),
             cb_curve(w-t*4-tol*4, b-t*4-tol*4, 0, y+t*2+tol*2)),
         faces = concat(
             [for (s=[0:bsds-2]) each cquads(csds, csds*s, tsds)],
@@ -116,9 +116,37 @@ module center_bottom(w = centerwidth, b = centerthick, t = wall, tol=0.1) {
              [for (s=[tsds-1:-1:tsds-csds]) s]]
              ));
 
-        #translate([w/2-13.5, y+b-t-t/2, 2]) cube([9, t+1, 4], true);
+        translate([-w/2+18, y+b-t-t/2, 4.5]) cube([14, t+1, 3], true);
+        translate([-w/2+18, y+b-t-t/2, 3]) cube([8, t+1, 6], true);
     }
-    /* TODO: tabs */
+    translate([-w/2+18, y+b-t-8.5, 0]) {
+        translate([0,0,1.45]) cube([12, 4, 3.1], true);
+        translate([-5,3,1.45]) cube([2, 6, 3.1], true);
+        translate([ 5,3,1.45]) cube([2, 6, 3.1], true);
+        translate([ 4.2,0,3]) cylinder(2, 1.4, 1.4, $fn=360/pang);
+        translate([-4.2,0,3]) cylinder(2, 1.4, 1.4, $fn=360/pang);
+        translate([ 4.2,0,5]) cylinder(0.5, 1.4, 0.9, $fn=360/pang);
+        translate([-4.2,0,5]) cylinder(0.5, 1.4, 0.9, $fn=360/pang);
+
+        translate([-7, 0, 0]) musb_tab();
+        translate([ 7, 0, 0]) mirror([1,0,0]) musb_tab();
+    }
+
+    translate([0, y+b-t-0.6, 0]) box_tab(w=40);
+    translate([-w/2+20, y+t+0.6, 0]) mirror([0,1,0]) box_tab();
+    translate([ w/2-20, y+t+0.6, 0]) mirror([0,1,0]) box_tab();
+}
+
+module musb_tab(h=4.6, w=8) {
+    rotate([0,-90,-90]) translate([0,0,-w/2]) linear_extrude(height=w) polygon([
+        [-1,0],[h,0],[h+0.4,0.4],[h+2,-0.4],[h+1, -1.4],[-1,-1.4]
+    ]);
+}
+
+module box_tab(h=tabhi+0.1, w=20) {
+    rotate([0,-90,0]) translate([0,0,-w/2]) linear_extrude(height=w) polygon([
+        [-1,0],[h,0],[h+0.5,0.5],[h+2,-0.5],[h+1, -1.5],[-1,-1.5]
+    ]);
 }
 
 function cb_curve(w, b, h, y) = [[-w/2,y,h],[w/2,y,h],[w/2,y+b,h],[-w/2,y+b,h]];
@@ -155,7 +183,7 @@ module center_p(w = centerwidth, b = centerthick, h = 40, eh=40, t=wall, st=cent
         centerholes(f = -1);
 
         translate([-w/2+14, y+b-t/2, 25]) switchhole();
-        #translate([w/2-13.5, y+b-t/2, 2]) cube([9, t+1, 4], true);
+        #translate([-w/2+18, y+b-t/2, 1.9]) cube([9, t+1, 4.2], true);
     }
 }
 
@@ -1123,7 +1151,7 @@ module batteryholder() {
 
 module batteryholder_1() {
     cr=2;
-    bh=26.2/2-cr;
+    bh=29.2/2-cr;
     bw=99.2/2-cr;
     difference() {
         union() {
