@@ -185,6 +185,14 @@ module center_p(w = centerwidth, b = centerthick, h = 40, eh=40, t=wall, st=cent
         translate([-w/2+14, y+b-t/2, 25]) switchhole();
         #translate([-w/2+18, y+b-t/2, 1.9]) cube([9, t+1, 4.2], true);
     }
+    translate([0, y+t, 0]) battery_slot();
+    translate([0, y+t, 0]) mirror([1,0,0]) battery_slot();
+}
+
+module battery_slot(l=100, l2=18, w=29.2, h=4.5, t=1) {
+    translate([0,0,l2]) linear_extrude(height=l-l2) polygon([
+        [w/2, -0.5],[w/2, h],[w/2-0.5, h],[w/2-0.5, h+t],[w/2+2.5,h+t],[w/2+2.5,-0.5]
+    ]);
 }
 
 module switchhole(t=wall) {
