@@ -52,7 +52,7 @@ centerthick = 32;
 
 buttonsp = 75;
 
-complete();
+*complete();
 
 module complete() {
 
@@ -87,12 +87,12 @@ module complete() {
 *front_r();
 *front_l();
 
-*center_p();
-*center_bottom();
+center_p();
+translate([0,0,-50.1]) center_bottom();
 
 *hinge_r();
-*translate([0,0.1,0]) sidebox();
-*translate([0,0.1,-0.1]) sidebox_bottom();
+translate([0,0.1,0]) sidebox();
+translate([0,0.1,-50.1]) sidebox_bottom();
 
 // Bottom covers
 
@@ -118,6 +118,9 @@ module center_bottom(w = centerwidth, b = centerthick, t = wall, tol=0.1) {
 
         translate([-w/2+18, y+b-t-t/2, 4.5]) cube([14, t+1, 3], true);
         translate([-w/2+18, y+b-t-t/2, 3]) cube([8, t+1, 6], true);
+
+        b_centerholes();
+        b_centerholes(f=-1);
     }
     translate([-w/2+18, y+b-t-8.5, 0]) {
         translate([0,0,1.45]) cube([12, 4, 3.1], true);
@@ -135,6 +138,20 @@ module center_bottom(w = centerwidth, b = centerthick, t = wall, tol=0.1) {
     translate([0, y+b-t-0.6, 0]) box_tab(w=40);
     translate([-w/2+20, y+t+0.6, 0]) mirror([0,1,0]) box_tab();
     translate([ w/2-20, y+t+0.6, 0]) mirror([0,1,0]) box_tab();
+}
+
+module b_centerholes(o=-1, f=1, t=wall, r=10/2) {
+    y = butsz-buthi+5.1 + centerthick/2;
+    x = f*(centerwidth/2+o*(t+3-0.5));
+    translate([x, y, 25]) {
+        translate([0,-10,-18]) rotate([0,90,0]) cylinder(7, r, r, true, $fn=360/pang);
+        translate([0, 10,-18]) rotate([0,90,0]) cylinder(7, r, r, true, $fn=360/pang);
+    }
+}
+
+module b_hingeholes(o=1, t=wall, r=10/2) {
+    #translate([width+thick/2+ 7, o*(t+3), 6]) rotate([90,0,0]) cylinder(7, r, r, true, $fn=360/pang);
+    #translate([width+thick/2+32, o*(t+3), 6]) rotate([90,0,0]) cylinder(7, r, r, true, $fn=360/pang);
 }
 
 module musb_tab(h=4.6, w=8) {
@@ -156,18 +173,22 @@ module sidebox_bottom(t = wall) {
     csds = (225/bang+5)+(45/dang+1);
     bsds = 6;
     tsds = bsds*csds;
-    polyhedron(points = concat(
-        sbb_curve(-t, 0),
-        sbb_curve(0, 0),
-        sbb_curve(0, t+0.1),
-        sbb_curve(5, t+0.1),
-        sbb_curve(5, t*2),
-        sbb_curve(0, t*2)
-        ), faces = concat(
-            [for (s=[0:bsds-2]) each cquads(csds, csds*s, tsds)],
-            [[for (s=[0:csds-1]) s],
-             [for (s=[tsds-1:-1:tsds-csds]) s]]
-        ));
+    difference() {
+        polyhedron(points = concat(
+            sbb_curve(-t, 0),
+            sbb_curve(0, 0),
+            sbb_curve(0, t+0.1),
+            sbb_curve(5, t+0.1),
+            sbb_curve(5, t*2),
+            sbb_curve(0, t*2)
+            ), faces = concat(
+                [for (s=[0:bsds-2]) each cquads(csds, csds*s, tsds)],
+                [[for (s=[0:csds-1]) s],
+                 [for (s=[tsds-1:-1:tsds-csds]) s]]
+            ));
+        b_centerholes(o=1);
+        b_hingeholes();
+    }
 }
 
 function sbb_curve(z, t, eb=5, hb=20, w=width+thick+exof, bw=butwid, bh=buthi, bs=butsz, hsw=20) = concat(
@@ -1221,7 +1242,7 @@ module batteryholder_1() {
 
 module centerholes(t=wall, o=-1, f=1) {
     y = butsz-buthi+5.1 + centerthick/2;
-    x = f*(centerwidth/2+o);
+    x = f*(centerwidth/2+o*t/2);
     translate([x, y, 25]) {
         cube([t+1, 10, 25], true);
         translate([0, -10, -18]) rotate([0,90,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
