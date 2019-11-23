@@ -37,7 +37,6 @@ knobr = 25;
 butsz = 140;
 
 
-
 basehi = 9.5;
 
 tabhi = 18;
@@ -93,6 +92,7 @@ module complete() {
 
 *hinge_r();
 *translate([0,0.1,0]) sidebox();
+*translate([0,0.1,-0.1]) sidebox_bottom();
 
 // Bottom covers
 
@@ -151,6 +151,38 @@ module box_tab(h=tabhi+0.1, w=20) {
 
 function cb_curve(w, b, h, y) = [[-w/2,y,h],[w/2,y,h],[w/2,y+b,h],[-w/2,y+b,h]];
 
+
+module sidebox_bottom(t = wall) {
+    csds = (225/bang+5)+(45/dang+1);
+    bsds = 6;
+    tsds = bsds*csds;
+    polyhedron(points = concat(
+        sbb_curve(-t, 0),
+        sbb_curve(0, 0),
+        sbb_curve(0, t+0.1),
+        sbb_curve(5, t+0.1),
+        sbb_curve(5, t*2),
+        sbb_curve(0, t*2)
+        ), faces = concat(
+            [for (s=[0:bsds-2]) each cquads(csds, csds*s, tsds)],
+            [[for (s=[0:csds-1]) s],
+             [for (s=[tsds-1:-1:tsds-csds]) s]]
+        ));
+}
+
+function sbb_curve(z, t, eb=5, hb=20, w=width+thick+exof, bw=butwid, bh=buthi, bs=butsz, hsw=20) = concat(
+// I don't know where 1.213 comes from; trial and error
+    [[w-t+hsw, t, z]],
+    bcircle_b(hb-t, w-hb+hsw, hsw-1.213, z, 90, 135, a=dang),
+    bcircle_b(eb-t, w-bs+bh-eb, bs-eb, z, 135, 180),
+    bcircle_b(eb-t, w-bs+eb, bs-eb, z, 180, 270),
+    bcircle_b(eb-t, w-bs+eb, bs-bw+eb, z, 270, 315),
+    bcircle_b(eb-t, w-bw+eb, eb, z, 315, 360)
+    );
+
+function bcircle_b(r, x, y, z, san, ean, a=bang) = 
+    [for (an=[san:(san<ean?a:-a):ean])
+        [x+r*sin(an),y-r*cos(an),z]];
 
 // The modules
 
@@ -398,6 +430,7 @@ module buttons_r() {
         boxbutton( buttonsp/2);
         boxbutton_hw(-buttonsp/2);
         boxbutton_hw( buttonsp/2);
+        translate([0,0,-0.1]) sidebox_bottom();
     }
 }
 
