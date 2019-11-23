@@ -110,8 +110,8 @@ module hinge_bottom(w = breadth, hsw = 20, t=wall) {
                 hinge_c_curve1(0, -t, t=0),
                 hinge_c_curve1(0, 0, t=0),
                 hinge_c_curve1(0, 0, t=t+0.1),
-                hinge_c_curve1(0, 5, t=t+0.1),
-                hinge_c_curve1(0, 5, t=t*2),
+                hinge_c_curve1(0, 2, t=t+0.1),
+                hinge_c_curve1(0, 2, t=t*2),
                 hinge_c_curve1(0, 0, t=t*2)
             ), faces = concat(
                 [for (s=[0:bsds-2]) each cquads(csds, csds*s, csds*bsds)],
@@ -456,7 +456,7 @@ module hinge_cutout() {
         points = concat(
             hinge_c_curve1(0, -0.1),
             hinge_c_curve1(0, stabhi-1),
-            hinge_c_curve1(0, stabhi, t=wall+0.5),
+            hinge_c_curve1(0, stabhi, t=wall+0.5, t2=0.5),
             hinge_c_curve1(0, stabhi+0.5),
             [for (an=[0:bang:90]) each hinge_c_curve1(an, 9.5)]
         ), faces = concat(
@@ -481,9 +481,8 @@ module sidebox_cutout() {
         ));
 }
 
-function hinge_c_curve1(an, z, hsw=20, hb=20, w=breadth, x=width+thick, t=wall, bv=edgebev-wall, tc=1.5) = concat(
-    [ [x+hsw+9-t+bv*cos(an), -t, z+bv*sin(an)],
-      [x-8+t, -t, z+bv*sin(an)]/*, [x-8+t, -w+bv+t-bv*cos(an), z+bv*sin(an)]*/ ],
+function hinge_c_curve1(an, z, hsw=20, hb=20, w=breadth, x=width+thick, t=wall, bv=edgebev-wall, tc=1.5, t2=0) = concat(
+    [ [x+hsw+9-t+bv*cos(an), -t+t2, z+bv*sin(an)], [x-8+t, -t+t2, z+bv*sin(an)]],
     qcircle(tc, bv+wall,
         z+bv*sin(an), x-8+wall-0.65+t, -w+bv+wall+t, san=180, ean=90, a=-bang),
     qcircle(wall+bv*cos(an), wall+bv*cos(an),
