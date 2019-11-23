@@ -40,6 +40,7 @@ butsz = 140;
 basehi = 9.5;
 
 tabhi = 18;
+mtabhi = 13;
 stabhi = 7.5;
 
 boxheight = 51;
@@ -52,9 +53,9 @@ centerthick = 32;
 
 buttonsp = 75;
 
-*complete();
+complete = true;
 
-module complete() {
+if (complete) {
 
     rotate([90,0,0]) front_l();
     rotate([90,0,0]) front_r();
@@ -76,23 +77,24 @@ module complete() {
     color("teal") translate([0,butsz-buthi+5.5+wall,50.0]) rotate([-90,0,180]) batteryholder_1();
 
     *color("teal") translate([130,75.1,11]) rotate([180+boxang,0,135]) atmega();
+} else {
+
+    *buttons_r();
+
+    // To print
+    *rotate([90,-45,0]) sidebox();
+    *rbutton();
+    *rotate([90,0,0]) hinge_r();
+    *front_r();
+    *front_l();
+
+    center_p();
+    translate([0,0,-50.1]) center_bottom();
+
+    *hinge_r();
+    translate([0,0.1,0]) sidebox();
+    translate([0,0.1,-50.1]) sidebox_bottom();
 }
-
-*buttons_r();
-
-// To print
-*rotate([90,-45,0]) sidebox();
-*rbutton();
-*rotate([90,0,0]) hinge_r();
-*front_r();
-*front_l();
-
-center_p();
-translate([0,0,-50.1]) center_bottom();
-
-*hinge_r();
-translate([0,0.1,0]) sidebox();
-translate([0,0.1,-50.1]) sidebox_bottom();
 
 // Bottom covers
 
@@ -150,8 +152,8 @@ module b_centerholes(o=-1, f=1, t=wall, r=10/2) {
 }
 
 module b_hingeholes(o=1, t=wall, r=10/2) {
-    #translate([width+thick/2+ 7, o*(t+3), 6]) rotate([90,0,0]) cylinder(7, r, r, true, $fn=360/pang);
-    #translate([width+thick/2+32, o*(t+3), 6]) rotate([90,0,0]) cylinder(7, r, r, true, $fn=360/pang);
+    translate([width+thick/2+ 7, o*(t+3), 6]) rotate([90,0,0]) cylinder(7, r, r, true, $fn=360/pang);
+    translate([width+thick/2+32, o*(t+3), 6]) rotate([90,0,0]) cylinder(7, r, r, true, $fn=360/pang);
 }
 
 module musb_tab(h=4.6, w=8) {
@@ -173,21 +175,38 @@ module sidebox_bottom(t = wall) {
     csds = (225/bang+5)+(45/dang+1);
     bsds = 6;
     tsds = bsds*csds;
+    tw = width+thick+exof;
+    supr = 64/sqrt(2);
     difference() {
-        polyhedron(points = concat(
-            sbb_curve(-t, 0),
-            sbb_curve(0, 0),
-            sbb_curve(0, t+0.1),
-            sbb_curve(5, t+0.1),
-            sbb_curve(5, t*2),
-            sbb_curve(0, t*2)
-            ), faces = concat(
-                [for (s=[0:bsds-2]) each cquads(csds, csds*s, tsds)],
-                [[for (s=[0:csds-1]) s],
-                 [for (s=[tsds-1:-1:tsds-csds]) s]]
-            ));
+        union() {
+            polyhedron(points = concat(
+                sbb_curve(-t, 0),
+                sbb_curve(0, 0),
+                sbb_curve(0, t+0.1),
+                sbb_curve(5, t+0.1),
+                sbb_curve(5, t*2),
+                sbb_curve(0, t*2)
+                ), faces = concat(
+                    [for (s=[0:bsds-2]) each cquads(csds, csds*s, tsds)],
+                    [[for (s=[0:csds-1]) s],
+                     [for (s=[tsds-1:-1:tsds-csds]) s]]
+                ));
+
+            translate([tw-butsz/2-21.65+30, butsz/2-21.65-30, 0]) rotate([0,0,135]) box_tab(w=40);
+            translate([tw-butsz/2-21.65-30, butsz/2-21.65+30, 0]) rotate([0,0,135]) box_tab(w=40);
+            translate([tw-butsz/2+21.65, butsz/2+21.65, 0]) rotate([0,0,-45]) box_tab(h=mtabhi+0.1, w=127);
+        }
         b_centerholes(o=1);
         b_hingeholes();
+
+        // Rib cutouts
+        translate([tw-butsz/2, butsz/2, 0]) rotate([0,0,45]) sb_support(th=1.2);
+        translate([tw-butsz/2+supr, butsz/2-supr, 0]) rotate([0,0,45]) sb_support(th=1.2);
+        translate([tw-butsz/2-supr, butsz/2+supr, 0]) rotate([0,0,45]) sb_support(th=1.2);
+        for (s=[-supr:supr/4:supr]) {
+            translate([tw-butsz/2+s, butsz/2-s, 0]) rotate([0,0,45]) sb_support_2(th=0.6);
+        }
+        translate([tw-butsz/2+supr*1.25, butsz/2-supr*1.25, 0]) rotate([0,0,45]) sb_support_2(12, th=0.6);
     }
 }
 
@@ -600,13 +619,20 @@ module sidebox() {
         translate([tw-butsz/2+s, butsz/2-s, 0]) rotate([0,0,45]) sb_support_2();
     }
     translate([tw-butsz/2+supr*1.25, butsz/2-supr*1.25, 0]) rotate([0,0,45]) sb_support_2(12);
+
+    translate([tw-butsz/2+22.1, butsz/2+22.1, mtabhi]) rotate([0,0,45]) sb_tablip();
 }
 
-module sb_support() {
+module sb_tablip(w=butsz-11) {
+    rotate([90,0,0]) translate([0,0,-w/2]) linear_extrude(height=w) polygon([
+        [-0.6, 0],[0.1, 0.7],[0.1,-2.9],[-0.6,-0.8]
+    ]);
+}
+
+module sb_support(th=1) {
     pw = (buthi+butwid-11.5)/sqrt(2);
     ph = ribheight;
     phs = tan(boxang)*pw;
-    th = 1;
     translate([0, 0, boxheight-ph-21])
     polyhedron(
         points= [[pw/2,-th, 0],[pw/2,-th, ph],[-pw/2,-th, ph+phs],[-pw/2,-th, phs],
@@ -614,11 +640,10 @@ module sb_support() {
         faces = [[3,2,1,0],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7],[6,7,4,5]]);
 }
 
-module sb_support_2(ph = boxheight-32) {
+module sb_support_2(ph = boxheight-32, th=0.4) {
     pw1 = (buthi+butwid-11.5)/sqrt(2)/2;
     pw = ph / tan(50);
     pw2 = pw1 - pw;
-    th = 0.4;
     polyhedron(
         points= [[pw1,-th, 0],[pw1,-th, ph],[pw2,-th, ph],
                  [pw1, th, 0],[pw1, th, ph],[pw2, th, ph]],
