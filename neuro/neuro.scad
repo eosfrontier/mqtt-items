@@ -85,10 +85,10 @@ if (complete) {
     *rotate([90,-45,0]) sidebox();
     *rbutton();
     *rotate([0,0,7.7]) front_r();
-    *front_l();
+    front_l();
 
     *center_p();
-    translate([0,0,-0.1]) center_bottom();
+    *translate([0,0,-0.1]) center_bottom();
 
     *translate([0,0.1,0]) sidebox();
     *translate([0,0.1,-0.1]) sidebox_bottom();
@@ -706,48 +706,55 @@ function bcircle_s(r, x, y, z, zsl, san, ean, a=bang) =
         [x+r*sin(an),y-r*cos(an),(z-(x+y+r*(sin(an)-cos(an)))*zsl)]];
 
 module front_l() {
+    points = [
+        [10,15],
+        [20,20],
+        [25,35],
+        [30,55],
+        [55,50],
+        [75,65], // 4
+        [90,55],
+        [10,82],
+        [20,75],
+        [30,80],
+        [40,70], //10
+        [15,50],
+        [45,55],
+        [40,20],
+        [35,20]
+    ];
+    lines = [
+        [0,1],
+        [1,2],
+        [2,14],
+        [3,12],
+
+        [4,5],
+        [5,6],
+
+        [7,8],
+        [8,9],
+        [9,3],
+        [10,12],
+
+        [11,2],
+
+        [12,4],
+        [4,13],
+        [13,14]
+    ];
     translate([-exof,50,0]) difference() {
         union() {
             quarterpipe_h();
-            for (an=[12.5:5:87.5]) rib(an);
+            for (an=[17.5:5:87.5]) rib(an);
             translate([-width-thick/2,-30,0]) rotate([0,0,-90]) cylinder(edgebev, 5.5, 5.5, $fn=360/dang);
+            mirror([1,0,0]) for (s=points) ledhole(s[0],s[1]);
         }
         translate([-width-thick/2,-30,breadth-indof-edgebev+0.2]) rotate([0,0,90]) cylinder(edgebev, 4.5, 4.5, $fn=360/dang);
         translate([-width-thick/2,-30,-0.5]) rotate([0,0,-90]) cylinder(edgebev+1, 5.0, 5.0, $fn=360/dang);
         mirror([1,0,0]) {
-            cpoint(10, 15);
-            cline(10,15,15,20);
-            cpoint(15, 20);
-            cline(15,20,25,35);
-            cpoint(25, 35);
-            cline(25,35,35,20);
-            cpoint(30, 55);
-            cline(30,55,45,55);
-    
-            cpoint(55,50);
-            cline(55,50,75,65);
-            cpoint(75,65);
-            cline(75,65,90,55);
-            cpoint(90,55);
-            
-            cpoint(5,88);
-            cline(5,88,20,75);
-            cpoint(20,75);
-            cline(20,75,30,80);
-            cpoint(30,80);
-            cline(30,80,30,55);
-            cpoint(40,70);
-            cline(40,70,45,55);
-            
-            cpoint(15,50);
-            cline(15,50,25,35);
-            
-            cpoint(45,55);
-            cline(45,55,55,50);
-            cline(55,50,40,20);
-            cpoint(40,20);
-            cline(40,20,35,20);
-            cpoint(35,20);
+            for (s=points) cpoint(s[0],s[1]);
+            for (s=lines) cline(points[s[0]][0],points[s[0]][1],points[s[1]][0],points[s[1]][1]);
         }
     }
 }
@@ -759,16 +766,32 @@ module front_r() {
         [25,35],
         [25,55],
         [45,55],
-        [55,50],
+        [55,50], // 5
         [75,35],
         [85,55],
         [ 5,85],
         [20,75],
-        [30,80],
+        [30,80], // 10
         [40,70],
         [15,45],
         [40,20],
         [35,25]
+    ];
+    lines = [
+        [0,1],
+        [1,2],
+        [2,3],
+        [3,4],
+        [4,5],
+        [5,6],
+        [6,7],
+        [8,9],
+        [9,10],
+        [10,11],
+        [11,4],
+        [12,3],
+        [5,13],
+        [13,14]
     ];
     translate([exof,50,0]) difference() {
         union() {
@@ -784,6 +807,8 @@ module front_r() {
         translate([-5,height+wall,breadth/2]) disc(r=28, t=16);
         union() {
             for (s=points) cpoint(s[0],s[1]);
+            for (s=lines) cline(points[s[0]][0],points[s[0]][1],points[s[1]][0],points[s[1]][1]);
+            /*
             cline(5,15,15,15);
             cline(15,15,25,35);
             cline(25,35,25,55);
@@ -801,6 +826,7 @@ module front_r() {
             
             cline(55,50,40,20);
             cline(40,20,35,25);
+            */
         }
     }
 }
