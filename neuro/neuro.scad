@@ -84,12 +84,11 @@ if (complete) {
     // To print
     *rotate([90,-45,0]) sidebox();
     *rbutton();
-    //rotate([0,0,7])
-    front_r();
+    *rotate([0,0,7.7]) front_r();
     *front_l();
 
     *center_p();
-    *translate([0,0,-0.1]) center_bottom();
+    translate([0,0,-0.1]) center_bottom();
 
     *translate([0,0.1,0]) sidebox();
     *translate([0,0.1,-0.1]) sidebox_bottom();
@@ -159,10 +158,10 @@ module center_bottom(w = centerwidth, b = centerthick, t = wall, tol=0.2) {
         b_centerholes();
         b_centerholes(f=-1);
     }
-    translate([-w/2+18, y+b-t-8.7, 0]) {
+    translate([-w/2+18, y+b-t-9.5, 0]) {
         translate([0,0,1.45]) cube([12, 4, 3.1], true);
-        translate([-5,3,1.45]) cube([2, 8, 3.1], true);
-        translate([ 5,3,1.45]) cube([2, 8, 3.1], true);
+        translate([-5,3,1.45]) cube([2, 8.5, 3.1], true);
+        translate([ 5,3,1.45]) cube([2, 8.5, 3.1], true);
         translate([ 4.2,0,3]) cylinder(3, 1.5, 1.5, $fn=360/pang);
         translate([-4.2,0,3]) cylinder(3, 1.5, 1.5, $fn=360/pang);
         translate([ 4.2,0,6]) cylinder(0.5, 1.5, 1.0, $fn=360/pang);
