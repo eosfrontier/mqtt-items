@@ -1,4 +1,4 @@
-/* Fine
+///* Fine
     cang = 1;
     bang = 5;
     dang = 2.5;
@@ -9,7 +9,7 @@
     coang=82;
 // */
  
-///* Coarse
+/* Coarse
     cang = 5;
     bang = 15;
     dang = 5;
@@ -84,6 +84,7 @@ if (complete) {
     // To print
     *rotate([90,-45,0]) sidebox();
     *rbutton();
+    //rotate([0,0,7])
     front_r();
     *front_l();
 
@@ -809,7 +810,7 @@ module topdisc(r=30, t=20) {
     h = thick - 3;
     difference() {
         disc(r, t);
-        translate([r/2+2,h/2-0.1,0]) cube([r,h+0.1,2*r], true);
+        translate([r/2+2,h/2+0.2,0]) cube([r,h+1.6,2*r], true);
     }
 }
 
