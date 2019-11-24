@@ -88,10 +88,10 @@ if (complete) {
     *front_l();
 
     *center_p();
-    translate([0,0,-50.1]) center_bottom();
+    *translate([0,0,-0.1]) center_bottom();
 
     *translate([0,0.1,0]) sidebox();
-    *translate([0,0.1,-50.1]) sidebox_bottom();
+    translate([0,0.1,-0.1]) sidebox_bottom();
 
     *rotate([90,0,0]) hinge_r();
     *hinge_r();
@@ -205,7 +205,7 @@ module box_tab(h=tabhi+0.1, w=20) {
 function cb_curve(w, b, h, y) = [[-w/2,y,h],[w/2,y,h],[w/2,y+b,h],[-w/2,y+b,h]];
 
 
-module sidebox_bottom(t = wall) {
+module sidebox_bottom(t = wall, tol=0.2) {
     csds = (225/bang+5)+(45/dang+1);
     bsds = 6;
     tsds = bsds*csds;
@@ -216,10 +216,10 @@ module sidebox_bottom(t = wall) {
             polyhedron(points = concat(
                 sbb_curve(-t, 0),
                 sbb_curve(0, 0),
-                sbb_curve(0, t+0.1),
-                sbb_curve(5, t+0.1),
-                sbb_curve(5, t*2),
-                sbb_curve(0, t*2)
+                sbb_curve(0, t+tol),
+                sbb_curve(5, t+tol),
+                sbb_curve(5, t*2+tol),
+                sbb_curve(0, t*2+tol)
                 ), faces = concat(
                     [for (s=[0:bsds-2]) each cquads(csds, csds*s, tsds)],
                     [[for (s=[0:csds-1]) s],
