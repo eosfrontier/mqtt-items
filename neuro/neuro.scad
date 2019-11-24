@@ -1,4 +1,4 @@
-///* Fine
+/* Fine
     cang = 1;
     bang = 5;
     dang = 2.5;
@@ -9,7 +9,7 @@
     coang=82;
 // */
  
-/* Coarse
+///* Coarse
     cang = 5;
     bang = 15;
     dang = 5;
@@ -84,14 +84,14 @@ if (complete) {
     // To print
     *rotate([90,-45,0]) sidebox();
     *rbutton();
-    *front_r();
+    front_r();
     *front_l();
 
     *center_p();
     *translate([0,0,-0.1]) center_bottom();
 
     *translate([0,0.1,0]) sidebox();
-    translate([0,0.1,-0.1]) sidebox_bottom();
+    *translate([0,0.1,-0.1]) sidebox_bottom();
 
     *rotate([90,0,0]) hinge_r();
     *hinge_r();
@@ -158,14 +158,14 @@ module center_bottom(w = centerwidth, b = centerthick, t = wall, tol=0.2) {
         b_centerholes();
         b_centerholes(f=-1);
     }
-    translate([-w/2+18, y+b-t-8.5, 0]) {
+    translate([-w/2+18, y+b-t-8.7, 0]) {
         translate([0,0,1.45]) cube([12, 4, 3.1], true);
         translate([-5,3,1.45]) cube([2, 8, 3.1], true);
         translate([ 5,3,1.45]) cube([2, 8, 3.1], true);
-        translate([ 4.4,0,3]) cylinder(3, 1.5, 1.5, $fn=360/pang);
-        translate([-4.4,0,3]) cylinder(3, 1.5, 1.5, $fn=360/pang);
-        translate([ 4.4,0,6]) cylinder(0.5, 1.5, 1.0, $fn=360/pang);
-        translate([-4.4,0,6]) cylinder(0.5, 1.5, 1.0, $fn=360/pang);
+        translate([ 4.2,0,3]) cylinder(3, 1.5, 1.5, $fn=360/pang);
+        translate([-4.2,0,3]) cylinder(3, 1.5, 1.5, $fn=360/pang);
+        translate([ 4.2,0,6]) cylinder(0.5, 1.5, 1.0, $fn=360/pang);
+        translate([-4.2,0,6]) cylinder(0.5, 1.5, 1.0, $fn=360/pang);
 
         translate([-6.8, 0, 0]) musb_tab();
         translate([ 6.8, 0, 0]) mirror([1,0,0]) musb_tab();
@@ -753,6 +753,23 @@ module front_l() {
 }
 
 module front_r() {
+    points = [
+        [ 5,15],
+        [15,15],
+        [25,35],
+        [25,55],
+        [45,55],
+        [55,50],
+        [75,35],
+        [85,55],
+        [ 5,85],
+        [20,75],
+        [30,80],
+        [40,70],
+        [15,45],
+        [40,20],
+        [35,25]
+    ];
     translate([exof,50,0]) difference() {
         union() {
             mirror([1,0,0]) quarterpipe();
@@ -760,43 +777,30 @@ module front_r() {
             mirror([1,0,0]) for (an=[2.5:5:87.5]) rib(an);
             translate([-5,height,breadth/2]) topdisc();
             translate([width+thick/2,-30,0]) rotate([0,0,-90]) cylinder(edgebev, 5.5, 5.5, $fn=360/dang);
+            for (s=points) ledhole(s[0],s[1]);
         }
         translate([width+thick/2,-30,breadth-indof-edgebev+0.2]) rotate([0,0,90]) cylinder(edgebev, 4.5, 4.5, $fn=360/dang);
         translate([width+thick/2,-30,-0.5]) rotate([0,0,-90]) cylinder(edgebev+1, 5.0, 5.0, $fn=360/dang);
         translate([-5,height+wall,breadth/2]) disc(r=28, t=16);
         union() {
-            cpoint(5, 15);
+            for (s=points) cpoint(s[0],s[1]);
             cline(5,15,15,15);
-            cpoint(15, 15);
             cline(15,15,25,35);
-            cpoint(25, 35);
             cline(25,35,25,55);
-            cpoint(25, 55);
             cline(25,55,45,55);
-            cpoint(45,55);
             cline(45,55,55,50);
-            cpoint(55,50);
             cline(55,50,75,35);
-            cpoint(75,35);
             cline(75,35,85,55);
-            cpoint(85,55);
             
-            cpoint(5,85);
             cline(5,85,20,75);
-            cpoint(20,75);
             cline(20,75,30,80);
-            cpoint(30,80);
             cline(30,80,40,70);
-            cpoint(40,70);
             cline(40,70,45,55);
             
-            cpoint(15,45);
             cline(15,45,25,35);
             
             cline(55,50,40,20);
-            cpoint(40,20);
             cline(40,20,35,25);
-            cpoint(35,25);
         }
     }
 }
@@ -805,7 +809,7 @@ module topdisc(r=30, t=20) {
     h = thick - 3;
     difference() {
         disc(r, t);
-        #translate([r/2+2,h/2-0.1,0]) cube([r,h+0.1,2*r], true);
+        translate([r/2+2,h/2-0.1,0]) cube([r,h+0.1,2*r], true);
     }
 }
 
@@ -823,8 +827,28 @@ module rib(an, th=thick-2, rh=height+0.1, w=wall, z=breadth, zo=3, o=10) {
 module cpoint(a, z, t=5, d=1.5, rw=width+thick, rh=height+thick) {
     translate([rw*sin(a),rh*cos(a), z])
     rotate([0,0,-a])
+    translate([0,-d,0]) {
+        disc(t, d*2, d*1.5, 0, ca=pang, ba=pbev);
+    }
+}
+
+module ledhole(a, z, d=1.6, rw=width+thick, rh=height+thick, t=wall, w=5, h=4, b=1) {
+    bsds=4;
+    csds=4;
+    tsds=bsds*csds;
+    translate([rw*sin(a),rh*cos(a), z])
+    rotate([0,0,-a])
     translate([0,-d,0])
-    disc(t, d*2, d*1.5, 0, ca=pang, ba=pbev);
+    polyhedron(points = [
+        [-w/2,-b,-w/2],[-w/2,-b,w/2],[w/2,-b,w/2],[w/2,-b,-w/2],
+        [-w/2,-h,-w/2],[-w/2,-h,w/2],[w/2,-h,w/2],[w/2,-h,-w/2],
+        [-w/2-1,-h,-w/2-1],[-w/2-1,-h,w/2+1],[w/2+1,-h,w/2+1],[w/2+1,-h,-w/2-1],
+        [-w/2-h-1,0,-w/2-h-1],[-w/2-h-1,0,w/2+h+1],[w/2+h+1,0,w/2+h+1],[w/2+h+1,0,-w/2-h-1]
+    ], faces = concat(
+        [for (s=[0:bsds-2]) each cquads(csds, csds*s, tsds)],
+        [[for (s=[0:csds-1]) s]],
+        [[for (s=[tsds-1:-1:tsds-csds]) s]]
+    ));
 }
 
 module cline(a1, z1, a2, z2, t=1.5, rw=width+thick, rh=height+thick, a=cang) {
