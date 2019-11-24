@@ -88,12 +88,12 @@ if (complete) {
     *front_l();
 
     *center_p();
-    *translate([0,0,-50.1]) center_bottom();
+    translate([0,0,-50.1]) center_bottom();
 
     *translate([0,0.1,0]) sidebox();
     *translate([0,0.1,-50.1]) sidebox_bottom();
 
-    rotate([90,0,0]) hinge_r();
+    *rotate([90,0,0]) hinge_r();
     *hinge_r();
     *translate([0,0, -0.1]) hinge_bottom();
 }
@@ -132,7 +132,7 @@ module hinge_bottom(w = breadth, hsw = 20, t=wall) {
     translate([x2-12, -90, 0]) rotate([0,0,-140]) box_tab(w=16, h=stabhi+0.1);
 }
 
-module center_bottom(w = centerwidth, b = centerthick, t = wall, tol=0.1) {
+module center_bottom(w = centerwidth, b = centerthick, t = wall, tol=0.2) {
     csds = 4;
     bsds = 6;
     tsds = csds*bsds;
@@ -162,13 +162,13 @@ module center_bottom(w = centerwidth, b = centerthick, t = wall, tol=0.1) {
         translate([0,0,1.45]) cube([12, 4, 3.1], true);
         translate([-5,3,1.45]) cube([2, 8, 3.1], true);
         translate([ 5,3,1.45]) cube([2, 8, 3.1], true);
-        translate([ 4.2,0,3]) cylinder(2, 1.4, 1.4, $fn=360/pang);
-        translate([-4.2,0,3]) cylinder(2, 1.4, 1.4, $fn=360/pang);
-        translate([ 4.2,0,5]) cylinder(0.5, 1.4, 0.9, $fn=360/pang);
-        translate([-4.2,0,5]) cylinder(0.5, 1.4, 0.9, $fn=360/pang);
+        translate([ 4.4,0,3]) cylinder(3, 1.5, 1.5, $fn=360/pang);
+        translate([-4.4,0,3]) cylinder(3, 1.5, 1.5, $fn=360/pang);
+        translate([ 4.4,0,6]) cylinder(0.5, 1.5, 1.0, $fn=360/pang);
+        translate([-4.4,0,6]) cylinder(0.5, 1.5, 1.0, $fn=360/pang);
 
-        translate([-7, 0, 0]) musb_tab();
-        translate([ 7, 0, 0]) mirror([1,0,0]) musb_tab();
+        translate([-6.8, 0, 0]) musb_tab();
+        translate([ 6.8, 0, 0]) mirror([1,0,0]) musb_tab();
     }
 
     translate([0, y+b-t-0.6, 0]) box_tab(w=40);
@@ -198,7 +198,7 @@ module musb_tab(h=4.6, w=8) {
 
 module box_tab(h=tabhi+0.1, w=20) {
     rotate([0,-90,0]) translate([0,0,-w/2]) linear_extrude(height=w) polygon([
-        [-1,0],[h,0],[h+0.6,0.6],[h+2,-0.5],[h+1, -1.5],[-1,-1.5]
+        [-1,0],[h,0],[h+0.6,0.6],[h+2,-0.5],[h+1, -1.6],[-1,-1.6]
     ]);
 }
 
@@ -289,7 +289,8 @@ module center_p(w = centerwidth, b = centerthick, h = 40, eh=40, t=wall, st=cent
         centerholes(f = -1);
 
         translate([-w/2+14, y+b-t/2, 25]) switchhole();
-        #translate([-w/2+18, y+b-t/2, 1.9]) cube([9, t+1, 4.2], true);
+        translate([-w/2+18, y+b-t/2, 1.5]) cube([9, t+1, 3.2], true);
+        translate([0, y+t+0.5, tabhi]) cube([29.2, 1, 4], true);
     }
     translate([0, y+t, 0]) battery_slot();
     translate([0, y+t, 0]) mirror([1,0,0]) battery_slot();
