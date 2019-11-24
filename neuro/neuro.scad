@@ -79,13 +79,15 @@ if (complete) {
     *color("teal") translate([130,75.1,11]) rotate([180+boxang,0,135]) atmega();
 } else {
 
-    *buttons_r();
-
     // To print
     *rotate([90,-45,0]) sidebox();
     *rbutton();
-    *rotate([0,0,7.7]) front_r();
-    front_l();
+    //*rotate([0,0,7.7])
+    *front_r();
+    front_r_bottom();
+    //*rotate([0,0,-10])
+    *front_l();
+    front_l_bottom();
 
     *center_p();
     *translate([0,0,-0.1]) center_bottom();
@@ -99,6 +101,86 @@ if (complete) {
 }
 
 // Bottom covers
+
+module front_l_bottom(rw=width, rh=height, w=breadth, t=wall*2, o=10, bv=edgebev+0.2, ang=coang-2) {
+    csds = (ang/cang+1);
+    bsds = 4;
+    tsds = csds*bsds;
+    translate([-exof,50,0]) difference() {
+        polyhedron(points = concat(
+            qcircle_c(rw  , rh  ,   o+bv, san=-90, ean=ang),
+            qcircle_c(rw+t, rh+t,   o+bv, san=-90, ean=ang),
+            qcircle_c(rw+t, rh+t, w-o-bv, san=-90, ean=ang),
+            qcircle_c(rw  , rh  , w-o-bv, san=-90, ean=ang)
+        ), faces = concat(
+            [for (s=[0:csds-2], b=[0:csds:tsds-csds]) each [
+                [s+b,s+b+1,s+((b+csds)%tsds)],[s+b+1,s+((b+csds)%tsds)+1,s+((b+csds)%tsds)]
+            ]],
+            [[0,csds,2*csds],[0,2*csds,3*csds],[csds-1,3*csds-1,2*csds-1],[csds-1,4*csds-1,3*csds-1]]
+        ));
+        for (an=[2.5:5:87.5]) rib(an, w=wall+1, z=breadth-0.2);
+    }
+    thi = w-10;
+    twi = 4;
+    translate([-exof-rw-t/2-0.1, 50.5, w/2])
+    rotate([0,-90,0]) linear_extrude(height=t/2-0.1) polygon([
+        [-thi/4,0],[-thi/4+twi,-twi],[thi/4-twi,-twi],[thi/4,0]
+    ]);
+    thi2 = 11;
+    twi2 = 1.5;
+    translate([-exof, 50, 0]) mirror([1,0,0]) rotate([0,0,ang-0.3]) {
+        for (s=[-2:2]) {
+            translate([rh+t*0.75, 0, w/2+s*15])
+            rotate([0,90,0]) linear_extrude(height=t/4, scale=0.4) polygon([
+                [-thi2/4,0],[-thi2/4+twi2,twi2],[thi2/4-twi2,twi2],[thi2/4,0]
+            ]);
+            translate([rh+t*0.75, 0, w/2+s*15])
+            rotate([0,-90,0]) linear_extrude(height=t/4, scale=0.4) polygon([
+                [-thi2/4,0],[-thi2/4+twi2,twi2],[thi2/4-twi2,twi2],[thi2/4,0]
+            ]);
+        }
+    }
+}
+
+module front_r_bottom(rw=width, rh=height, w=breadth, t=wall+2, o=10, bv=edgebev+0.2, ang=89) {
+    csds = (ang/cang+1);
+    bsds = 4;
+    tsds = csds*bsds;
+    translate([exof,50,0]) mirror([1,0,0]) difference() {
+        polyhedron(points = concat(
+            qcircle_c(rw  , rh  ,   o+bv, san=-90, ean=ang),
+            qcircle_c(rw+t, rh+t,   o+bv, san=-90, ean=ang),
+            qcircle_c(rw+t, rh+t, w-o-bv, san=-90, ean=ang),
+            qcircle_c(rw  , rh  , w-o-bv, san=-90, ean=ang)
+        ), faces = concat(
+            [for (s=[0:csds-2], b=[0:csds:tsds-csds]) each [
+                [s+b,s+b+1,s+((b+csds)%tsds)],[s+b+1,s+((b+csds)%tsds)+1,s+((b+csds)%tsds)]
+            ]],
+            [[0,csds,2*csds],[0,2*csds,3*csds],[csds-1,3*csds-1,2*csds-1],[csds-1,4*csds-1,3*csds-1]]
+        ));
+        for (an=[2.5:5:87.5]) rib(an, w=wall+1, z=w-0.2);
+    }
+    thi = w-10;
+    twi = 4;
+    translate([exof+rw+t/2+0.1, 50.5, w/2])
+    rotate([0,90,0]) linear_extrude(height=t/2-0.1) polygon([
+        [-thi/4,0],[-thi/4+twi,-twi],[thi/4-twi,-twi],[thi/4,0]
+    ]);
+    thi2 = 11;
+    twi2 = 1.5;
+    translate([exof, 50, 0]) rotate([0,0,ang-0.3]) {
+        for (s=[-2:2]) {
+            translate([rh+t*0.75, 0, w/2+s*15])
+            rotate([0,90,0]) linear_extrude(height=t/4, scale=0.4) polygon([
+                [-thi2/4,0],[-thi2/4+twi2,twi2],[thi2/4-twi2,twi2],[thi2/4,0]
+            ]);
+            translate([rh+t*0.75, 0, w/2+s*15])
+            rotate([0,-90,0]) linear_extrude(height=t/4, scale=0.4) polygon([
+                [-thi2/4,0],[-thi2/4+twi2,twi2],[thi2/4-twi2,twi2],[thi2/4,0]
+            ]);
+        }
+    }
+}
 
 module hinge_bottom(w = breadth, hsw = 20, t=wall) {
     csds = (45/dang+135/bang+5);
@@ -796,7 +878,7 @@ module front_r() {
     translate([exof,50,0]) difference() {
         union() {
             mirror([1,0,0]) quarterpipe();
-            mirror([1,0,0]) rib(2.5);
+            // mirror([1,0,0]) rib(2.5);
             mirror([1,0,0]) for (an=[2.5:5:87.5]) rib(an);
             translate([-5,height,breadth/2]) topdisc();
             translate([width+thick/2,-30,0]) rotate([0,0,-90]) cylinder(edgebev, 5.5, 5.5, $fn=360/dang);
@@ -1295,6 +1377,10 @@ function bcircle_m(r, x, y, z, san=0, ean=90, a=bang) =
 function qcircle(rw, rh, z, x=0, y=0, san=0, ean=90, a=cang) =
     [for (an=[san+(a>0?0:ean):a:san+(a>0?ean:0)])
         [x+rw*sin(an),y+rh*cos(an),z]];
+
+function qcircle_c(rw, rh, z, x=0, y=0, san=0, ean=90, a=cang, tol=0.1) =
+    [for (an=[san+(a>0?0:ean):a:san+(a>0?ean:0)])
+        [x+rw*sin(an+(an==san?tol:an==(san+ean)?-tol:0)),y+rh*cos(an+(an==san?tol:an==(san+ean)?-tol:0)),z]];
 
 function cquads(n,o,s=9999999,ex=0) = concat(
     [for (i=[0:n-1-ex]) [(i+1)%n+o,i+o,(i+o+n)%s]],
