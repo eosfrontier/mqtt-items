@@ -83,8 +83,11 @@ if (complete) {
 } else {
 
     // To print
-    *rotate([90,-45,0]) sidebox();
+    rotate([90,-45,0]) sidebox();
     *rbutton();
+
+    *rotate([90,45,0]) mirror([1,0,0]) sidebox();
+
     //*rotate([0,0,7.7])
     *front_r();
     *front_r_bottom();
@@ -97,10 +100,15 @@ if (complete) {
 
     *translate([0,0.1,0]) sidebox();
     *translate([0,0.1,-0.1]) sidebox_bottom();
+    *translate([0,0.1,-0.1]) mirror([1,0,0]) sidebox_bottom();
 
     *rotate([90,0,0]) hinge_r();
     *hinge_r();
     *translate([0,0, -0.1]) hinge_bottom();
+
+    *rotate([90,0,0]) mirror([1,0,0]) hinge_r();
+    *mirror([1,0,0]) hinge_r();
+    *translate([0,0, -0.1]) mirror([1,0,0]) hinge_bottom();
 }
 
 // Bottom covers
@@ -278,7 +286,7 @@ module b_centerholes(o=-1, f=1, t=wall, r=10/2) {
 
 module b_hingeholes(o=1, t=wall, r=10/2) {
     translate([width+thick/2+ 7, o*(t+3), 6]) rotate([90,0,0]) cylinder(7, r, r, true, $fn=360/pang);
-    translate([width+thick/2+32, o*(t+3), 6]) rotate([90,0,0]) cylinder(7, r, r, true, $fn=360/pang);
+    translate([width+thick/2+31, o*(t+3), 6]) rotate([90,0,0]) cylinder(7, r, r, true, $fn=360/pang);
 }
 
 module musb_tab(h=4.6, w=8) {
