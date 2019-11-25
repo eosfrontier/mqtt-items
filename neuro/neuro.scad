@@ -53,6 +53,9 @@ centerthick = 32;
 
 buttonsp = 75;
 
+ledholes = false;
+fixit = ledholes?0:1;
+
 complete = false;
 
 if (complete) {
@@ -84,10 +87,10 @@ if (complete) {
     *rbutton();
     //*rotate([0,0,7.7])
     *front_r();
-    front_r_bottom();
+    *front_r_bottom();
     //*rotate([0,0,-10])
     *front_l();
-    front_l_bottom();
+    *front_l_bottom();
 
     *center_p();
     *translate([0,0,-0.1]) center_bottom();
@@ -143,7 +146,7 @@ module front_l_bottom(rw=width, rh=height, w=breadth, t=wall*2, o=10, bv=edgebev
     }
 }
 
-module front_r_bottom(rw=width, rh=height, w=breadth, t=wall+2, o=10, bv=edgebev+0.2, ang=89) {
+module front_r_bottom(rw=width, rh=height, w=breadth, t=wall, o=10, bv=edgebev+0.2, ang=89) {
     csds = (ang/cang+1);
     bsds = 4;
     tsds = csds*bsds;
@@ -165,19 +168,23 @@ module front_r_bottom(rw=width, rh=height, w=breadth, t=wall+2, o=10, bv=edgebev
         thi = w-10;
         twi = 4;
         rotate([0,0,ang-0.3])
-        translate([rw+t/2+0.1, 0, w/2])
-        rotate([0,90,0]) linear_extrude(height=t/2-0.1) polygon([
-            [-thi/4,0],[-thi/4+twi,twi],[thi/4-twi,twi],[thi/4,0]
-        ]);
+        translate([rw+t+0.1, 0, w/2]) {
+            rotate([0,90,0]) linear_extrude(height=0.9) polygon([
+                [-thi/4,0],[-thi/4+twi,twi],[thi/4-twi,twi],[thi/4,0]
+            ]);
+            rotate([0,90,-30]) linear_extrude(height=0.9) polygon([
+                [-thi/4-twi,-twi],[-thi/4,1],[thi/4,1],[thi/4+twi,-twi]
+            ]);
+        }
         thi2 = 11;
         twi2 = 1.5;
         for (s=[-2:2]) {
-            translate([rh+t*0.75-0.01, 0.9, w/2+s*15])
-            rotate([0,90,0]) linear_extrude(height=t/4, scale=0.4) polygon([
+            translate([rh+3-0.01, 0.9, w/2+s*15])
+            rotate([0,90,0]) linear_extrude(height=1, scale=0.4) polygon([
                 [-thi2/4,0],[-thi2/4+twi2,-twi2],[thi2/4-twi2,-twi2],[thi2/4,0]
             ]);
-            translate([rh+t*0.75-0.01, 0.9, w/2+s*15])
-            rotate([0,-90,0]) linear_extrude(height=t/4, scale=0.4) polygon([
+            translate([rh+3-0.01, 0.9, w/2+s*15])
+            rotate([0,-90,0]) linear_extrude(height=1, scale=0.4) polygon([
                 [-thi2/4,0],[-thi2/4+twi2,-twi2],[thi2/4-twi2,-twi2],[thi2/4,0]
             ]);
         }
@@ -832,7 +839,7 @@ module front_l() {
             quarterpipe_h();
             for (an=[17.5:5:87.5]) rib(an);
             translate([-width-thick/2,-30,0]) rotate([0,0,-90]) cylinder(edgebev, 5.5, 5.5, $fn=360/dang);
-            mirror([1,0,0]) for (s=points) ledhole(s[0],s[1]);
+            if (ledholes) mirror([1,0,0]) for (s=points) ledhole(s[0],s[1]);
         }
         translate([-width-thick/2,-30,breadth-indof-edgebev+0.2]) rotate([0,0,90]) cylinder(edgebev, 4.5, 4.5, $fn=360/dang);
         translate([-width-thick/2,-30,-0.5]) rotate([0,0,-90]) cylinder(edgebev+1, 5.0, 5.0, $fn=360/dang);
@@ -884,7 +891,7 @@ module front_r() {
             mirror([1,0,0]) for (an=[2.5:5:87.5]) rib(an);
             translate([-5,height,breadth/2]) topdisc();
             translate([width+thick/2,-30,0]) rotate([0,0,-90]) cylinder(edgebev, 5.5, 5.5, $fn=360/dang);
-            for (s=points) ledhole(s[0],s[1]);
+            if (ledholes) for (s=points) ledhole(s[0],s[1]);
         }
         translate([width+thick/2,-30,breadth-indof-edgebev+0.2]) rotate([0,0,90]) cylinder(edgebev, 4.5, 4.5, $fn=360/dang);
         translate([width+thick/2,-30,-0.5]) rotate([0,0,-90]) cylinder(edgebev+1, 5.0, 5.0, $fn=360/dang);
@@ -934,11 +941,11 @@ module rib(an, th=thick-2, rh=height+0.1, w=wall, z=breadth, zo=3, o=10) {
             [0,0],[0,-th],[o,-th],[o+th,0]]);
 }
 
-module cpoint(a, z, t=5, d=1.5, rw=width+thick, rh=height+thick) {
+module cpoint(a, z, t=5, d=1.5, d2=3, rw=width+thick, rh=height+thick) {
     translate([rw*sin(a),rh*cos(a), z])
-    rotate([0,0,-a])
-    translate([0,-d,0]) {
-        disc(t, d*2, d*1.5, 0, ca=pang, ba=pbev);
+    rotate([0,0,-a]) {
+        translate([0,-d,0]) disc(t, d*2, d*1.5, 0, ca=pang, ba=pbev);
+        if (!ledholes) translate([0,-d2,0]) rotate([90,0,0]) cylinder(2, 2.5, 2.5, true, $fn=360/pang);
     }
 }
 
@@ -968,6 +975,13 @@ module cline(a1, z1, a2, z2, t=1.5, rw=width+thick, rh=height+thick, a=cang) {
     } else {
         cline_lr(a1, z1, a2, z2, t, rw, rh, a);
         //cline_lr(a1, z1, a2, z2, t-1, rw-2, rh-2, a);
+    }
+    if (!ledholes) {
+        if (a1 > a2) {
+            cline_lr(a2, z2, a1, z1, 2, rw-4, rh-4, a);
+        } else {
+            cline_lr(a1, z1, a2, z2, 2, rw-4, rh-4, a);
+        }
     }
 }
 
@@ -1021,7 +1035,7 @@ module disc(r=30, t=20, bbv=3, tbv=10, ca=cang, ba=bang) {
 function circle(r, h, a=cang) = 
     [for (an=[a:a:360]) [r*cos(an),h,r*sin(an)]];
 
-module quarterpipe(rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, ics=30, bth=2) {
+module quarterpipe(rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, ics=30, bth=2, frh=2+fixit) {
     // just the curve
     jsds = (180/bang+2)+(90/bang+2)+(100/dang+1);
 
@@ -1117,7 +1131,7 @@ function curve_lower(an, rw, rh, s, t, bv, eb, ics, io, o, bth, coang=90) = conc
             bv*(1-cos(an))+o, -(rw+((t/2-bv)-bth))+0.01, -ics, san=90, a=-bang
         ) : qcircle( // lower base curve
             (t/2-bv)-bv*sin(an)-bth, (t/2-bv)-bv*sin(an)-bth,
-            bv*(1-cos(an))+o, -(rw-((t/2-bv)-bth))-0.01, -ics, san=180, a=bang
+            bv*(1-cos(an))+o, -(rw-((t/2-bv)-bth))-0.01-(bth?fixit:0), -ics, san=180, a=bang
         ),
         scircle( // outcut incorner
             0,
@@ -1155,13 +1169,11 @@ function curve_upper(an, rw, rh, s, t, bv, eb, ics, io, o, bth, coang=90) = conc
             s-bv*(1-cos(an))-o-indof, -(rw+((t/2-bv)-bth))+0.01, -ics, san=90, a=bang
         ) : qcircle( // upper base curve
             (t/2-bv)-bv*sin(an)-bth, (t/2-bv)-bv*sin(an)-bth,
-            s-bv*(1-cos(an))-o-indof, -(rw-((t/2-bv)-bth))-0.01, -ics, san=180, a=-bang
+            s-bv*(1-cos(an))-o-indof, -(rw-((t/2-bv)-bth))-0.01-(bth?fixit:0), -ics, san=180, a=-bang
         )
     );
 
-module quarterpipe_h(rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, cs=10, bth=2, ics=30) {
-    
-
+module quarterpipe_h(rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, cs=10, bth=2, frh=2+fixit, ics=30) {
     // just the curve
     jsds = (180/bang+2)+(90/bang+2)+(100/dang+1);
     // curve + 2 corners
@@ -1191,7 +1203,7 @@ module quarterpipe_h(rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, cs=10,
             qpipe_h_curve(90, rw+bv+bth, rh+bv+bth, s, t, bv, eb, cs, ics, ios, t, bth, o=10),
             qpipe_h_curve(90, rw+bv+bth, rh+bv+bth, s, t, bv, eb, cs, ics, ios, t, bth),
 
-            qpipe_h_curve(-90, rw+t-bv-bth, rh+t-bv-bth, s, t, bv, eb, cs, ics, bth=bth)
+            qpipe_h_curve(-90, rw+t-bv-frh, rh+t-bv-frh, s, t, bv, eb, cs, ics, bth=bth)
 
         ),
         faces = concat(
@@ -1453,5 +1465,5 @@ module centerholes(t=wall, o=-1, f=1) {
 
 module hingeholes(o=-1, t=wall) {
     translate([width+thick/2+7, o*t/2, 6]) rotate([90,0,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
-    translate([width+thick/2+32, o*t/2, 6]) rotate([90,0,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
+    translate([width+thick/2+31, o*t/2, 6]) rotate([90,0,0]) cylinder(t+1, 2, 2, true, $fn=360/pang);
 }
