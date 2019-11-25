@@ -27,6 +27,7 @@ thick = 15;
 wall = 2;
 exof = 10;
 edgebev = 3;
+edgeoff = 5;
 
 indof = 20;
 cutof = 14;
@@ -83,17 +84,17 @@ if (complete) {
 } else {
 
     // To print
-    rotate([90,-45,0]) sidebox();
+    *rotate([90,-45,0]) sidebox();
     *rbutton();
 
     *rotate([90,45,0]) mirror([1,0,0]) sidebox();
 
     //*rotate([0,0,7.7])
     *front_r();
-    *front_r_bottom();
+    front_r_bottom();
     //*rotate([0,0,-10])
     *front_l();
-    *front_l_bottom();
+    front_l_bottom();
 
     *center_p();
     *translate([0,0,-0.1]) center_bottom();
@@ -113,7 +114,7 @@ if (complete) {
 
 // Bottom covers
 
-module front_l_bottom(rw=width, rh=height, w=breadth, t=wall*2, o=10, bv=edgebev+0.2, ang=coang-2) {
+module front_l_bottom(rw=width, rh=height, w=breadth, t=wall, o=edgeoff, bv=edgebev+0.2, ang=coang-2) {
     csds = (ang/cang+1);
     bsds = 4;
     tsds = csds*bsds;
@@ -130,31 +131,35 @@ module front_l_bottom(rw=width, rh=height, w=breadth, t=wall*2, o=10, bv=edgebev
             [[0,csds,2*csds],[0,2*csds,3*csds],[csds-1,3*csds-1,2*csds-1],[csds-1,4*csds-1,3*csds-1]]
         ));
         for (an=[2.5:5:87.5]) rib(an, w=wall+1, z=breadth-0.2);
+        mirror([1,0,0]) #for (s=l_points) bcpoint(s[0],s[1], coa=12);
     }
     translate([-exof, 50, 0]) mirror([1,0,0]) {
         thi = w-10;
         twi = 4;
         rotate([0,0,ang-0.3])
-        translate([rw+t/2+0.1, 0, w/2])
-        rotate([0,90,0]) linear_extrude(height=t/2-0.1) polygon([
-            [-thi/4,0],[-thi/4+twi,twi],[thi/4-twi,twi],[thi/4,0]
-        ]);
+        translate([rw+t+0.1, 0, w/2]) {
+            rotate([0,90,0]) linear_extrude(height=0.9) polygon([
+                [-thi/4,0],[-thi/4+twi,twi],[thi/4-twi,twi],[thi/4,0]
+            ]);
+            translate([-0.1,-0.705,0]) #cube([2,2.6,w-2*(o+bv)], true);
+        }
         thi2 = 11;
         twi2 = 1.5;
         for (s=[-2:2]) {
-            translate([rh+t*0.75-0.01, 0.9, w/2+s*15])
-            rotate([0,90,0]) linear_extrude(height=t/4, scale=0.4) polygon([
+            translate([rh+3-0.01, 0.9, w/2+s*15])
+            rotate([0,90,0]) linear_extrude(height=1, scale=0.4) polygon([
                 [-thi2/4,0],[-thi2/4+twi2,-twi2],[thi2/4-twi2,-twi2],[thi2/4,0]
             ]);
-            translate([rh+t*0.75-0.01, 0.9, w/2+s*15])
-            rotate([0,-90,0]) linear_extrude(height=t/4, scale=0.4) polygon([
+            translate([rh+3-0.01, 0.9, w/2+s*15])
+            rotate([0,-90,0]) linear_extrude(height=1, scale=0.4) polygon([
                 [-thi2/4,0],[-thi2/4+twi2,-twi2],[thi2/4-twi2,-twi2],[thi2/4,0]
             ]);
         }
+        translate([rh+3-0.2,1.65,w/2]) #cube([2.4,2.6,w-2*(o+bv)], true);
     }
 }
 
-module front_r_bottom(rw=width, rh=height, w=breadth, t=wall, o=10, bv=edgebev+0.2, ang=89) {
+module front_r_bottom(rw=width, rh=height, w=breadth, t=wall, o=edgeoff, bv=edgebev+0.2, ang=89) {
     csds = (ang/cang+1);
     bsds = 4;
     tsds = csds*bsds;
@@ -171,6 +176,7 @@ module front_r_bottom(rw=width, rh=height, w=breadth, t=wall, o=10, bv=edgebev+0
             [[0,csds,2*csds],[0,2*csds,3*csds],[csds-1,3*csds-1,2*csds-1],[csds-1,4*csds-1,3*csds-1]]
         ));
         for (an=[2.5:5:87.5]) rib(an, w=wall+1, z=w-0.2);
+        mirror([1,0,0]) #for (s=r_points) bcpoint(s[0],s[1]);
     }
     translate([exof, 50, 0]) {
         thi = w-10;
@@ -180,9 +186,7 @@ module front_r_bottom(rw=width, rh=height, w=breadth, t=wall, o=10, bv=edgebev+0
             rotate([0,90,0]) linear_extrude(height=0.9) polygon([
                 [-thi/4,0],[-thi/4+twi,twi],[thi/4-twi,twi],[thi/4,0]
             ]);
-            rotate([0,90,-30]) linear_extrude(height=0.9) polygon([
-                [-thi/4-twi,-twi],[-thi/4,1],[thi/4,1],[thi/4+twi,-twi]
-            ]);
+            translate([-0.1,-0.705,0]) #cube([2,2.6,w-2*(o+bv)], true);
         }
         thi2 = 11;
         twi2 = 1.5;
@@ -196,6 +200,7 @@ module front_r_bottom(rw=width, rh=height, w=breadth, t=wall, o=10, bv=edgebev+0
                 [-thi2/4,0],[-thi2/4+twi2,-twi2],[thi2/4-twi2,-twi2],[thi2/4,0]
             ]);
         }
+        translate([rh+3-0.2,1.65,w/2]) #cube([2.4,2.6,w-2*(o+bv)], true);
     }
 }
 
@@ -804,94 +809,96 @@ function bcircle_s(r, x, y, z, zsl, san, ean, a=bang) =
     [for (an=[san:(san<ean?a:-a):ean])
         [x+r*sin(an),y-r*cos(an),(z-(x+y+r*(sin(an)-cos(an)))*zsl)]];
 
+l_points = [
+    [10,15],
+    [20,20],
+    [25,35],
+    [30,55],
+    [55,50],
+    [70,65], // 4
+    [85,55],
+    [10,82],
+    [20,75],
+    [30,80],
+    [40,70], //10
+    [15,50],
+    [45,55],
+    [40,20],
+    [35,20]
+];
+l_lines = [
+    [0,1],
+    [1,2],
+    [2,14],
+    [3,12],
+
+    [4,5],
+    [5,6],
+
+    [7,8],
+    [8,9],
+    [9,3],
+    [10,12],
+
+    [11,2],
+
+    [12,4],
+    [4,13],
+    [13,14]
+];
+
 module front_l() {
-    points = [
-        [10,15],
-        [20,20],
-        [25,35],
-        [30,55],
-        [55,50],
-        [75,65], // 4
-        [90,55],
-        [10,82],
-        [20,75],
-        [30,80],
-        [40,70], //10
-        [15,50],
-        [45,55],
-        [40,20],
-        [35,20]
-    ];
-    lines = [
-        [0,1],
-        [1,2],
-        [2,14],
-        [3,12],
-
-        [4,5],
-        [5,6],
-
-        [7,8],
-        [8,9],
-        [9,3],
-        [10,12],
-
-        [11,2],
-
-        [12,4],
-        [4,13],
-        [13,14]
-    ];
     translate([-exof,50,0]) difference() {
         union() {
             quarterpipe_h();
             for (an=[17.5:5:87.5]) rib(an);
             translate([-width-thick/2,-30,0]) rotate([0,0,-90]) cylinder(edgebev, 5.5, 5.5, $fn=360/dang);
-            if (ledholes) mirror([1,0,0]) for (s=points) ledhole(s[0],s[1]);
+            if (ledholes) mirror([1,0,0]) for (s=l_points) ledhole(s[0],s[1]);
         }
         translate([-width-thick/2,-30,breadth-indof-edgebev+0.2]) rotate([0,0,90]) cylinder(edgebev, 4.5, 4.5, $fn=360/dang);
         translate([-width-thick/2,-30,-0.5]) rotate([0,0,-90]) cylinder(edgebev+1, 5.0, 5.0, $fn=360/dang);
         mirror([1,0,0]) {
-            for (s=points) cpoint(s[0],s[1]);
-            for (s=lines) cline(points[s[0]][0],points[s[0]][1],points[s[1]][0],points[s[1]][1]);
+            for (s=l_points) cpoint(s[0],s[1]);
+            for (s=l_lines) cline(l_points[s[0]][0],l_points[s[0]][1],l_points[s[1]][0],l_points[s[1]][1]);
         }
     }
 }
 
+r_points = [
+    [ 5,15],
+    [15,15],
+    [25,35],
+    [25,55],
+    [45,55],
+    [55,50], // 5
+    [75,35],
+    [85,55],
+    [ 5,85],
+    [20,75],
+    [30,80], // 10
+    [40,70],
+    [15,45],
+    [40,20],
+    [35,25]
+];
+r_lines = [
+    [0,1],
+    [1,2],
+    [2,3],
+    [3,4],
+    [4,5],
+    [5,6],
+    [6,7],
+    [8,9],
+    [9,10],
+    [10,11],
+    [11,4],
+    [12,3],
+    [5,13],
+    [13,14]
+];
+
 module front_r() {
-    points = [
-        [ 5,15],
-        [15,15],
-        [25,35],
-        [25,55],
-        [45,55],
-        [55,50], // 5
-        [75,35],
-        [85,55],
-        [ 5,85],
-        [20,75],
-        [30,80], // 10
-        [40,70],
-        [15,45],
-        [40,20],
-        [35,25]
-    ];
-    lines = [
-        [0,1],
-        [1,2],
-        [2,3],
-        [3,4],
-        [4,5],
-        [5,6],
-        [6,7],
-        [8,9],
-        [9,10],
-        [10,11],
-        [11,4],
-        [12,3],
-        [5,13],
-        [13,14]
-    ];
     translate([exof,50,0]) difference() {
         union() {
             mirror([1,0,0]) quarterpipe();
@@ -899,34 +906,13 @@ module front_r() {
             mirror([1,0,0]) for (an=[2.5:5:87.5]) rib(an);
             translate([-5,height,breadth/2]) topdisc();
             translate([width+thick/2,-30,0]) rotate([0,0,-90]) cylinder(edgebev, 5.5, 5.5, $fn=360/dang);
-            if (ledholes) for (s=points) ledhole(s[0],s[1]);
+            if (ledholes) for (s=r_points) ledhole(s[0],s[1]);
         }
         translate([width+thick/2,-30,breadth-indof-edgebev+0.2]) rotate([0,0,90]) cylinder(edgebev, 4.5, 4.5, $fn=360/dang);
         translate([width+thick/2,-30,-0.5]) rotate([0,0,-90]) cylinder(edgebev+1, 5.0, 5.0, $fn=360/dang);
         translate([-5,height+wall,breadth/2]) disc(r=28, t=16);
-        union() {
-            for (s=points) cpoint(s[0],s[1]);
-            for (s=lines) cline(points[s[0]][0],points[s[0]][1],points[s[1]][0],points[s[1]][1]);
-            /*
-            cline(5,15,15,15);
-            cline(15,15,25,35);
-            cline(25,35,25,55);
-            cline(25,55,45,55);
-            cline(45,55,55,50);
-            cline(55,50,75,35);
-            cline(75,35,85,55);
-            
-            cline(5,85,20,75);
-            cline(20,75,30,80);
-            cline(30,80,40,70);
-            cline(40,70,45,55);
-            
-            cline(15,45,25,35);
-            
-            cline(55,50,40,20);
-            cline(40,20,35,25);
-            */
-        }
+        for (s=r_points) cpoint(s[0],s[1]);
+        for (s=r_lines) cline(r_points[s[0]][0],r_points[s[0]][1],r_points[s[1]][0],r_points[s[1]][1]);
     }
 }
 
@@ -938,7 +924,7 @@ module topdisc(r=30, t=20) {
     }
 }
 
-module rib(an, th=thick-2, rh=height+0.1, w=wall, z=breadth, zo=3, o=10) {
+module rib(an, th=thick-2, rh=height+0.1, w=wall, z=breadth, zo=3, o=edgeoff) {
     rotate([0,0,an]) translate([-w/2, rh+th, z-zo])
     rotate([0,90,0]) linear_extrude(height=w)
         polygon([
@@ -954,6 +940,19 @@ module cpoint(a, z, t=5, d=1.5, d2=3, rw=width+thick, rh=height+thick) {
     rotate([0,0,-a]) {
         translate([0,-d,0]) disc(t, d*2, d*1.5, 0, ca=pang, ba=pbev);
         if (!ledholes) translate([0,-d2,0]) rotate([90,0,0]) cylinder(2, 2.5, 2.5, true, $fn=360/pang);
+    }
+}
+
+module bcpoint(a, z, rw=width+2, rh=height+2, coa=5) {
+    z1=edgeoff+8;
+    z2=breadth-z1;
+    an = a<coa?coa:a;
+    if(!ledholes) 
+    translate([rw*sin(an),rh*cos(an), (z<z1?z1:z>z2?z2:z)])
+    rotate([0,0,-an])
+    {
+        rotate([90,0,0]) cylinder(2, 4.6, 4.6, true, $fn=360/pang);
+        cube([12,2,6],true);
     }
 }
 
@@ -1043,7 +1042,7 @@ module disc(r=30, t=20, bbv=3, tbv=10, ca=cang, ba=bang) {
 function circle(r, h, a=cang) = 
     [for (an=[a:a:360]) [r*cos(an),h,r*sin(an)]];
 
-module quarterpipe(rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, ics=30, bth=2, frh=2+fixit) {
+module quarterpipe(rw=width, rh=height, s=breadth, t=thick, o=edgeoff, bv=3, eb=5, ics=30, bth=2, frh=2+fixit) {
     // just the curve
     jsds = (180/bang+2)+(90/bang+2)+(100/dang+1);
 
@@ -1071,8 +1070,8 @@ module quarterpipe(rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, ics=30, 
             // Inside
             [for (an=[0:bang:90]) each
                 qpipe_curve(an, rw+bv, rh+bv, s, t, bv, eb, ics, ics)],
-            qpipe_curve(90, rw+bv, rh+bv, s, t, bv, eb, ics, ics, o=10),
-            qpipe_curve(90, rw+bv+bth, rh+bv+bth, s, t, bv, eb, ics, ics, o=10, bth=bth),
+            qpipe_curve(90, rw+bv, rh+bv, s, t, bv, eb, ics, ics, o=o),
+            qpipe_curve(90, rw+bv+bth, rh+bv+bth, s, t, bv, eb, ics, ics, o=o, bth=bth),
             qpipe_curve(90, rw+bv+bth, rh+bv+bth, s, t, bv, eb, ics, ics, bth=bth),
             qpipe_curve(-90, rw+t-bv-bth, rh+t-bv-bth, s, t, bv, eb, ics, bth=bth)
         ),
@@ -1181,7 +1180,7 @@ function curve_upper(an, rw, rh, s, t, bv, eb, ics, io, o, bth, coang=90) = conc
         )
     );
 
-module quarterpipe_h(rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, cs=10, bth=2, frh=2+fixit, ics=30) {
+module quarterpipe_h(rw=width, rh=height, s=breadth, t=thick, o=edgeoff, bv=3, eb=5, cs=10, bth=2, frh=2+fixit, ics=30) {
     // just the curve
     jsds = (180/bang+2)+(90/bang+2)+(100/dang+1);
     // curve + 2 corners
@@ -1207,8 +1206,8 @@ module quarterpipe_h(rw=width, rh=height, s=breadth, t=thick, bv=3, eb=5, cs=10,
             // Inside
             [for (an=[0:bang:90]) each
                 qpipe_h_curve(an, rw+bv, rh+bv, s, t, bv, eb, cs, ics, ios, t)],
-            qpipe_h_curve(90, rw+bv, rh+bv, s, t, bv, eb, cs, ics, ios, t, o=10),
-            qpipe_h_curve(90, rw+bv+bth, rh+bv+bth, s, t, bv, eb, cs, ics, ios, t, bth, o=10),
+            qpipe_h_curve(90, rw+bv, rh+bv, s, t, bv, eb, cs, ics, ios, t, o=o),
+            qpipe_h_curve(90, rw+bv+bth, rh+bv+bth, s, t, bv, eb, cs, ics, ios, t, bth, o=o),
             qpipe_h_curve(90, rw+bv+bth, rh+bv+bth, s, t, bv, eb, cs, ics, ios, t, bth),
 
             qpipe_h_curve(-90, rw+t-bv-frh, rh+t-bv-frh, s, t, bv, eb, cs, ics, bth=bth)
