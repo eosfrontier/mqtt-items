@@ -93,7 +93,7 @@ if (complete) {
     front_r();
     *front_r_bottom();
     //*rotate([0,0,-10])
-    *front_l();
+    front_l();
     *front_l_bottom();
 
     *center_p();
@@ -1051,9 +1051,9 @@ function circle(r, h, a=cang) =
 
 module quarterpipe(rw=width, rh=height, s=breadth, t=thick, o=edgeoff, bv=3, eb=5, ics=30, bth=2, frh=2+fixit) {
     // just the curve
-    jsds = (180/bang+2)+(90/bang+2)+(100/dang+1);
+    jsds = (100/bang+4);
 
-    csds = 180/cang+2+(180/bang+2)+(180/bang+2)+(360/bang+4); // curve + 2 corners
+    csds = 180/cang+2+(180/bang+2)+(180/bang+2)+(360/bang+4)+jsds; // curve + 2 corners
     cs2 = csds/2;
 
     bsds = 180/bang+6; // bevel sides
@@ -1065,7 +1065,7 @@ module quarterpipe(rw=width, rh=height, s=breadth, t=thick, o=edgeoff, bv=3, eb=
     botsds = 90/bang+1+(180/bang+2);
     
     // closed off end segments
-    ovoff = ceil(2/cang);
+    ovoff = ceil(2/cang)+jsds/2;
     
     cursds = (90/bang+1);
 
@@ -1130,6 +1130,18 @@ function qpipe_curve(an, rw, rh, s, t, bv, eb, ics, io=0, o=0, bth=0) =
             eb-bv*(1-cos(an)),
             1, rh-bv*sin(an), eb,
             san=-90
+        ),
+        bcircle(
+            eb+2-bv*(cos(an)),
+            10, rh-bv*sin(an), 11,
+            san=130, ean=50, a=-bang
+        ),
+        [ [bv*(cos(an))*sin(50)+bv+18.6,rw-bv*(sin(an)),26.1+bv-bv*cos(an)*cos(50)],
+          [bv*(cos(an))*sin(50)+bv+18.6,rw-bv*(sin(an)),s-26.1-bv+bv*cos(an)*cos(50)] ],
+        bcircle(
+            eb+2-bv*(cos(an)),
+            10, rh-bv*sin(an), s-11,
+            san=180, ean=50, a=-bang
         ),
         bcircle( // upper corner
             eb-bv*(1-cos(an)),

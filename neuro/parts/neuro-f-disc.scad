@@ -1,3 +1,3 @@
 use <../neuro.scad>
 
-front_r();
+rotate([0,0,8]) front_r();
