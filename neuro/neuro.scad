@@ -90,11 +90,11 @@ if (complete) {
     *rotate([90,45,0]) mirror([1,0,0]) sidebox();
 
     //*rotate([0,0,7.7])
-    *front_r();
-    front_r_bottom();
+    front_r();
+    *front_r_bottom();
     //*rotate([0,0,-10])
     *front_l();
-    front_l_bottom();
+    *front_l_bottom();
 
     *center_p();
     *translate([0,0,-0.1]) center_bottom();
