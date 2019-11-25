@@ -131,17 +131,21 @@ module front_l_bottom(rw=width, rh=height, w=breadth, t=wall, o=edgeoff, bv=edge
             [[0,csds,2*csds],[0,2*csds,3*csds],[csds-1,3*csds-1,2*csds-1],[csds-1,4*csds-1,3*csds-1]]
         ));
         for (an=[2.5:5:87.5]) rib(an, w=wall+1, z=breadth-0.2);
-        mirror([1,0,0]) #for (s=l_points) bcpoint(s[0],s[1], coa=12);
+        mirror([1,0,0]) for (s=l_points) bcpoint(s[0],s[1], coa=11.5);
     }
     translate([-exof, 50, 0]) mirror([1,0,0]) {
-        thi = w-10;
+        thi = 45;
         twi = 4;
         rotate([0,0,ang-0.3])
         translate([rw+t+0.1, 0, w/2]) {
             rotate([0,90,0]) linear_extrude(height=0.9) polygon([
-                [-thi/4,0],[-thi/4+twi,twi],[thi/4-twi,twi],[thi/4,0]
+                [-thi/2,0],[-thi/2+twi,twi],[thi/2-twi,twi],[thi/2,0]
             ]);
-            translate([-0.1,-0.705,0]) #cube([2,2.6,w-2*(o+bv)], true);
+            translate([-0.1,-2.01,0])
+            rotate([0,90,90]) linear_extrude(height=2.6) polygon([
+                [-thi/2,-1],[-thi/2-2,1],[thi/2+2,1],[thi/2,-1]
+            ]);
+            //translate([-0.1,-0.705,0]) cube([2,2.6,w-2*(o+bv)], true);
         }
         thi2 = 11;
         twi2 = 1.5;
@@ -155,7 +159,7 @@ module front_l_bottom(rw=width, rh=height, w=breadth, t=wall, o=edgeoff, bv=edge
                 [-thi2/4,0],[-thi2/4+twi2,-twi2],[thi2/4-twi2,-twi2],[thi2/4,0]
             ]);
         }
-        translate([rh+3-0.2,1.65,w/2]) #cube([2.4,2.6,w-2*(o+bv)], true);
+        translate([rh+3-0.2,1.65,w/2]) cube([2.4,2.6,w-2*(o+bv)], true);
     }
 }
 
@@ -176,17 +180,20 @@ module front_r_bottom(rw=width, rh=height, w=breadth, t=wall, o=edgeoff, bv=edge
             [[0,csds,2*csds],[0,2*csds,3*csds],[csds-1,3*csds-1,2*csds-1],[csds-1,4*csds-1,3*csds-1]]
         ));
         for (an=[2.5:5:87.5]) rib(an, w=wall+1, z=w-0.2);
-        mirror([1,0,0]) #for (s=r_points) bcpoint(s[0],s[1]);
+        mirror([1,0,0]) for (s=r_points) bcpoint(s[0],s[1]);
     }
     translate([exof, 50, 0]) {
-        thi = w-10;
+        thi = 45;
         twi = 4;
         rotate([0,0,ang-0.3])
         translate([rw+t+0.1, 0, w/2]) {
             rotate([0,90,0]) linear_extrude(height=0.9) polygon([
-                [-thi/4,0],[-thi/4+twi,twi],[thi/4-twi,twi],[thi/4,0]
+                [-thi/2,0],[-thi/2+twi,twi],[thi/2-twi,twi],[thi/2,0]
             ]);
-            translate([-0.1,-0.705,0]) #cube([2,2.6,w-2*(o+bv)], true);
+            translate([-0.1,-2.01,0])
+            rotate([0,90,90]) linear_extrude(height=2.6) polygon([
+                [-thi/2,-1],[-thi/2-2,1],[thi/2+2,1],[thi/2,-1]
+            ]);
         }
         thi2 = 11;
         twi2 = 1.5;
@@ -200,7 +207,7 @@ module front_r_bottom(rw=width, rh=height, w=breadth, t=wall, o=edgeoff, bv=edge
                 [-thi2/4,0],[-thi2/4+twi2,-twi2],[thi2/4-twi2,-twi2],[thi2/4,0]
             ]);
         }
-        translate([rh+3-0.2,1.65,w/2]) #cube([2.4,2.6,w-2*(o+bv)], true);
+        translate([rh+3-0.2,1.65,w/2]) cube([2.4,2.6,w-2*(o+bv)], true);
     }
 }
 
