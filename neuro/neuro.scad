@@ -37,6 +37,7 @@ buthi = 50;
 knobr = 25;
 butsz = 140;
 
+hingetol = 0.2;
 
 basehi = 9.5;
 
@@ -90,10 +91,10 @@ if (complete) {
     *rotate([90,45,0]) mirror([1,0,0]) sidebox();
 
     //*rotate([0,0,7.7])
-    front_r();
+    *front_r();
     *front_r_bottom();
     //*rotate([0,0,-10])
-    front_l();
+    *front_l();
     *front_l_bottom();
     *union() {
         mirror([1,0,0]) quarterpipe();
@@ -108,8 +109,8 @@ if (complete) {
     *translate([0,0.1,-0.1]) mirror([1,0,0]) sidebox_bottom();
 
     *rotate([90,0,0]) hinge_r();
-    *hinge_r();
-    *translate([0,0, -0.1]) hinge_bottom();
+    hinge_r();
+    translate([0,0, -50.1]) hinge_bottom();
 
     *rotate([90,0,0]) mirror([1,0,0]) hinge_r();
     *mirror([1,0,0]) hinge_r();
@@ -215,7 +216,7 @@ module front_r_bottom(rw=width, rh=height, w=breadth, t=wall, o=edgeoff, bv=edge
     }
 }
 
-module hinge_bottom(w = breadth, hsw = 20, t=wall) {
+module hinge_bottom(w = breadth+hingetol, hsw = 20, t=wall) {
     csds = (45/dang+135/bang+5);
     bsds = 6;
     tsds = csds*bsds;
@@ -452,7 +453,7 @@ function center_curve(an, y, w, b, h, eb=5, bv=edgebev) = concat(
 );
 */
 
-module hinge_r(w = breadth, bv=edgebev) {
+module hinge_r(w = breadth+hingetol, bv=edgebev) {
     csds = 360/bang+5;
     bsds = 90/bang+2;
     bsh = bsds/2-1;
@@ -497,7 +498,7 @@ module hinge_r(w = breadth, bv=edgebev) {
     }
 }
 
-module hinge_side1(hsw = 20, w = breadth, x = width+thick, bv=edgebev, tol=0.1) {
+module hinge_side1(hsw = 20, w = breadth+hingetol, x = width+thick, bv=edgebev, tol=0.1) {
     csds = (45/bang+45/dang+6);
     bsds = (90/bang+2);
     tsds = bsds*csds;
@@ -597,7 +598,7 @@ module sidebox_cutout() {
         ));
 }
 
-function hinge_c_curve1(an, z, hsw=20, hb=20, w=breadth, x=width+thick, t=wall, bv=edgebev-wall, tc=1.5, t2=0) = concat(
+function hinge_c_curve1(an, z, hsw=20, hb=20, w=breadth+hingetol, x=width+thick, t=wall, bv=edgebev-wall, tc=1.5, t2=0) = concat(
     [ [x+hsw+9-t+bv*cos(an), -t+t2, z+bv*sin(an)], [x-8+t, -t+t2, z+bv*sin(an)]],
     qcircle(tc, bv+wall,
         z+bv*sin(an), x-8+wall-0.65+t, -w+bv+wall+t, san=180, ean=90, a=-bang),

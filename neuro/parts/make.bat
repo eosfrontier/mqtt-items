@@ -1,1 +1,1 @@
-for %%F in (*.scad) ;do openscad -o %%~nF.stl %%F
+for %%F in (%1.scad) ;do openscad -o %%~nF.stl %%F
