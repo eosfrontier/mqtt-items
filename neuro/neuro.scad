@@ -95,6 +95,10 @@ if (complete) {
     //*rotate([0,0,-10])
     front_l();
     *front_l_bottom();
+    *union() {
+        mirror([1,0,0]) quarterpipe();
+        translate([-5,height,breadth/2]) topdisc();
+    }
 
     *center_p();
     *translate([0,0,-0.1]) center_bottom();
@@ -1132,15 +1136,15 @@ function qpipe_curve(an, rw, rh, s, t, bv, eb, ics, io=0, o=0, bth=0) =
             san=-90
         ),
         bcircle(
-            eb+2-bv*(cos(an)),
-            10, rh-bv*sin(an), 11,
+            eb+5-bv*(cos(an)),
+            13.01, rh-bv*sin(an), 9,
             san=130, ean=50, a=-bang
         ),
         [ [bv*(cos(an))*sin(50)+bv+18.6,rw-bv*(sin(an)),26.1+bv-bv*cos(an)*cos(50)],
           [bv*(cos(an))*sin(50)+bv+18.6,rw-bv*(sin(an)),s-26.1-bv+bv*cos(an)*cos(50)] ],
         bcircle(
-            eb+2-bv*(cos(an)),
-            10, rh-bv*sin(an), s-11,
+            eb+5-bv*(cos(an)),
+            13.01, rh-bv*sin(an), s-9,
             san=180, ean=50, a=-bang
         ),
         bcircle( // upper corner
