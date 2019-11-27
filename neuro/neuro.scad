@@ -101,7 +101,7 @@ if (complete) {
         translate([-5,height,breadth/2]) topdisc();
     }
 
-    *center_p();
+    center_p();
     *translate([0,0,-0.1]) center_bottom();
 
     *translate([0,0.1,0]) sidebox();
@@ -109,8 +109,8 @@ if (complete) {
     *translate([0,0.1,-0.1]) mirror([1,0,0]) sidebox_bottom();
 
     *rotate([90,0,0]) hinge_r();
-    hinge_r();
-    translate([0,0, -50.1]) hinge_bottom();
+    *hinge_r();
+    *translate([0,0, -50.1]) hinge_bottom();
 
     *rotate([90,0,0]) mirror([1,0,0]) hinge_r();
     *mirror([1,0,0]) hinge_r();
@@ -410,6 +410,11 @@ module center_p(w = centerwidth, b = centerthick, h = 40, eh=40, t=wall, st=cent
     }
     translate([0, y+t, 0]) battery_slot();
     translate([0, y+t, 0]) mirror([1,0,0]) battery_slot();
+
+    translate([30, y+b-t, 0]) mirror([0,1,0]) battery_slot(l=35, w=18, h=2.3);
+    translate([30, y+b-t, 0]) mirror([0,1,0]) mirror([1,0,0]) battery_slot(l=35, w=18, h=2.5);
+
+    translate([30, y+b-t, 23]) cube([10,1.2,10], true);
 }
 
 module battery_slot(l=100, l2=15, w=29.2, h=4.5, t=1, s=2.5, e=0.5) {
