@@ -1,9 +1,9 @@
 set PORT=%1
 
-rem curl -L micropython.org/resources/firmware/esp8266-20190529-v1.11.bin -o esp8266-20190529-v1.11.bin
+curl -L micropython.org/resources/firmware/esp8266-20190529-v1.11.bin -o esp8266-20190529-v1.11.bin
 
-rem esptool.py --port %PORT% erase_flash
-rem esptool.py --port %PORT% --baud 460800 write_flash --flash_size=detect -fm dio 0 esp8266-20190529-v1.11.bin
+esptool.py --port %PORT% erase_flash
+esptool.py --port %PORT% --baud 460800 write_flash --flash_size=detect -fm dio 0 esp8266-20190529-v1.11.bin
 
 set DIR=%2
 pushd %DIR% || exit /b 0

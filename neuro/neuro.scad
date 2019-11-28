@@ -102,7 +102,7 @@ if (complete) {
     }
 
     center_p();
-    *translate([0,0,-0.1]) center_bottom();
+    translate([0,0,-0.1]) center_bottom();
 
     *translate([0,0.1,0]) sidebox();
     *translate([0,0.1,-0.1]) sidebox_bottom();
@@ -288,8 +288,8 @@ module center_bottom(w = centerwidth, b = centerthick, t = wall, tol=0.2) {
     }
 
     translate([0, y+b-t-0.6, 0]) box_tab(w=40);
-    translate([-w/2+20, y+t+0.6, 0]) mirror([0,1,0]) box_tab();
-    translate([ w/2-20, y+t+0.6, 0]) mirror([0,1,0]) box_tab();
+    translate([-w/2+18.01, y+t+0.6, 0]) mirror([0,1,0]) box_tab();
+    translate([ w/2-18.01, y+t+0.6, 0]) mirror([0,1,0]) box_tab();
 }
 
 module b_centerholes(o=-1, f=1, t=wall, r=10/2) {
@@ -411,13 +411,13 @@ module center_p(w = centerwidth, b = centerthick, h = 40, eh=40, t=wall, st=cent
     translate([0, y+t, 0]) battery_slot();
     translate([0, y+t, 0]) mirror([1,0,0]) battery_slot();
 
-    translate([30, y+b-t, 0]) mirror([0,1,0]) battery_slot(l=35, w=18, h=2.3);
-    translate([30, y+b-t, 0]) mirror([0,1,0]) mirror([1,0,0]) battery_slot(l=35, w=18, h=2.5);
+    translate([33, y+b-t, 0]) mirror([0,1,0]) battery_slot(l=35, w=18.5, h=3.6);
+    translate([33, y+b-t, 0]) mirror([0,1,0]) mirror([1,0,0]) battery_slot(l=35, w=18.5, h=3.6);
 
-    translate([30, y+b-t, 23]) cube([10,1.2,10], true);
+    translate([33, y+b-t, 23]) cube([10,1.8,10], true);
 }
 
-module battery_slot(l=100, l2=15, w=29.2, h=4.5, t=1, s=2.5, e=0.5) {
+module battery_slot(l=100, l2=17, w=29.2, h=4.5, t=1, s=2.5, e=0.5) {
     translate([w/2,0,l2+h+t]) rotate([0,90,0]) linear_extrude(height=s) polygon([
         [0,0],[0,h+t],[e,h+t],[e+h+t,0]
     ]);
