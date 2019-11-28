@@ -686,8 +686,9 @@ module rbutton_hw() {
 }
 
 module rotspline() {
-    outr = 6.3/2;
-    inr = 5.3/2;
+    tol = 0.4;
+    outr = (6+tol)/2;
+    inr = (5+tol)/2;
     h1 = 6;
     h2 = 6.5;
     h3 = 10;
