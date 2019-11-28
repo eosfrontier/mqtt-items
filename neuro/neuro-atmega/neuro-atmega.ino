@@ -23,9 +23,9 @@ int *l_lines[] = { l_line1, l_line2, l_line3, l_line4 };
 int l_lens[] = { 5, 8, 7, 8 };
 
 int r_line1[] = { 2,3,4,5,6 };
-int r_line2[] = { 2,3,4,5,12,7,8,9 };
-int r_line3[] = { 2,3,4,13,14,11,10 };
-int r_line4[] = { 2,3,4,13,14,11,15,16 };
+int r_line2[] = { 2,3,4,12,11,7,8,9 };
+int r_line3[] = { 2,3,4,12,11,10 };
+int r_line4[] = { 2,3,4,12,13,14,15,16 };
 int *r_lines[] = { r_line1, r_line2, r_line3, r_line4 };
 int r_lens[] = { 5, 8, 6, 8 };
 
@@ -52,13 +52,13 @@ uint32_t get_color(long pos, int coff) {
 void setup() {
   // put your setup code here, to run once:
   l_strip.begin();
-  l_strip.setPixelColor(0, 0x440000);
-  l_strip.setPixelColor(1, 0x000044);
+  l_strip.setPixelColor(0, 0xff0000);
+  l_strip.setPixelColor(1, 0x0000ff);
   l_strip.show();
   
   r_strip.begin();
-  r_strip.setPixelColor(0, 0x333300);
-  r_strip.setPixelColor(1, 0x003333);
+  r_strip.setPixelColor(0, 0xcccc00);
+  r_strip.setPixelColor(1, 0x00cccc);
   r_strip.show();
   
   //Serial.begin(9600);
