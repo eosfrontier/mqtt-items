@@ -37,7 +37,7 @@ buthi = 50;
 knobr = 25;
 butsz = 140;
 
-hingetol = 0.2;
+hingetol = 0.5;
 
 basehi = 9.5;
 
@@ -58,7 +58,7 @@ buttonsp = 75;
 ledholes = false;
 fixit = ledholes?0:1;
 
-complete = false;
+complete = true;
 
 if (complete) {
 
@@ -91,7 +91,7 @@ if (complete) {
     *rotate([90,45,0]) mirror([1,0,0]) sidebox();
 
     //*rotate([0,0,7.7])
-    front_r();
+    *front_r();
     *front_r_bottom();
     //*rotate([0,0,-10])
     *front_l();
