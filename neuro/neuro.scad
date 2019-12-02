@@ -91,7 +91,7 @@ if (complete) {
     *rotate([90,45,0]) mirror([1,0,0]) sidebox();
 
     //*rotate([0,0,7.7])
-    *front_r();
+    front_r();
     *front_r_bottom();
     //*rotate([0,0,-10])
     *front_l();
@@ -101,8 +101,8 @@ if (complete) {
         translate([-5,height,breadth/2]) topdisc();
     }
 
-    center_p();
-    translate([0,0,-0.1]) center_bottom();
+    *center_p();
+    *translate([0,0,-0.1]) center_bottom();
 
     *translate([0,0.1,0]) sidebox();
     *translate([0,0.1,-0.1]) sidebox_bottom();
@@ -1091,7 +1091,7 @@ module quarterpipe(rw=width, rh=height, s=breadth, t=thick, o=edgeoff, bv=3, eb=
             qpipe_curve(90, rw+bv, rh+bv, s, t, bv, eb, ics, ics, o=o),
             qpipe_curve(90, rw+bv+bth, rh+bv+bth, s, t, bv, eb, ics, ics, o=o, bth=bth),
             qpipe_curve(90, rw+bv+bth, rh+bv+bth, s, t, bv, eb, ics, ics, bth=bth),
-            qpipe_curve(-90, rw+t-bv-bth, rh+t-bv-bth, s, t, bv, eb, ics, bth=bth)
+            qpipe_curve(-90, rw+t-bv-frh, rh+t-bv-frh, s, t, bv, eb, ics, bth=bth)
         ),
         faces = concat(
             // sides
