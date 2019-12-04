@@ -8,10 +8,15 @@
     "buttons":{
         "pins":[]
     },
-    "mqtt":{
+    "msg":{
         "server":"192.168.1.58",
         "name":"eos/portal/light",
-        "buttons":[]
+        "buttons":[],
+        "mapping":{
+            "eos/portal/buttons_in/button/b1":["set","flashred"],
+            "eos/portal/buttons_in/button/b2":["set","green"],
+            "eos/portal/buttons_in/button/b3":["set",""]
+        }
     },
     "fps":40
 }

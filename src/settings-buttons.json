@@ -6,10 +6,13 @@
         "colors":["180000","001800","000020"]
     },"buttons":{
         "pins":[14,12,13]
-    },"mqtt":{
+    },"msg":{
         "server":"192.168.1.58",
         "name":"eos/portal/buttons_in",
-        "buttons":["b1","b2","b3"]
+        "buttons":["b1","b2","b3"],
+        "mapping":{
+            "eos/portal/light/ack":["set","&"]
+        }
     },
     "fps":40
 }

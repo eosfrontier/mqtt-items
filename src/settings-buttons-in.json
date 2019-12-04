@@ -9,7 +9,10 @@
     },"msg":{
         "server":"192.168.1.58",
         "name":"eos/portal/buttons_in",
-        "buttons":["b4","b3","b2","b1"]
+        "buttons":["b4","b3","b2","b1"],
+        "mapping":{
+            "eos/portal/light/ack":["set","&"]
+        }
     },
     "fps":40
 }

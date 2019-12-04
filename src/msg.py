@@ -12,6 +12,8 @@ class msg:
         self.buttonstates = [False]*self.num
         self.loadavg = 0.0
 
+        self.mapping = {bytes(k,'utf-8'):[bytes(x,'utf-8') for x in v] for (k,v) in config["mapping"].items()}
+
         self.battery = machine.ADC(0)
         self.laststatus = ticks_ms()
         self.wait = 0
@@ -22,9 +24,9 @@ class msg:
         self.tstatus = b'%s/status' % config["name"]
         self.tack = b'%s/ack' % config["name"]
         self.tbtn = b'%s/button/%%s' % config["name"]
-        #self.net = mqtt.mqtt(config, b'%s/set' % config["name"], self._receive)
-        self.sub = b'%s/set' % config["name"]
-        self.net = udp.udp(config, self.sub, self._receive)
+        self.tset = b'%s/set' % config["name"]
+        #self.net = mqtt.mqtt(config, self.tset, self._receive)
+        self.net = udp.udp(config, self.tset, self._receive)
 
     def check(self):
         self.net.check()
@@ -55,6 +57,14 @@ class msg:
             self.laststatus = now
 
     def _receive(self, topic, msg):
+        if topic in self.mapping:
+            tm = self.mapping[topic]
+            topic = b'%s/%s' % (self.name, tm[0])
+            msg = tm[1].replace(b'&',msg)
+        if topic == self.tset:
+            self.do_set(msg)
+
+    def do_set(self, msg):
         if msg == b'green':
             self.leds.pulse_green()
         elif msg == b'flashred':
