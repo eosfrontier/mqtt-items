@@ -6,7 +6,7 @@
         "colors":["101000","000020","001800","180000"]
     },"buttons":{
         "pins":[4,14,12,13]
-    },"mqtt":{
+    },"msg":{
         "server":"192.168.1.58",
         "name":"eos/portal/buttons_in",
         "buttons":["b4","b3","b2","b1"]
