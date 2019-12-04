@@ -1,6 +1,12 @@
 from utime import ticks_ms, ticks_diff
 import ubinascii, machine, re
-import socket
+import socket, network
+
+def _broadcastaddr():
+    ipc = network.WLAN(network.STA_IF).ifconfig()
+    ipt = [int(i) for i in ipc[0].split('.')]
+    nmt = [int(i) for i in ipc[1].split('.')]
+    return '.'.join([str(ipt[i] | ~nmt[i] & 255) for i in range(len(ipt))])
 
 class udp:
     def __init__(self, config, sub, receive):
@@ -27,7 +33,7 @@ class udp:
 
     def publish(self, topic, msg, retain=False):
         try:
-            self._socket.sendto(b'%s\n%s' % (topic, msg), ('192.168.1.255', self._port))
+            self._socket.sendto(b'%s\n%s' % (topic, msg), (_broadcastaddr(), self._port))
             return True
         except Exception as e:
             print('publish', e)
