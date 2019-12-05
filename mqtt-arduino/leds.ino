@@ -5,15 +5,12 @@ typedef struct {
   uint32_t color[LEDS_NUM];
 } LedAnimation;
 
-const int max_anim = 16;
 
 Adafruit_NeoPixel ledstrip(LEDS_NUM, LEDS_PIN, NEO_GRB + NEO_KHZ800);
 unsigned long tick = 0;
 bool anim_rpt = false;
 int anim_len = 0;
 LedAnimation anim[max_anim];
-
-char *anim_green = "r 1000:00ff00,00aa00,005500 2000:00aa00,005500,00ff00 3000:005500,00ff00,00aa00";
 
 uint32_t interpolate(uint32_t cola, uint32_t colb, unsigned long frac, unsigned long denom)
 {
@@ -83,11 +80,17 @@ void leds_clear()
   anim_rpt = false;
 }
 
-void leds_set(char *color)
+void leds_set(const char *color)
 {
+  for (int i = 0; i < sizeof(LEDS_ANIMATIONS)/sizeof(*LEDS_ANIMATIONS); i += 2) {
+    if (!strcmp(color, LEDS_ANIMATIONS[i])) {
+      leds_set(LEDS_ANIMATIONS[i+1]);
+      return;
+    }
+  }
   leds_clear();
   int st = 0;
-  char *p = color;
+  const char *p = color;
   int ci = -2;
   while (true) {
     char c = tolower(*p++);
@@ -108,6 +111,10 @@ void leds_set(char *color)
       if (ci != -2) ci++;
     } else if (c == 'r') {
       anim_rpt = true;
+    } else if (c == '#') {
+      if (ci == -2) {
+        nm = anim[st].tm + 1000;
+      }
     }
     if (nm >= 0) {
       if (ci < 0) {
@@ -117,7 +124,7 @@ void leds_set(char *color)
             break;
           }
           st++;
-          ci = -1;
+          ci = (c == '#' ? 0 : -1);
         }
         anim[st].tm = anim[st].tm * 10 + nm;
       } else {
@@ -127,6 +134,7 @@ void leds_set(char *color)
   }
   anim_len = st+1;
   tick = millis();
+  /*
   for (st = 0; st < anim_len; st++) {
     Serial.print("DBG: st = "); Serial.print(st);
     Serial.print(", anim[st].tm = "); Serial.print(anim[st].tm);
@@ -136,4 +144,5 @@ void leds_set(char *color)
     Serial.print(","); Serial.print(anim[st].color[3], HEX);
     Serial.println(" .");
   }
+  */
 }

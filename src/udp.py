@@ -3,7 +3,8 @@ import ubinascii, machine, re
 import socket, network
 
 def _broadcastaddr():
-    ipc = network.WLAN(network.STA_IF).ifconfig()
+    ip = network.WLAN(network.STA_IF)
+    ipc = ip.ifconfig()
     ipt = [int(i) for i in ipc[0].split('.')]
     nmt = [int(i) for i in ipc[1].split('.')]
     return '.'.join([str(ipt[i] | ~nmt[i] & 255) for i in range(len(ipt))])

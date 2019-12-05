@@ -24,5 +24,5 @@ void setup() {
 void loop() {
   msg_check();
   leds_animate();
-  delay(20);
+  delay(1000/fps);
 }
