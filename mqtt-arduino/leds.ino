@@ -29,6 +29,7 @@ uint32_t interpolate(uint32_t cola, uint32_t colb, unsigned long frac, unsigned 
 void leds_setup()
 {
   ledstrip.begin();
+  leds_set("");
 }
 
 void leds_animate()
