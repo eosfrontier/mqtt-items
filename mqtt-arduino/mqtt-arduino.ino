@@ -1,5 +1,9 @@
 #include <ESP8266WiFi.h>
 #include <errno.h>
+
+//#define MQTT_BUTTONS_OUT
+//#define MQTT_BUTTONS_IN
+#define MQTT_LIGHTS
 #include "settings.h"
 
 char ssid[] = "Airy";
@@ -19,10 +23,12 @@ void setup() {
 
   msg_setup();
   leds_setup();
+  buttons_setup();
 }
 
 void loop() {
   msg_check();
   leds_animate();
+  buttons_check();
   delay(1000/fps);
 }

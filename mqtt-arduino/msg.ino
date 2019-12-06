@@ -5,7 +5,6 @@ unsigned long laststatus = 0;
 
 const char *tstatus = MSG_NAME "/status";
 const char *tack = MSG_NAME "/ack";
-const char *tbtn = MSG_NAME "/button/%s";
 const char *tset = MSG_NAME "/set";
 
 unsigned int mqtt_port = 1883;
@@ -38,7 +37,9 @@ void msg_receive(const char *topic, const char *msg)
   for (int m = 0; m < sizeof(MSG_MAPPING)/sizeof(*MSG_MAPPING); m += 4) {
     if (!strcmp(MSG_MAPPING[m], topic)) {
       if (!MSG_MAPPING[m+1] || !strcmp(MSG_MAPPING[m+1], msg)) {
-        msg_receive(MSG_MAPPING[m+2],MSG_MAPPING[m+3]);
+        const char *smsg = MSG_MAPPING[m+3];
+        if (!smsg) smsg = msg;
+        msg_receive(MSG_MAPPING[m+2],smsg);
         return;
       }
     }

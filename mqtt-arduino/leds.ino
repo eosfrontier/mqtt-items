@@ -111,7 +111,7 @@ void leds_set(const char *color)
       if (ci != -2) ci++;
     } else if (c == 'r') {
       anim_rpt = true;
-    } else if (c == '#') {
+    } else if (c == '#') { // Special case, shortcut
       if (ci == -2) {
         nm = anim[st].tm + 1000;
       }
@@ -124,7 +124,7 @@ void leds_set(const char *color)
             break;
           }
           st++;
-          ci = (c == '#' ? 0 : -1);
+          ci = (c == '#' ? 0 : -1);  // Special case
         }
         anim[st].tm = anim[st].tm * 10 + nm;
       } else {
