@@ -35,7 +35,7 @@ const char * LEDS_ANIMATIONS[] = {
   "red","r r 500:ff0000 800:000000,550000,aa0000,ff0000 1000:000000 1200:ff0000,aa0000,550000,000000 1500:ff0000",
   "",COLORS_DEFAULT
 };
-const int max_anim = 16;
+const int MAX_ANIM = 16;
 
 #ifdef MQTT_LIGHTS
 const char * MSG_MAPPING[] = {
@@ -52,5 +52,7 @@ const char * MSG_MAPPING[] = {
 };
 #endif
 
+const int STATUS_FREQ = 10 * 1000;
+const int FPS = 40;
 
-const int fps = 40;
+const int ms_per_frame = 1000/FPS;

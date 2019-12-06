@@ -1,9 +1,5 @@
 #include <WiFiUdp.h>
 
-unsigned long loadavg = 0;
-unsigned long laststatus = 0;
-
-const char *tstatus = MSG_NAME "/status";
 const char *tack = MSG_NAME "/ack";
 const char *tset = MSG_NAME "/set";
 

@@ -10,7 +10,7 @@ Adafruit_NeoPixel ledstrip(LEDS_NUM, LEDS_PIN, NEO_GRB + NEO_KHZ800);
 unsigned long tick = 0;
 bool anim_rpt = false;
 int anim_len = 0;
-LedAnimation anim[max_anim];
+LedAnimation anim[MAX_ANIM];
 
 uint32_t interpolate(uint32_t cola, uint32_t colb, unsigned long frac, unsigned long denom)
 {
@@ -70,7 +70,7 @@ void leds_clear()
   for (int c = 0; c < LEDS_NUM; c++) {
     anim[0].color[c] = ledstrip.getPixelColor(c);
   }
-  for (int st = 1; st < max_anim; st++) {
+  for (int st = 1; st < MAX_ANIM; st++) {
     anim[st].tm = 0;
     for (int c = 0; c < LEDS_NUM; c++) {
       anim[st].color[c] = 0;
@@ -119,7 +119,7 @@ void leds_set(const char *color)
     if (nm >= 0) {
       if (ci < 0) {
         if (ci == -2) {
-          if (st >= (max_anim-1)) {
+          if (st >= (MAX_ANIM-1)) {
             Serial.print("Color parse fail, too long: <<<"); Serial.print(color); Serial.println(">>>");
             break;
           }

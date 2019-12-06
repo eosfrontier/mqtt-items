@@ -1,5 +1,4 @@
 #include <ESP8266WiFi.h>
-#include <errno.h>
 
 //#define MQTT_BUTTONS_OUT
 //#define MQTT_BUTTONS_IN
@@ -8,6 +7,9 @@
 
 char ssid[] = "Airy";
 char pass[] = "Landryssa";
+
+unsigned long loadavg = 0;
+unsigned long lasttick = 0;
 
 void setup() {
   // put your setup code here, to run once:
@@ -24,11 +26,20 @@ void setup() {
   msg_setup();
   leds_setup();
   buttons_setup();
+  lasttick = millis();
 }
 
 void loop() {
   msg_check();
   leds_animate();
   buttons_check();
-  delay(1000/fps);
+  check_status();
+
+  unsigned long nexttick = millis();
+  unsigned long elaps = nexttick - lasttick;
+  lasttick = nexttick;
+  loadavg = (loadavg * 99 / 100) + (elaps * 1000 / ms_per_frame);
+  if (elaps < ms_per_frame) {
+    delay(ms_per_frame - elaps);
+  }
 }
