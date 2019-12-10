@@ -8,6 +8,8 @@
 char ssid[] = "Airy";
 char pass[] = "Landryssa";
 
+const char *state = "idle";
+
 unsigned long loadavg = 0;
 unsigned long lasttick = 0;
 

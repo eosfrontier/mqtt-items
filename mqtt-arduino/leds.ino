@@ -29,7 +29,7 @@ uint32_t interpolate(uint32_t cola, uint32_t colb, unsigned long frac, unsigned 
 void leds_setup()
 {
   ledstrip.begin();
-  leds_set("");
+  leds_set(state);
 }
 
 void leds_animate()
@@ -83,9 +83,10 @@ void leds_clear()
 
 void leds_set(const char *color)
 {
-  for (int i = 0; i < sizeof(LEDS_ANIMATIONS)/sizeof(*LEDS_ANIMATIONS); i += 2) {
+  for (int i = 0; LEDS_ANIMATIONS[i]; i += 2) {
     if (!strcmp(color, LEDS_ANIMATIONS[i])) {
       leds_set(LEDS_ANIMATIONS[i+1]);
+      state = LEDS_ANIMATIONS[i];
       return;
     }
   }

@@ -32,25 +32,29 @@ const int LEDS_PIN = 0;
 
 const char * LEDS_ANIMATIONS[] = {
   "green","r 1000:00ff00,00aa00,005500 2000:00aa00,005500,00ff00 3000:005500,00ff00,00aa00",
-  "red","r r 500:ff0000 800:000000,550000,aa0000,ff0000 1000:000000 1200:ff0000,aa0000,550000,000000 1500:ff0000",
-  "",COLORS_DEFAULT
+  "red","r 500:ff0000 800:000000,550000,aa0000,ff0000 1000:000000 1200:ff0000,aa0000,550000,000000 1500:ff0000",
+  "idle",COLORS_DEFAULT,
+  NULL
 };
 const int MAX_ANIM = 16;
 
 #ifdef MQTT_LIGHTS
 const char * MSG_MAPPING[] = {
-  "eos/portal/buttons_in/button/b1",NULL,MSG_NAME "/set","red",
-  "eos/portal/buttons_in/button/b2",NULL,MSG_NAME "/set","green",
-  "eos/portal/buttons_in/button/b3",NULL,MSG_NAME "/set","",
-  "eos/portal/buttons_out/button/b1",NULL,MSG_NAME "/set","red",
-  "eos/portal/buttons_out/button/b2",NULL,MSG_NAME "/set","green",
-  "eos/portal/buttons_out/button/b3",NULL,MSG_NAME "/set",""
+  "eos/portal/*/button/b1","idle",MSG_NAME "/set","red",
+  "eos/portal/*/button/b2","idle",MSG_NAME "/set","green",
+  "eos/portal/*/button/*","*",MSG_NAME "/set","idle",
+  "eos/portal/*/button/*","*",MSG_NAME "/set","idle",
+  NULL
 };
 #else
 const char * MSG_MAPPING[] = {
-  "eos/portal/light/ack",NULL,MSG_NAME "/set",NULL
+  "eos/portal/light/ack","*",MSG_NAME "/set",NULL,
+  NULL
 };
 #endif
+
+const int BUTTON_RETRIES = 5;
+const int BUTTON_RETRY_DELAY = 10;
 
 const int STATUS_FREQ = 10 * 1000;
 const int FPS = 40;
