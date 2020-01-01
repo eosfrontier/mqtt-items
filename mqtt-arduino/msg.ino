@@ -3,12 +3,10 @@
 unsigned int mqtt_port = 1883;
 WiFiUDP udp;
 
-#define MAX_TOPIC_SIZE 24
-
 struct {
     IPAddress ip;
     unsigned long lastseen;
-    char topic[MAX_TOPIC_SIZE];
+    char topic[24];
 } subscribers[MAX_SUBSCRIBERS];
 
 void msg_setup()
@@ -40,21 +38,28 @@ bool strmatch(const char *patt, const char *match, bool partial = false)
   return (partial || (*p == *m));
 }
 
-void msg_send(const char *topic, const char *msg)
+void msg_send_sub(const char *topic, const char *msg, int idx)
 {
-  for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
-    if (subscribers[i].lastseen && ((lasttick - subscribers[i].lastseen) < MSG_TIMEOUT)) {
-      if (strmatch(subscribers[i].topic, topic)) {
-        udp.beginPacket(subscribers[i].ip, mqtt_port);
-        udp.write(MSG_NAME "/", strlen(MSG_NAME)+1);
-        udp.write(topic, strlen(topic));
-        udp.write('\n');
-        udp.write(msg, strlen(msg));
-        udp.endPacket();
-      }
+  if (subscribers[i].lastseen && ((lasttick - subscribers[i].lastseen) < MSG_TIMEOUT)) {
+    if (strmatch(subscribers[i].topic, topic)) {
+      udp.beginPacket(subscribers[i].ip, mqtt_port);
+      udp.write(MSG_NAME "/", strlen(MSG_NAME)+1);
+      udp.write(topic, strlen(topic));
+      udp.write('\n');
+      udp.write(msg, strlen(msg));
+      udp.endPacket();
     }
   }
 }
+
+void msg_send(const char *topic, const char *msg)
+{
+  for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
+    msg_send_sub(topic, msg, i);
+  }
+}
+
+char lastack[33];
 
 void msg_add_sub(const char *topic)
 {
@@ -63,18 +68,23 @@ void msg_add_sub(const char *topic)
     const char *postfix = topic;
     for (int i = 0; i < MSG_NAME_NUM_PARTS; i++) {
       postfix = strchr(postfix, '/');
-      if (!postfix) return; // Sanity
+      if (!postfix) {
+        Serial.print("ERROR: Subscribe topic too few parts: <"); Serial.print(topic); Serial.println(">");
+        return; // Sanity
+      }
       postfix++;
     }
-    if (strlen(postfix) >= MAX_TOPIC_SIZE) {
+    if (strlen(postfix) >= sizeof(subscribers[i].topic)) {
       Serial.print("ERROR: Subscribe topic too long: <"); Serial.print(postfix); Serial.println(">");
       return; 
     }
     IPAddress ip = udp.remoteIP();
     int idx = -1;
+    bool resub = false;
     for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
       if (subscribers[i].ip == ip && !strcmp(subscribers[i].topic, postfix)) {
         idx = i;
+        resub = true;
         break;
       }
       if (idx < 0 && (!subscribers[i].lastseen || ((lasttick - subscribers[i].lastseen) > MSG_TIMEOUT))) {
@@ -82,11 +92,15 @@ void msg_add_sub(const char *topic)
       }
     }
     if (idx >= 0) {
-      if (subscribers[idx].ip != ip || strcmp(subscribers[idx].topic, postfix)) {
+      if (!resub) {
         Serial.print("Subscribed "); Serial.print(ip); Serial.print(" on <"); Serial.print(postfix); Serial.println(">");
+        strcpy(subscribers[idx].topic, postfix);
+        subscribers[idx].ip = ip;
+        if (lastack[0]) {
+          msg_send_sub("ack", lastack, idx);
+        }
+        lastsub = lasttick - MSG_TIMEOUT;
       }
-      strcpy(subscribers[idx].topic, postfix);
-      subscribers[idx].ip = ip;
       subscribers[idx].lastseen = lasttick;
     } else {
       Serial.print("ERROR: More than "); Serial.print(MAX_SUBSCRIBERS); Serial.print(" subscribers, cannot subscribe "); Serial.print(ip); Serial.print(" <"); Serial.print(topic); Serial.println(">");
@@ -106,6 +120,11 @@ void msg_receive(const char *topic, const char *msg)
   if (!strcmp(topic, MSG_NAME "/set")) {
     leds_set(msg);
     msg_send("ack", msg);
+    if (strlen(msg) < (sizeof(lastack)-1)) {
+      strcpy(lastack, msg);
+    } else {
+      lastack[0] = 0;
+    }
     buttons_ack();
     return;
   }
