@@ -40,9 +40,9 @@ bool strmatch(const char *patt, const char *match, bool partial = false)
 
 void msg_send_sub(const char *topic, const char *msg, int idx)
 {
-  if (subscribers[i].lastseen && ((lasttick - subscribers[i].lastseen) < MSG_TIMEOUT)) {
-    if (strmatch(subscribers[i].topic, topic)) {
-      udp.beginPacket(subscribers[i].ip, mqtt_port);
+  if (subscribers[idx].topic[0]) {
+    if (strmatch(subscribers[idx].topic, topic)) {
+      udp.beginPacket(subscribers[idx].ip, mqtt_port);
       udp.write(MSG_NAME "/", strlen(MSG_NAME)+1);
       udp.write(topic, strlen(topic));
       udp.write('\n');
@@ -59,6 +59,7 @@ void msg_send(const char *topic, const char *msg)
   }
 }
 
+unsigned long lastsub = -MSG_TIMEOUT;
 char lastack[33];
 
 void msg_add_sub(const char *topic)
@@ -74,7 +75,7 @@ void msg_add_sub(const char *topic)
       }
       postfix++;
     }
-    if (strlen(postfix) >= sizeof(subscribers[i].topic)) {
+    if (strlen(postfix) >= sizeof(subscribers[0].topic)) {
       Serial.print("ERROR: Subscribe topic too long: <"); Serial.print(postfix); Serial.println(">");
       return; 
     }
@@ -87,7 +88,7 @@ void msg_add_sub(const char *topic)
         resub = true;
         break;
       }
-      if (idx < 0 && (!subscribers[i].lastseen || ((lasttick - subscribers[i].lastseen) > MSG_TIMEOUT))) {
+      if (idx < 0 && (!subscribers[i].topic[0])) {
         idx = i;
       }
     }
@@ -143,8 +144,6 @@ void msg_receive(const char *topic, const char *msg)
   }
 }
 
-unsigned long lastsub = -MSG_TIMEOUT;
-
 void msg_subscribe(const char *topic)
 {
   IPAddress bcast = WiFi.localIP();
@@ -158,6 +157,14 @@ void msg_subscribe(const char *topic)
 
 void msg_check()
 {
+  if (WiFi.status() != WL_CONNECTED) {
+      leds_set("nowifi");
+      return;
+  }
+  if (!strcmp(state, "nowifi")) {
+      leds_set("idle");
+      lastsub = lasttick - MSG_TIMEOUT;
+  }
   char buf[1025];
   // Kijken of er packets zijn
   int pak;
@@ -186,5 +193,20 @@ void msg_check()
     for (int i = 0; MSG_SUBSCRIPTIONS[i]; i++) {
       msg_subscribe(MSG_SUBSCRIPTIONS[i]);
     }
+  }
+  int numsubs = 0;
+  for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
+    if (subscribers[i].topic[0]) {
+      if ((lasttick - subscribers[i].lastseen) > MSG_TIMEOUT) {
+        subscribers[i].topic[0] = 0;
+      } else {
+        numsubs++;
+      }
+    }
+  }
+  if (numsubs == 0) {
+    leds_set("nosubs");
+  } else if (!strcmp(state, "nosubs")) {
+    leds_set("idle");
   }
 }

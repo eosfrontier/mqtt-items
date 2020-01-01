@@ -8,7 +8,7 @@
 char ssid[] = "Airy";
 char pass[] = "Landryssa";
 
-const char *state = "idle";
+const char *state = "nowifi";
 
 unsigned long loadavg = 0;
 unsigned long lasttick = 0;
@@ -17,6 +17,7 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(38400);
   WiFi.begin(ssid,pass);
+  /*
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
     delay(500);
@@ -24,6 +25,7 @@ void setup() {
   Serial.println(" WiFi Connected");
   Serial.print("IP: ");
   Serial.println(WiFi.localIP());
+  */
 
   msg_setup();
   leds_setup();

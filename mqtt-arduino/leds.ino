@@ -85,8 +85,10 @@ void leds_set(const char *color)
 {
   for (int i = 0; LEDS_ANIMATIONS[i]; i += 2) {
     if (!strcmp(color, LEDS_ANIMATIONS[i])) {
-      leds_set(LEDS_ANIMATIONS[i+1]);
-      state = LEDS_ANIMATIONS[i];
+      if (state != LEDS_ANIMATIONS[i]) { // Pointer vergelijking omdat ze naar dezelfde string in-memory wijzen
+        leds_set(LEDS_ANIMATIONS[i+1]);
+        state = LEDS_ANIMATIONS[i];
+      }
       return;
     }
   }
