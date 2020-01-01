@@ -59,7 +59,7 @@ void msg_send(const char *topic, const char *msg)
   }
 }
 
-unsigned long lastsub = -MSG_TIMEOUT;
+unsigned long lastsub = 0;
 char lastack[33];
 
 void msg_add_sub(const char *topic)
@@ -100,7 +100,7 @@ void msg_add_sub(const char *topic)
         if (lastack[0]) {
           msg_send_sub("ack", lastack, idx);
         }
-        lastsub = lasttick - MSG_TIMEOUT;
+        lastsub = lasttick;
       }
       subscribers[idx].lastseen = lasttick;
     } else {
@@ -162,8 +162,9 @@ void msg_check()
       return;
   }
   if (!strcmp(state, "nowifi")) {
+      Serial.print("Connected to WiFi, IP: "); Serial.println(WiFi.localIP());
       leds_set("idle");
-      lastsub = lasttick - MSG_TIMEOUT;
+      lastsub = lasttick + 500; // Halve seconde afwachten
   }
   char buf[1025];
   // Kijken of er packets zijn
@@ -187,13 +188,6 @@ void msg_check()
       msg_receive(topic, msg);
     }
   }
-  // Resubscribe every 20 seconds
-  if ((lasttick - lastsub) > (MSG_TIMEOUT/3)) {
-    lastsub = lasttick;
-    for (int i = 0; MSG_SUBSCRIPTIONS[i]; i++) {
-      msg_subscribe(MSG_SUBSCRIPTIONS[i]);
-    }
-  }
   int numsubs = 0;
   for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
     if (subscribers[i].topic[0]) {
@@ -202,6 +196,13 @@ void msg_check()
       } else {
         numsubs++;
       }
+    }
+  }
+  // Resubscribe every N seconds
+  if ((signed)(lasttick - lastsub) >= 0) { // ipv. lasttick >= lastsub ivm overflow effecten
+    lastsub = lasttick + MSG_TIMEOUT/3;
+    for (int i = 0; MSG_SUBSCRIPTIONS[i]; i++) {
+      msg_subscribe(MSG_SUBSCRIPTIONS[i]);
     }
   }
   if (numsubs == 0) {
