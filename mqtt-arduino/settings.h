@@ -17,6 +17,8 @@ const char * BUTTONS_NAMES[] = {"b1","b2","b3"};
 #define MSG_NAME "eos/portal/buttons_out"
 #endif
 
+#define MSG_NAME_NUM_PARTS 3
+
 #ifdef MQTT_BUTTONS_IN
 const int LEDS_NUM = 4;
 const int BUTTONS_PINS[] = {4,14,12,13};
@@ -25,6 +27,8 @@ const char * BUTTONS_NAMES[] = {"b4","b3","b2","b1"};
 
 #define MSG_NAME "eos/portal/buttons_in"
 #endif
+
+const int MAX_SUBSCRIBERS = 10;
 
 const int BUTTONS_NUM = sizeof(BUTTONS_PINS)/sizeof(*BUTTONS_PINS);
 
@@ -43,12 +47,19 @@ const char * MSG_MAPPING[] = {
   "eos/portal/*/button/b1","idle",MSG_NAME "/set","red",
   "eos/portal/*/button/b2","idle",MSG_NAME "/set","green",
   "eos/portal/*/button/*","*",MSG_NAME "/set","idle",
-  "eos/portal/*/button/*","*",MSG_NAME "/set","idle",
+  NULL
+};
+const char * MSG_SUBSCRIPTIONS[] = {
+  "eos/portal/*/button/*",
   NULL
 };
 #else
 const char * MSG_MAPPING[] = {
   "eos/portal/light/ack","*",MSG_NAME "/set",NULL,
+  NULL
+};
+const char * MSG_SUBSCRIPTIONS[] = {
+  "eos/portal/light/ack",
   NULL
 };
 #endif
@@ -58,5 +69,7 @@ const int BUTTON_RETRY_DELAY = 10;
 
 const int STATUS_FREQ = 10 * 1000;
 const int FPS = 40;
+
+const int MSG_TIMEOUT = 60 * 1000;
 
 const int ms_per_frame = 1000/FPS;

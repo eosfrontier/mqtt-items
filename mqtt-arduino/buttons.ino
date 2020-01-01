@@ -13,7 +13,7 @@ int buttons_retry = 0;
 void buttons_check()
 {
   char msgbuf[1025];
-  int idx = sprintf(msgbuf, "%s/button/", MSG_NAME);
+  int idx = sprintf(msgbuf, "button/");
   int btset = 0;
   for (int i = 0; i < BUTTONS_NUM; i++) {
     if (digitalRead(BUTTONS_PINS[i]) == LOW) {

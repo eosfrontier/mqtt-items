@@ -389,7 +389,7 @@ module front2() {
                 
     }
     translate([0,-19.7,height-wid-1.1]) batteryclips_w();
-    translate([-50,25,height-wid-0.1]) rotate([0,0,-120]) wemosd1();
+    translate([-54,12,height-wid-0.1]) rotate([0,0,-120]) wemosd1();
     
     
     for (n = [360/trivec:360/trivec:360]) {

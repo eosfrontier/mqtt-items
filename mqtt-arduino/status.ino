@@ -1,5 +1,5 @@
 unsigned long laststatus = 0;
-const char *tstatus = MSG_NAME "/status";
+const char *tstatus = "status";
 
 void check_status()
 {

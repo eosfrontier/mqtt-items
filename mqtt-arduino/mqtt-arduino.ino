@@ -43,5 +43,6 @@ void loop() {
   loadavg = (loadavg * 99 / 100) + (elaps * 1000 / ms_per_frame);
   if (elaps < ms_per_frame) {
     delay(ms_per_frame - elaps);
+    lasttick += (ms_per_frame - elaps);
   }
 }
