@@ -3,10 +3,12 @@
 unsigned int mqtt_port = 1883;
 WiFiUDP udp;
 
+#define MAX_TOPIC_SIZE 24
+
 struct {
     IPAddress ip;
     unsigned long lastseen;
-    char topic[24];
+    char topic[MAX_TOPIC_SIZE];
 } subscribers[MAX_SUBSCRIBERS];
 
 void msg_setup()
@@ -16,8 +18,10 @@ void msg_setup()
 
 // Strings vergelijken met een beperkte wildcard optie
 // * matcht alles tot aan de volgende slash (werkt dus alleen met */)
-bool strmatch(const char *patt, const char *match, int prefixidx = 0)
+bool strmatch(const char *patt, const char *match, bool partial = false)
 {
+  // Serial.print("strmatch("); Serial.print(patt); Serial.print(", "); Serial.print(match); Serial.print(", "); Serial.print(partial); Serial.println(")");
+  
   const char *p = patt, *m = match;
   int slashidx = 0;
   while (*p && *m) {
@@ -25,24 +29,20 @@ bool strmatch(const char *patt, const char *match, int prefixidx = 0)
       p++;
       while (*m && *m != '/') m++;
     } else {
-      if (*p == '/') {
-        if (++slashidx == prefixidx) {
-          return true; // Partial match
-        }
-      }
       if (*p != *m) {
+        // Serial.print("strmatch: mismatch at <"); Serial.print(p); Serial.print("> || <"); Serial.print(m); Serial.print(">, num = "); Serial.println(slashidx);
         return false;
       }
       p++;
       m++;
     }
   }
-  return (*p == *m);
+  return (partial || (*p == *m));
 }
 
 void msg_send(const char *topic, const char *msg)
 {
-  for (int i = 0; i < MAX_SUBSCRIBERS) {
+  for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
     if (subscribers[i].lastseen && ((lasttick - subscribers[i].lastseen) < MSG_TIMEOUT)) {
       if (strmatch(subscribers[i].topic, topic)) {
         udp.beginPacket(subscribers[i].ip, mqtt_port);
@@ -58,11 +58,22 @@ void msg_send(const char *topic, const char *msg)
 
 void msg_add_sub(const char *topic)
 {
-  if (strmatch(topic, MSG_NAME, MSG_NAME_NUM_PARTS)) {
+  // Serial.print("Add sub <"); Serial.print(topic); Serial.println(">");
+  if (strmatch(topic, MSG_NAME "/", true)) {
+    const char *postfix = topic;
+    for (int i = 0; i < MSG_NAME_NUM_PARTS; i++) {
+      postfix = strchr(postfix, '/');
+      if (!postfix) return; // Sanity
+      postfix++;
+    }
+    if (strlen(postfix) >= MAX_TOPIC_SIZE) {
+      Serial.print("ERROR: Subscribe topic too long: <"); Serial.print(postfix); Serial.println(">");
+      return; 
+    }
     IPAddress ip = udp.remoteIP();
     int idx = -1;
     for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
-      if (subscribers[i].ip == ip && !strcmp(subscribers[i].topic, topic)) {
+      if (subscribers[i].ip == ip && !strcmp(subscribers[i].topic, postfix)) {
         idx = i;
         break;
       }
@@ -71,8 +82,11 @@ void msg_add_sub(const char *topic)
       }
     }
     if (idx >= 0) {
+      if (subscribers[idx].ip != ip || strcmp(subscribers[idx].topic, postfix)) {
+        Serial.print("Subscribed "); Serial.print(ip); Serial.print(" on <"); Serial.print(postfix); Serial.println(">");
+      }
+      strcpy(subscribers[idx].topic, postfix);
       subscribers[idx].ip = ip;
-      strcpy(subscribers[idx].topic, topic);
       subscribers[idx].lastseen = lasttick;
     } else {
       Serial.print("ERROR: More than "); Serial.print(MAX_SUBSCRIBERS); Serial.print(" subscribers, cannot subscribe "); Serial.print(ip); Serial.print(" <"); Serial.print(topic); Serial.println(">");
@@ -83,7 +97,7 @@ void msg_add_sub(const char *topic)
 void msg_receive(const char *topic, const char *msg)
 {
   Serial.print("receive <"); Serial.print(topic); Serial.print("> = <"); Serial.print(msg); Serial.println(">");
-  // SUB topic is for subscribing
+  // SUB topic is een meta-topic waar anderen op onze messages subscriben
   if (!strcmp(topic, "SUB")) {
     msg_add_sub(msg);
     return;
@@ -110,7 +124,7 @@ void msg_receive(const char *topic, const char *msg)
   }
 }
 
-unsigned long lastsub = 0;
+unsigned long lastsub = -MSG_TIMEOUT;
 
 void msg_subscribe(const char *topic)
 {

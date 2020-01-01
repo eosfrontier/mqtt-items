@@ -17,8 +17,6 @@ const char * BUTTONS_NAMES[] = {"b1","b2","b3"};
 #define MSG_NAME "eos/portal/buttons_out"
 #endif
 
-#define MSG_NAME_NUM_PARTS 3
-
 #ifdef MQTT_BUTTONS_IN
 const int LEDS_NUM = 4;
 const int BUTTONS_PINS[] = {4,14,12,13};
@@ -27,6 +25,8 @@ const char * BUTTONS_NAMES[] = {"b4","b3","b2","b1"};
 
 #define MSG_NAME "eos/portal/buttons_in"
 #endif
+
+#define MSG_NAME_NUM_PARTS 3
 
 const int MAX_SUBSCRIBERS = 10;
 
