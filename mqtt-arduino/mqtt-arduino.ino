@@ -30,6 +30,7 @@ void setup() {
   msg_setup();
   leds_setup();
   buttons_setup();
+  ws_setup();
   lasttick = millis();
 }
 
@@ -38,6 +39,7 @@ void loop() {
   leds_animate();
   buttons_check();
   check_status();
+  ws_check();
 
   unsigned long nexttick = millis();
   unsigned long elaps = nexttick - lasttick;
