@@ -97,12 +97,12 @@ void msg_add_sub(const char *topic)
         Serial.print("Subscribed "); Serial.print(ip); Serial.print(" on <"); Serial.print(postfix); Serial.println(">");
         strcpy(subscribers[idx].topic, postfix);
         subscribers[idx].ip = ip;
-        if (lastack[0]) {
-          msg_send_sub("ack", lastack, idx);
-        }
         lastsub = lasttick;
       }
       subscribers[idx].lastseen = lasttick;
+      if (lastack[0]) {
+        msg_send_sub("ack", lastack, idx);
+      }
     } else {
       Serial.print("ERROR: More than "); Serial.print(MAX_SUBSCRIBERS); Serial.print(" subscribers, cannot subscribe "); Serial.print(ip); Serial.print(" <"); Serial.print(topic); Serial.println(">");
     }

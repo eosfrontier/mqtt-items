@@ -85,8 +85,10 @@ void loop() {
     int cpos = cwid * len;
     while (cpos >= cend) {
       cpos -= cspd;
-      for (int j = 0; j < len; j++) {
+      for (int j = 0; j < llen; j++) {
         l_strip.setPixelColor(l_line[j], get_color(cpos + FIXEDP*j, lcol));
+      }
+      for (int j = 0; j < rlen; j++) {
         r_strip.setPixelColor(r_line[j], get_color(cpos + FIXEDP*j, rcol));
       }
       l_strip.show();
@@ -96,3 +98,4 @@ void loop() {
   }
   // Serial.println("Done one round");
 }
+
