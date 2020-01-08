@@ -1,4 +1,5 @@
 // Async-ish websockets
+#ifdef MQTT_LIGHTS
 
 #include <WiFiClientSecure.h>
 
@@ -18,6 +19,8 @@ WiFiClientSecure wsclient;
 enum WSState { noconn, errwait, handshake, handshaking, connected } wsstate;
 int timeout = 0;
 
+unsigned long ws_ping_time = 0;
+
 int shakes; // Check all handshake requirements
 #define WSH_STATUS    (1 << 0)
 #define WSH_UPGRADE   (1 << 1)
@@ -25,18 +28,20 @@ int shakes; // Check all handshake requirements
 #define WSH_KEY       (1 << 3)
 #define WSH_COMPLETE  (WSH_STATUS|WSH_UPGRADE|WSH_WEBSOCKET|WSH_KEY)
 
+bool justgotack = false;
+
 String generateKey() {
-	String key = "";
-	for (int i = 0; i < 23; ++i) {
-		int r = random(0, 3);
-		if (r == 0)
-			key += (char) random(48, 58);
-		else if (r == 1)
-			key += (char) random(65, 91);
-		else if (r == 2)
-			key += (char) random(97, 128);
-	}
-	return key;
+  String key = "";
+  for (int i = 0; i < 23; ++i) {
+    int r = random(0, 3);
+    if (r == 0)
+      key += (char) random(48, 58);
+    else if (r == 1)
+      key += (char) random(65, 91);
+    else if (r == 2)
+      key += (char) random(97, 128);
+  }
+  return key;
 }
 
 void ws_setup()
@@ -51,41 +56,79 @@ void ws_send(const char *msg)
   if (!wsclient.connected()) {
     return;
   }
-  wsclient.write((uint8_t)(WS_FIN | WS_OPCODE_TEXT));
   int size = strlen(msg);
+  uint8_t buf[size+8];
+  Serial.print("WS Trying to send("); Serial.print(size); Serial.print("): "); Serial.println(msg);
+  uint8_t *bufptr = buf;
+  *bufptr++ = WS_FIN | WS_OPCODE_TEXT;
   if (size > 125) {
-    wsclient.write((uint8_t)(WS_MASK | WS_SIZE16));
-    wsclient.write((uint8_t) (size >> 8));
-    wsclient.write((uint8_t) (size & 0xff));
+    *bufptr++ = WS_MASK | WS_SIZE16;
+    *bufptr++ = size >> 8;
+    *bufptr++ = size & 0xff;
   } else {
-    wsclient.write((uint8_t)(WS_MASK | (uint8_t)size));
+    *bufptr++ = WS_MASK | (uint8_t)size;
   }
-  uint8_t mask[4];
-  mask[0] = random(0,256);
-  mask[1] = random(0,256);
-  mask[2] = random(0,256);
-  mask[3] = random(0,256);
-  wsclient.write(mask[0]);
-  wsclient.write(mask[1]);
-  wsclient.write(mask[2]);
-  wsclient.write(mask[3]);
+  uint8_t *mask = bufptr;
+  *bufptr++ = random(0,256);
+  *bufptr++ = random(0,256);
+  *bufptr++ = random(0,256);
+  *bufptr++ = random(0,256);
+
   for (int i = 0; i < size; i++) {
-    wsclient.write(((uint8_t)(msg[i] ^ mask[i%4])));
+    *bufptr++ = msg[i] ^ mask[i%4];
+  }
+  Serial.print("WS Writing "); Serial.print(bufptr-buf); Serial.println(" bytes");
+  wsclient.write(buf, (bufptr-buf));
+}
+
+static inline bool startswith(const char *str, const char *prefix)
+{
+  return (!strncmp(str, prefix, strlen(prefix)));
+}
+
+void ws_receive_broadcast(const char *bc)
+{
+  for (int i = 0; WS_BROADCAST_RECEIVE[i]; i += 3) {
+    if (!strcmp(bc, WS_BROADCAST_RECEIVE[i])) {
+      justgotack = true;
+      msg_receive(WS_BROADCAST_RECEIVE[i+1], WS_BROADCAST_RECEIVE[i+2]);
+      justgotack = false;
+      return;
+    }
   }
 }
 
-void ws_receive(const char *msg)
+void ws_receive(char *msg)
 {
     Serial.print("Received WS message: <<<");
     Serial.print(msg);
     Serial.println(">>>");
+    if (msg[0] == '0') {
+      Serial.print("TODO: Do something with connection info: ");
+      Serial.println(msg+1);
+    }
     if (msg[0] == '2') {
       ws_send("3");
     } else if (msg[0] == '4') {
-      if (msg[1] == '2') {
-        Serial.print("TODO: Do something with <<<");
-        Serial.print(msg+2);
-        Serial.println(">>>");
+      if (msg[1] == '0') {
+        ws_ping_time = lasttick;
+        Serial.println("WS Connected");
+      } else if (msg[1] == '2') {
+        if (startswith(msg+2, "[\"broadcastReceive\"")) {
+          char *bcfile = strstr(msg+24, "\"file\":\"");
+          if (bcfile) {
+            bcfile += 8;
+            char *bcfend = strchr(bcfile, '"');
+            if (bcfend) {
+              *bcfend = 0;
+              ws_receive_broadcast(bcfile);
+            }
+          }
+        } else {
+          Serial.print("TODO: Do something with <<<");
+          Serial.print(msg+2);
+          Serial.println(">>>");
+        }
       }
     }
 }
@@ -198,5 +241,29 @@ void ws_check()
             }
             ws_receive(msg);
         }
+        if ((lasttick - ws_ping_time) > 25000) {
+            ws_send("2ping");
+            ws_ping_time = lasttick;
+        }
     }
 }
+
+void ws_send_ack(const char *ack)
+{
+  if (!justgotack) {
+    for (int i = 0; WS_BROADCAST_SEND[i]; i += 2) {
+      if (!strcmp(WS_BROADCAST_SEND[i], ack)) {
+        ws_send(WS_BROADCAST_SEND[i+1]);
+        return;
+      }
+    }
+  }
+}
+#else
+void ws_send_ack(const char *ack)
+{
+  // NOTHING 
+}
+void ws_setup() {}
+void ws_check() {}
+#endif

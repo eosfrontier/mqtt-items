@@ -121,6 +121,7 @@ void msg_receive(const char *topic, const char *msg)
   if (!strcmp(topic, MSG_NAME "/set")) {
     leds_set(msg);
     msg_send("ack", msg);
+    ws_send_ack(msg);
     if (strlen(msg) < (sizeof(lastack)-1)) {
       strcpy(lastack, msg);
     } else {
