@@ -46,12 +46,48 @@ void ws_setup()
     wsclient.setBufferSizes(512, 512);
 }
 
+void ws_send(const char *msg)
+{
+  if (!wsclient.connected()) {
+    return;
+  }
+  wsclient.write((uint8_t)(WS_FIN | WS_OPCODE_TEXT));
+  int size = strlen(msg);
+  if (size > 125) {
+    wsclient.write((uint8_t)(WS_MASK | WS_SIZE16));
+    wsclient.write((uint8_t) (size >> 8));
+    wsclient.write((uint8_t) (size & 0xff));
+  } else {
+    wsclient.write((uint8_t)(WS_MASK | (uint8_t)size));
+  }
+  uint8_t mask[4];
+  mask[0] = random(0,256);
+  mask[1] = random(0,256);
+  mask[2] = random(0,256);
+  mask[3] = random(0,256);
+  wsclient.write(mask[0]);
+  wsclient.write(mask[1]);
+  wsclient.write(mask[2]);
+  wsclient.write(mask[3]);
+  for (int i = 0; i < size; i++) {
+    wsclient.write(((uint8_t)(msg[i] ^ mask[i%4])));
+  }
+}
+
 void ws_receive(const char *msg)
 {
     Serial.print("Received WS message: <<<");
     Serial.print(msg);
     Serial.println(">>>");
-    // TODO
+    if (msg[0] == '2') {
+      ws_send("3");
+    } else if (msg[0] == '4') {
+      if (msg[1] == '2') {
+        Serial.print("TODO: Do something with <<<");
+        Serial.print(msg+2);
+        Serial.println(">>>");
+      }
+    }
 }
 
 void ws_check()
