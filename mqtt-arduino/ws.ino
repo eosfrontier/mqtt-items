@@ -12,7 +12,7 @@
 
 #define WS_HOST "beacon.eosfrontier.space"
 #define WS_PATH "/socket.io/?transport=websocket"
-#define WS_PORT 5001
+#define WS_PORT 443
 
 AsyncClient wsclient;
 
@@ -253,21 +253,21 @@ void ws_check()
         wsstate = noconn;
     }
     if (wsstate == noconn) {
-        Serial.println("WS Connecting");
+        Serial.print("WS Connecting to " WS_HOST ":"); Serial.println(WS_PORT);
         if (!wsclient.connect(WS_HOST, WS_PORT, true)) {
             Serial.println("WS Connection error");
             wsstate = errwait;
-            ws_timeout = 100;
+            ws_timeout = 500;
             return;
         }
-        ws_timeout = 100;
+        ws_timeout = 500;
         wsstate = handshake;
         return;
     }
     if (!wsclient.connected()) {
         if (ws_timeout-- > 0) return;
         wsstate = errwait;
-        ws_timeout = 20;
+        ws_timeout = 200;
         return;
     }
     if (wsstate == handshake) {
@@ -287,78 +287,8 @@ void ws_check()
         return;
     }
     if (wsstate == handshaking) {
-      /*
-        while (wsclient.available()) {
-            String s = wsclient.readStringUntil('\n');
-            Serial.print("WS received: ");
-            Serial.println(s);
-            const char *ss = s.c_str();
-            if (s == "\r") {
-                if (ws_shakes != WSH_COMPLETE) {
-                    Serial.print("WS End of handshake, status not ok: ");
-                    Serial.println(ws_shakes);
-                    wsclient.stop();
-                    return;
-                }
-                Serial.println("WS End of handshake");
-                break;
-            } else if (s.indexOf("HTTP/") != -1) {
-                if (!memcmp(ss+9, "101", 3)) {
-                    ws_shakes |= WSH_STATUS;
-                    Serial.println("WS Status is OK");
-                } else {
-                    Serial.print("WS Wrong status received: ");
-                    Serial.println(s);
-                    wsclient.stop();
-                    return;
-                }
-            } else if (!strncmp(ss, "Connection: ", 12)) {
-                if (!strncmp(ss+13, "pgrade", 6)) {
-                    ws_shakes |= WSH_UPGRADE;
-                    Serial.println("WS Upgrade OK");
-                }
-            } else if (!strncmp(ss, "Sec-WebSocket-Accept:", 21)) {
-                ws_shakes |= WSH_KEY;
-                Serial.println("WS key OK");
-            } else if (!strncmp(ss, "Upgrade: websocket", 18)) {
-                ws_shakes |= WSH_WEBSOCKET;
-                Serial.println("WS Websocket OK");
-            }
-        }
-        if (ws_shakes == WSH_COMPLETE) {
-            Serial.println("WS is connected successfully");
-            wsstate = connected;
-        }
-        return;
-        */
     }
     if (wsstate == connected) {
-        /*
-        if (wsclient.available()) {
-            unsigned int msgtype = wsclient.read();
-            int length = wsclient.read();
-            bool masked = false;
-            if (length & WS_MASK) {
-                length &= ~WS_MASK;
-                masked = true;
-            }
-            if (length == WS_SIZE16) {
-                length = wsclient.read() << 8 | wsclient.read();
-            }
-            uint8_t mask[4] = {0,0,0,0};
-            if (masked) {
-                mask[0] = wsclient.read();
-                mask[1] = wsclient.read();
-                mask[2] = wsclient.read();
-                mask[3] = wsclient.read();
-            }
-            char msg[length+1];
-            for (int i = 0; i < length; i++) {
-                msg[i] = wsclient.read() ^ mask[i%4];
-            }
-            ws_receive(msg);
-        }
-        */
         if ((lasttick - ws_ping_time) > 25000) {
             ws_send("2ping");
             ws_ping_time = lasttick;
