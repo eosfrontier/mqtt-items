@@ -4,9 +4,7 @@
 //#define MQTT_BUTTONS_IN
 #define MQTT_LIGHTS
 #include "settings.h"
-
-char ssid[] = "****"
-char pass[] = "****";
+#include "config.h"
 
 const char *state = "nowifi";
 
@@ -15,8 +13,8 @@ unsigned long lasttick = 0;
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(38400);
-  WiFi.begin(ssid,pass);
+  Serial.begin(9600);
+  WiFi.begin(SSID_SETTINGS[0], SSID_SETTINGS[1]);
   /*
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
