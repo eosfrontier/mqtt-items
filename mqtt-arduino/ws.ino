@@ -10,7 +10,7 @@
 #define WS_MASK           0x80
 #define WS_SIZE16         126
 
-#define WS_HOST "192.168.1.49"
+#define WS_HOST "beacon.eosfrontier.space"
 #define WS_PATH "/socket.io/?transport=websocket"
 #define WS_PORT 5001
 
