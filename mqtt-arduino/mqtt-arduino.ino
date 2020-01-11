@@ -1,12 +1,12 @@
 #include <ESP8266WiFi.h>
 
 //#define MQTT_BUTTONS_OUT
-#define MQTT_BUTTONS_IN
-//#define MQTT_LIGHTS
+//#define MQTT_BUTTONS_IN
+#define MQTT_LIGHTS
 #include "settings.h"
 
-char ssid[] = "Airy";
-char pass[] = "Landryssa";
+char ssid[] = "****"
+char pass[] = "****";
 
 const char *state = "nowifi";
 
