@@ -1,0 +1,1 @@
+var leds = require("animator").setup(3)
