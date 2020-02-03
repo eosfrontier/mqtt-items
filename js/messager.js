@@ -7,6 +7,10 @@ const mappings = [
   ["eos/portal/.*/button/.*",".*","set","idle"]
 ]
 
+const subscribes = [
+  "eos/portal/*/button/*"
+]
+
 function messager(leds, name, port)
 {
   this.leds=leds
@@ -16,7 +20,17 @@ function messager(leds, name, port)
   this.socket.on('message', receive.bind(this))
   this.socket.bind(this.port)
   this.subs=[]
-  setInterval(() => this.send("status",JSON.stringify({battery:6.07*analogRead(),connected:true})), 30000, this)
+  subscribe(this)
+  setInterval(subscribe, 30000, this)
+}
+
+function subscribe(msgr)
+{
+  msgr.send("status",JSON.stringify({battery:Math.round(607*analogRead())/100,connected:true}))
+  let ip=require("Wifi").getIP()
+  let nm=ip.netmask.split(".")
+  let bc=ip.ip.split(".").map((o,i)=>o|(nm[i]^255))
+  subscribes.forEach(s => msgr.socket.send("SUB\n"+s, msgr.port, bc))
 }
 
 function strmatch(patt, str)
@@ -56,7 +70,7 @@ function add_sub(msgr, topic, rinfo)
 function receive(msg, rinfo)
 {
   let mar=msg.split("\n")
-  console.log("Topic: "+mar[0]+"\nMessage: "+mar[1]+"\n")
+  console.log("Received: "+mar[0]+" -> "+mar[1]+"\n")
   if (mar[0] == "SUB") {
     add_sub(this, mar[1], rinfo)
   } else if (mar[0] == this.name+"/set") {
