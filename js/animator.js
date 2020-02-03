@@ -7,7 +7,7 @@ function animator(pin, num) {
   this.anim = []
   this.anim_rpt = false
   this.curcol = new Uint8ClampedArray(num*3)
-  this.rgborder = [8,16,0]
+  this.rgborder = new Uint8Array([8,16,0])
   this.timer = null
 
   this.animations = {
@@ -26,8 +26,8 @@ function animate(animator)
     animator.timer = null
     return
   }
-  const anim_end = animator.anim[animator.anim.length-1]
-  const tm = getTime()
+  let anim_end = animator.anim[animator.anim.length-1]
+  let tm = getTime()
   let elaps = tm - animator.tick
   if (elaps > anim_end.tm) {
     if (!animator.anim_rpt) {
@@ -46,7 +46,7 @@ function animate(animator)
   let pa = null
   animator.anim.some(function(a) {
     if (pa && elaps < a.tm) {
-      const frac = (elaps-pa.tm)/(a.tm-pa.tm)
+      let frac = (elaps-pa.tm)/(a.tm-pa.tm)
       for (let i=0; i<animator.curcol.length; i++) {
         animator.curcol[i] = pa.col[i%pa.col.length]*(1-frac)+a.col[i%a.col.length]*frac
       }
@@ -60,22 +60,22 @@ function animate(animator)
 
 animator.prototype.set = function(str)
 {
-  const ap = this.animations[str]
+  let ap = this.animations[str]
   if (ap) { str = ap }
   this.anim_rpt = false
-  const rgborder=this.rgborder
+  let rgborder=this.rgborder
   this.anim = [{"tm":0,"col":new Uint8Array(this.curcol)}]
   str.split(" ").forEach(function(stp) {
     if (stp.toLowerCase() == 'r') {
       this.anim_rpt = true
     } else {
-      const ar = stp.split(':')
+      let ar = stp.split(':')
       if (ar.length>1) {
-        const tm = parseFloat(ar[0], 10)
+        let tm = parseFloat(ar[0], 10)
         if (tm>0) {
-          const colar = []
+          let colar = []
           ar[1].split(',').forEach(c => {
-            const rgb = parseInt(c,16)
+            let rgb = parseInt(c,16)
             colar.push.apply(colar, rgborder.map(s=>rgb>>s&255))
           })
           this.anim.push({"tm":tm, "col":new Uint8Array(colar)})
