@@ -1,5 +1,7 @@
 /* Messaging over UDP module */
 
+let wifi=require("Wifi")
+
 //const mappings = [
 //  ["eos/portal/buttons_in/button/b1","idle","set","red"],
 //  ["eos/portal/buttons_in/button/b2","idle","set","inc"],
@@ -28,15 +30,31 @@ function messager(actions, name, port)
   this.socket.on('message', receive.bind(this))
   this.socket.bind(this.port)
   this.subs=[]
-  this.state="idle"
+  this.state="nowifi"
   subscribe(this)
   setInterval(subscribe, 30000, this)
 }
 
 function subscribe(msgr)
 {
-  msgr.send("status",JSON.stringify({battery:Math.round(607*analogRead())/100,connected:true}))
-  let ip=require("Wifi").getIP()
+  if (wifi.getStatus().station != "connected") {
+    if (msgr.state != "nowifi") {
+      msgr.setstate("nowifi")
+      msgr.subs=[]
+    }
+  }
+  if (msgr.state == "nowifi") {
+    msgr.setstate("nosubs")
+  }
+  msgr.publish("status",JSON.stringify({battery:Math.round(607*analogRead())/100,connected:true,state:msgr.state}))
+
+  let timeout=getTime()-100
+  msgr.subs = msgr.subs.filter(s => s.last>timeout)
+  if (!msgr.subs.length) {
+    msgr.setstate("nosubs")
+  }
+
+  let ip=wifi.getIP()
   let nm=ip.netmask.split(".")
   let bc=ip.ip.split(".").map((o,i)=>o|(nm[i]^255))
   subscribes.forEach(s => msgr.socket.send("SUB\n"+s, msgr.port, bc))
@@ -47,11 +65,19 @@ function strmatch(patt, str, prefix) {
   return patt.split('/').every((p,i)=>(p=='*'||p==sa[i]))
 }
 
-messager.prototype.send = function(topic, msg)
+messager.prototype.publish = function(topic, msg)
 {
   if (!msg) { msg = this.state }
   console.log("Sending: "+topic+" -> "+msg)
   this.subs.forEach(s => msg_send_sub(this,topic,msg,s), this)
+}
+
+messager.prototype.setstate = function(state)
+{
+  if (this.state != state) {
+    this.state = state
+    if (this.actions.set) { this.actions.set(state) }
+  }
 }
 
 function msg_send_sub(msgr, topic, msg, sub)
@@ -73,15 +99,20 @@ function add_sub(msgr, topic, rinfo)
     if (!entry) {
       entry = {"topic":postfix,"ip":ip,"last":0}
       msgr.subs.push(entry)
+      subscribes.forEach(s => msgr.socket.send("SUB\n"+s, msgr.port, ip))
     }
     entry["last"]=getTime()
+    if (msgr.state == "nosubs") {
+      msgr.setstate("idle")
+    }
+    msg_send_sub(msgr, "ack", msgr.state, entry)
   }
 }
 
 function receive(msg, rinfo)
 {
   let mar=msg.split("\n")
-  console.log("Received: "+mar[0]+" -> "+mar[1]+"\n")
+  console.log("Received("+rinfo.address+"): "+mar[0]+" -> "+mar[1]+"\n")
   if (mar[0] == "SUB") {
     add_sub(this, mar[1], rinfo)
   } else if (mar[0].startsWith(this.name+"/")) {
@@ -89,7 +120,7 @@ function receive(msg, rinfo)
     let act = this.actions[topic]
     if (act) {
       act(mar[1])
-      this.send("ack", mar[1])
+      this.publish("ack", mar[1])
       if (topic == "set") { this.state = mar[1] }
     }
   } else {
@@ -99,7 +130,7 @@ function receive(msg, rinfo)
       if (act) {
         let msg = mapped[3] || mar[1]
         act(msg)
-        this.send("ack", msg)
+        this.publish("ack", msg)
         if (mapped[2] == "set") { this.state = msg }
       }
     }

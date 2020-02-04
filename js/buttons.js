@@ -1,8 +1,8 @@
 /* Button module */
 
-function buttons(msgr, btns)
+function buttons(publish, btns)
 {
-  this.msgr=msgr
+  this.publish=publish
   this.btns=btns||[]
   for (p in this.btns) {
     pinMode(p, 'input_pullup')
@@ -18,9 +18,9 @@ function pressed(pin)
       str.push(this.btns[p])
     }
   }
-  this.msgr.send("button/"+str.join("_"))
+  this.publish("button/"+str.join("_"))
 }
 
 exports.init = function(msgr, btns) {
-  return new buttons(msgr, btns)
+  return new buttons(msgr.publish.bind(msgr), btns)
 }
