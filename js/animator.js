@@ -1,7 +1,7 @@
 /* Leds animation module */
 
-function animator(pin, num) {
-  this.write = require("neopixel").write.bind(null, pin)
+function animator(num, idle, pin) {
+  this.write = require("neopixel").write.bind(null, (pin||0))
   this.num = num
   this.tick = 0
   this.anim = []
@@ -14,7 +14,9 @@ function animator(pin, num) {
     "inc":"r 1:00ff00,00aa00,005500 2:00aa00,005500,00ff00 3:005500,00ff00,00aa00",
     "out":"r 1:00ff00,00aa00,005500 2:00aa00,005500,00ff00 3:005500,00ff00,00aa00",
     "red":"r 0.5:ff0000 0.8:000000,550000,aa0000,ff0000 1.0:000000 1.2:ff0000,aa0000,550000,000000 1.5:ff0000",
-    "idle":"2:180000,001800,000020"
+    "nowifi":"r 1000:100008,000000 2000:000000 5000:000000 6000:000000,080010 7000:000000 10000:000000",
+    "nosubs":"r 500:000108,000000 1000:000000,000810",
+    "idle":"2:"+(idle||"000000")
   }
 
 }
@@ -89,6 +91,6 @@ animator.prototype.set = function(str)
   }
 }
 
-exports.setup = function(num) {
-  return new animator(0, num)
+exports.init = function(num, idle, pin) {
+  return new animator(num, idle, pin)
 }
