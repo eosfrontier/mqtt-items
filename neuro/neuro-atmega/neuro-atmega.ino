@@ -29,7 +29,7 @@ char r_line4[] = { 2,3,4,12,13,14,15,16 };
 char *r_lines[] = { r_line1, r_line2, r_line3, r_line4 };
 char r_lens[] = { 5, 8, 6, 8 };
 
-char lines[] = { l_line1, l_line2, l_line3, l_line4, r_line1, r_line2, r_line3, r_line4 };
+char *lines[] = { l_line1, l_line2, l_line3, l_line4, r_line1, r_line2, r_line3, r_line4 };
 char ln_lens[] = { 5,8,7,8,5,8,6,8 };
 
 #define NUM_POINTS 2
@@ -49,6 +49,7 @@ typedef struct {
 
 struct point {
     unsigned long tick;
+    long time;
     hcl_t hcl[NUM_COLS];
     short idx[NUM_COLS];
     short spd;
@@ -59,20 +60,20 @@ struct point {
     char dly;
 } points[NUM_POINTS];
 
-rgb_t get_hcl_color(hcl_t a, hcl_t b, uint32_t pos, uint32_t tot)
+rgb_t get_hcl_color(hcl_t ca, hcl_t cb, uint32_t pos, uint32_t tot)
 {
-    long hue = (a.hue * pos + b.hue * (tot-pos-1)) / tot + (36 * FIXEDP); // Is cyclisch, in het positieve trekken (slechte hack maarja)
-    long chroma = (a.chroma * pos + b.chroma * (tot-pos-1)) / tot;
-    long luma = (a.luma * pos + b.luma * (tot-pos-1)) / tot;
+    long hue =    (cb.hue    * pos + ca.hue    * (tot-pos-1)) / tot + (36 * FIXEDP); // Is cyclisch, in het positieve trekken (slechte hack maarja)
+    long chroma = (cb.chroma * pos + ca.chroma * (tot-pos-1)) / tot;
+    long luma =   (cb.luma   * pos + ca.luma   * (tot-pos-1)) / tot;
     long x = chroma * (1 - abs(hue % FIXEDP - FIXEDP)) / FIXEDP;
     long r = 0, g = 0, b = 0;
     switch ((hue / FIXEDP) % 6) {
-        case 0: r = c; g = x;
-        case 1: r = x; g = c
-        case 2: g = c; b = x;
-        case 3: g = x; b = c;
-        case 4: r = x; b = c;
-        case 5: r = c; b = x;
+        case 0: r = chroma; g = x; break;
+        case 1: r = x; g = chroma; break;
+        case 2: g = chroma; b = x; break;
+        case 3: g = x; b = chroma; break;
+        case 4: r = x; b = chroma; break;
+        case 5: r = chroma; b = x; break;
     }
     // Luma : 0.3*R + 0.59*G + 0.11*B
     long m = luma - (r * 77 / FIXEDP) - (g * 151 / FIXEDP) - (b * 28 / FIXEDP);
@@ -81,11 +82,11 @@ rgb_t get_hcl_color(hcl_t a, hcl_t b, uint32_t pos, uint32_t tot)
 }
 
 // See if the point is part of a line and if so return the index on that line
-int get_pointindex(int off, int pos, unsigned char *ptline)
+int get_pointindex(int off, int pos, unsigned char ptline)
 {
     for (int l = 0; l < 4; l++) {
         int ln = l+off;
-        if (ptline & (1<<l)) {
+        if (ptline & (1<<ln)) {
             char *line = lines[ln];
             for (int i = 0; i < ln_lens[ln]; i++) {
                 if (line[i] == pos) {
@@ -102,11 +103,11 @@ uint32_t get_pix_color(int off, int pos, long tick)
 {
     short r = 0, g = 0, b = 0;
     for (int p = 0; p < NUM_POINTS; p++) {
-        struct point *pt = points[p];
+        struct point *pt = &points[p];
         int idx = get_pointindex(off, pos, pt->line) - pt->ppos1;
         // idx is now integer index of pixel
         if (idx >= 0 && idx <= (pt->ppos2 - pt->ppos1)) {
-            idx = (idx * FIXEDP) - ((tick - pt->tick - (pt->time/2))*pt->spd / FIXEDP);
+            idx = (idx * FIXEDP) - (pt->ppos2-pt->ppos1)*(FIXEDP/2) - ((tick - pt->tick - (pt->time/2))*pt->spd / FIXEDP);
             // idx is now fixedpoint index of pixel relative to point animation
             if (idx >= pt->idx[0] && idx < pt->idx[NUM_COLS-1]) {
                 int i;
@@ -120,33 +121,36 @@ uint32_t get_pix_color(int off, int pos, long tick)
             }
         }
     }
-    return (min(r, 255) + (min(g, 255) << 8) + (min(b, 255) << 16));
+    if (r > 255) r = 255;
+    if (g > 255) g = 255;
+    if (b > 255) b = 255;
+    return (r + (g << 8) + (b << 16));
 }
 
 void set_point(int p, unsigned long now, short hue, unsigned char line)
 {
-    struct point *pt = points[p];
+    struct point *pt = &points[p];
     pt->tick = now;
 
     pt->idx[0] = -500;
     pt->hcl[0].hue = hue;
-    pt->hcl[0].chroma = 0xff;
+    pt->hcl[0].chroma = 0;
     pt->hcl[0].luma = 0;
     pt->idx[1] = -300;
-    pt->hcl[1].hue = hue+0x100;
-    pt->hcl[1].chroma = 0xff;
-    pt->hcl[1].luma = 0xff;
+    pt->hcl[1].hue = hue+0x10;
+    pt->hcl[1].chroma = 0x7f;
+    pt->hcl[1].luma = 0x7f;
     pt->idx[2] = 300;
-    pt->hcl[2].hue = hue+0x200;
-    pt->hcl[2].chroma = 0xff;
-    pt->hcl[2].luma = 0xff;
+    pt->hcl[2].hue = hue+0x20;
+    pt->hcl[2].chroma = 0x7f;
+    pt->hcl[2].luma = 0x7f;
     pt->idx[3] = 500;
-    pt->hcl[3].hue = hue+0x300;
-    pt->hcl[3].chroma = 0xff;
+    pt->hcl[3].hue = hue+0x30;
+    pt->hcl[3].chroma = 0;
     pt->hcl[3].luma = 0;
 
     pt->spd = 1000;
-    pt->time = 16000;
+    pt->time = 2000;
     pt->line = line;
     pt->ppos1 = 0;
     pt->ppos2 = 15;
@@ -158,7 +162,7 @@ void update_points(unsigned long now)
 {
     for (int p = 0; p < NUM_POINTS; p++) {
         if (points[p].tick + points[p].time <= now) {
-            points[p].now += points[p].time;
+            points[p].tick += points[p].time;
             points[p].spd = -points[p].spd;
         }
     }
@@ -183,21 +187,22 @@ void setup()
   //Serial.println(sizeof(long), DEC);
   unsigned long now = millis();
   set_point(0, now, 0x200, 0b10001000);
-  set_point(1, now, 0x500, 0b00010001);
+  set_point(1, now, 0x500, 0b00100010);
 }
 
 void loop()
 {
   // put your main code here, to run repeatedly:
-  unsigned long now = millis();
-  update_points(now);
-  for (int j = 2; j <= 16; j++) {
-    l_strip.setPixelColor(j, get_pix_color(0, j, now));
-    r_strip.setPixelColor(j, get_pix_color(4, j, now));
+  while(1) {
+    unsigned long now = millis();
+    update_points(now);
+    for (int j = 2; j <= 16; j++) {
+      l_strip.setPixelColor(j, get_pix_color(0, j, now));
+      r_strip.setPixelColor(j, get_pix_color(4, j, now));
+    }
+    l_strip.show();
+    r_strip.show();
+    delay(20);
   }
-  l_strip.show();
-  r_strip.show();
-  delay(20);
   // Serial.println("Done one round");
 }
-
