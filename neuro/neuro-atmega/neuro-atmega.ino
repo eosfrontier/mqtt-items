@@ -10,24 +10,21 @@
 Adafruit_NeoPixel l_strip(LED_COUNT, L_LED_PIN, NEO_RGB + NEO_KHZ800);
 Adafruit_NeoPixel r_strip(LED_COUNT, R_LED_PIN, NEO_RGB + NEO_KHZ800);
 
-uint32_t colors[] = {  0x000000,  0x008844,  0x00cccc,  0x0000ff,  0x0000ff,  0xcc00cc,  0x880044,  0x000000,
-                       0x000000,  0x880044,  0xcc00cc,  0x0000ff,  0x0000ff,  0x00cccc,  0x008844,  0x000000,
-                       0x000000,  0xff0000,  0x00ff00,  0x0000ff,  0xff0000,  0x00ff00,  0x0000ff,  0x000000 };
 int c_len = 8;
 
 char l_line1[] = { 2,3,4,5,6 };
 char l_line2[] = { 2,3,4,5,12,7,8,9 };
 char l_line3[] = { 2,3,4,13,14,11,10 };
 char l_line4[] = { 2,3,4,13,14,11,15,16 };
-char *l_lines[] = { l_line1, l_line2, l_line3, l_line4 };
-char l_lens[] = { 5, 8, 7, 8 };
+// char *l_lines[] = { l_line1, l_line2, l_line3, l_line4 };
+// char l_lens[] = { 5, 8, 7, 8 };
 
 char r_line1[] = { 2,3,4,5,6 };
 char r_line2[] = { 2,3,4,12,11,7,8,9 };
 char r_line3[] = { 2,3,4,12,11,10 };
 char r_line4[] = { 2,3,4,12,13,14,15,16 };
-char *r_lines[] = { r_line1, r_line2, r_line3, r_line4 };
-char r_lens[] = { 5, 8, 6, 8 };
+// char *r_lines[] = { r_line1, r_line2, r_line3, r_line4 };
+// char r_lens[] = { 5, 8, 6, 8 };
 
 char *lines[] = { l_line1, l_line2, l_line3, l_line4, r_line1, r_line2, r_line3, r_line4 };
 char ln_lens[] = { 5,8,7,8,5,8,6,8 };
@@ -36,15 +33,15 @@ char ln_lens[] = { 5,8,7,8,5,8,6,8 };
 #define NUM_COLS 4
 
 typedef struct {
-    unsigned char r;
-    unsigned char g;
-    unsigned char b;
+    uint32_t r;
+    uint32_t g;
+    uint32_t b;
 } rgb_t;
 
 typedef struct {
-    short hue;
-    short chroma;
-    short luma;
+    uint32_t hue;
+    uint32_t chroma;
+    uint32_t luma;
 } hcl_t;
 
 struct point {
@@ -65,7 +62,7 @@ rgb_t get_hcl_color(hcl_t ca, hcl_t cb, uint32_t pos, uint32_t tot)
     long hue =    (cb.hue    * pos + ca.hue    * (tot-pos-1)) / tot + (36 * FIXEDP); // Is cyclisch, in het positieve trekken (slechte hack maarja)
     long chroma = (cb.chroma * pos + ca.chroma * (tot-pos-1)) / tot;
     long luma =   (cb.luma   * pos + ca.luma   * (tot-pos-1)) / tot;
-    long x = chroma * (1 - abs(hue % FIXEDP - FIXEDP)) / FIXEDP;
+    long x = chroma * (FIXEDP - abs(hue % (FIXEDP*2) - FIXEDP)) / FIXEDP;
     long r = 0, g = 0, b = 0;
     switch ((hue / FIXEDP) % 6) {
         case 0: r = chroma; g = x; break;
@@ -101,7 +98,7 @@ int get_pointindex(int off, int pos, unsigned char ptline)
 // Add the color of all moving points for the given led pixel
 uint32_t get_pix_color(int off, int pos, long tick)
 {
-    short r = 0, g = 0, b = 0;
+    uint32_t r = 0, g = 0, b = 0;
     for (int p = 0; p < NUM_POINTS; p++) {
         struct point *pt = &points[p];
         int idx = get_pointindex(off, pos, pt->line) - pt->ppos1;
@@ -127,33 +124,33 @@ uint32_t get_pix_color(int off, int pos, long tick)
     return (r + (g << 8) + (b << 16));
 }
 
-void set_point(int p, unsigned long now, short hue, unsigned char line)
+void set_point(int p, unsigned long now, short hue, unsigned char line, int dir)
 {
     struct point *pt = &points[p];
     pt->tick = now;
 
-    pt->idx[0] = -500;
-    pt->hcl[0].hue = hue;
+    pt->idx[0] = -1500;
+    pt->hcl[0].hue = hue+0x500;
     pt->hcl[0].chroma = 0;
     pt->hcl[0].luma = 0;
-    pt->idx[1] = -300;
-    pt->hcl[1].hue = hue+0x10;
-    pt->hcl[1].chroma = 0x7f;
-    pt->hcl[1].luma = 0x7f;
-    pt->idx[2] = 300;
-    pt->hcl[2].hue = hue+0x20;
-    pt->hcl[2].chroma = 0x7f;
-    pt->hcl[2].luma = 0x7f;
-    pt->idx[3] = 500;
-    pt->hcl[3].hue = hue+0x30;
+    pt->idx[1] = -600;
+    pt->hcl[1].hue = hue+0x580;
+    pt->hcl[1].chroma = 0xff;
+    pt->hcl[1].luma = 0;
+    pt->idx[2] = 600;
+    pt->hcl[2].hue = hue+0x680;
+    pt->hcl[2].chroma = 0xff;
+    pt->hcl[2].luma = 0;
+    pt->idx[3] = 1500;
+    pt->hcl[3].hue = hue+0x700;
     pt->hcl[3].chroma = 0;
     pt->hcl[3].luma = 0;
 
-    pt->spd = 1000;
-    pt->time = 2000;
+    pt->spd = 800 * dir;
+    pt->time = 3000;
     pt->line = line;
     pt->ppos1 = 0;
-    pt->ppos2 = 15;
+    pt->ppos2 = 16;
     pt->mode = 0;
     pt->dly = 0;
 }
@@ -186,8 +183,8 @@ void setup()
   //Serial.println("DBG");
   //Serial.println(sizeof(long), DEC);
   unsigned long now = millis();
-  set_point(0, now, 0x200, 0b10001000);
-  set_point(1, now, 0x500, 0b00100010);
+  set_point(0, now, 0x000, 0b11000110,  1);
+  set_point(1, now, 0x200, 0b01101100, -1);
 }
 
 void loop()
