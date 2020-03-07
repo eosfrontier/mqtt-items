@@ -1,7 +1,7 @@
 #include <Adafruit_NeoPixel.h>
 
 #define R_LED_PIN 10
-#define L_LED_PIN 9
+#define L_LED_PIN 7
 
 #define LED_COUNT 17
 
@@ -29,6 +29,8 @@ char r_line4[] = { 2,3,4,12,13,14,15,16 };
 char *lines[] = { l_line1, l_line2, l_line3, l_line4, r_line1, r_line2, r_line3, r_line4 };
 char ln_lens[] = { 5,8,7,8,5,8,6,8 };
 
+char inpins[] = { 3,4,5,6,8,9,14,15,16,18,19,20 };
+
 #define NUM_POINTS 2
 #define NUM_COLS 4
 
@@ -50,6 +52,7 @@ struct point {
     hcl_t hcl[NUM_COLS];
     short idx[NUM_COLS];
     short spd;
+    char dir;
     unsigned char line; // 1 bit per possible line
     char ppos1; // Position on line
     char ppos2;
@@ -104,7 +107,7 @@ uint32_t get_pix_color(int off, int pos, long tick)
         int idx = get_pointindex(off, pos, pt->line) - pt->ppos1;
         // idx is now integer index of pixel
         if (idx >= 0 && idx <= (pt->ppos2 - pt->ppos1)) {
-            idx = (idx * FIXEDP) - (pt->ppos2-pt->ppos1)*(FIXEDP/2) - ((tick - pt->tick - (pt->time/2))*pt->spd / FIXEDP);
+            idx = (idx * FIXEDP) - (pt->ppos2-pt->ppos1)*(FIXEDP/2) - ((tick - pt->tick - (pt->time/2))*(pt->spd*pt->dir) / FIXEDP);
             // idx is now fixedpoint index of pixel relative to point animation
             if (idx >= pt->idx[0] && idx < pt->idx[NUM_COLS-1]) {
                 int i;
@@ -146,8 +149,9 @@ void set_point(int p, unsigned long now, short hue, unsigned char line, int dir)
     pt->hcl[3].chroma = 0;
     pt->hcl[3].luma = 0;
 
-    pt->spd = 800 * dir;
-    pt->time = 3000;
+    pt->spd = 800;
+    pt->dir = dir;
+    pt->time = 4*FIXEDP;
     pt->line = line;
     pt->ppos1 = 0;
     pt->ppos2 = 16;
@@ -158,11 +162,151 @@ void set_point(int p, unsigned long now, short hue, unsigned char line, int dir)
 void update_points(unsigned long now)
 {
     for (int p = 0; p < NUM_POINTS; p++) {
-        if (points[p].tick + points[p].time <= now) {
-            points[p].tick += points[p].time;
-            points[p].spd = -points[p].spd;
+        uint32_t aspd = (points[p].spd * points[p].time) / FIXEDP;
+        if (points[p].tick + aspd <= now) {
+            points[p].tick += aspd;
+            points[p].dir = -points[p].dir;
         }
     }
+}
+
+#define DEBOUNCE 100
+
+void rotate_knob(int pos, unsigned char dir)
+{
+  Serial.print("Rotate knob ");
+  Serial.print(pos);
+  Serial.println(dir ? " Right" : " Left");
+  switch(pos) {
+    case 0:
+      for (int i = 0; i < NUM_POINTS; i++) {
+        if (dir) {
+          if (points[i].spd < 2000) {
+            points[i].spd += 10;
+          }
+        } else {
+          if (points[i].spd > 100) {
+            points[i].spd -= 10;
+          }
+        }
+      }
+      break;
+    case 1:
+      for (int i = 0; i < NUM_POINTS; i++) {
+        uint32_t wrap = 0;
+        for (int h = 0; h < NUM_COLS; h++) {
+          if (dir) {
+            points[i].hcl[h].hue += 8;
+            if (points[i].hcl[h].hue > 0x1800) wrap = 0xfa00;
+          } else {
+            points[i].hcl[h].hue -= 8;
+            if (points[i].hcl[h].hue < 0x600) wrap = 0x0600;
+          }
+        }
+        if (wrap) {
+          for (int h = 0; h < NUM_COLS; h++) {
+            points[i].hcl[h].hue += wrap;
+          }
+        }
+      }
+      break;
+    case 2:
+      break;
+    case 3:
+      break;
+  }
+}
+
+void press_knob(int pos)
+{
+  Serial.print("Press knob ");
+  Serial.println(pos);
+}
+
+void process_knob(unsigned int pos, unsigned char rot1, unsigned char rot2, unsigned char btn)
+{
+  static unsigned char knob_r2 = 0;
+  static unsigned char knob_r1 = 0;
+  static unsigned long knob_press[] = { 0,0,0,0 };
+  unsigned long now = millis();
+  if (btn) {
+    if ((now - knob_press[pos]) > DEBOUNCE) {
+      press_knob(pos);       
+    }
+    knob_press[pos] = now;
+  }
+  unsigned char rot = rot1 | (rot2<<1);
+  unsigned char r1 = (knob_r1 >> (2*pos)) & 3;
+  unsigned char r2 = (knob_r2 >> (2*pos)) & 3;
+  if (rot != r1) {
+    //         00 -> 01 -> 11 -> 10 -> 00
+    //   dcba      b^c
+    //   0001 = 1   0
+    //   0111 = 1   0
+    //   1110 = 1   0
+    //   1000 = 1   0
+    //   0010 = 0   1
+    //   1011 = 0   1
+    //   1101 = 0   1
+    //   0100 = 0   1
+    if (rot != r2) {
+      // Niet op en neer
+      // Serial.print("DBG "); Serial.print(rot); Serial.print(" "); Serial.print(r1); Serial.print(" "); Serial.print(r2); Serial.print(" = "); Serial.println(rot2 ^ (r1&1));
+      rotate_knob(pos, rot2 ^ (r1 & 1));
+    }
+    knob_r2 = (knob_r2 & ~(3 << (2*pos))) | r1 << (2*pos);
+    knob_r1 = (knob_r1 & ~(3 << (2*pos))) | rot << (2*pos);
+  }
+}
+
+#define P_BIT(p,bo) (((p) >> (bo)) & 1)
+
+void scan_knobs()
+{
+  unsigned char pb = PINB;
+  unsigned char pc = PINC;
+  unsigned char pd = PIND;
+  unsigned char pf = PINF;
+  process_knob(0, P_BIT(pf,6), P_BIT(pf,5), P_BIT(pf,7));
+  process_knob(1, P_BIT(pb,2), P_BIT(pb,3), P_BIT(pb,1));
+  process_knob(2, P_BIT(pb,5), P_BIT(pb,4), P_BIT(pd,7));
+  process_knob(3, P_BIT(pd,4), P_BIT(pd,0), P_BIT(pc,6));
+
+}
+
+void loop()
+{
+  unsigned long usesum = 0;
+  unsigned long usecount = 0;
+  while(1) {
+    unsigned long now = millis();
+    update_points(now);
+    for (int j = 2; j <= 16; j++) {
+      l_strip.setPixelColor(j, get_pix_color(0, j, now));
+      r_strip.setPixelColor(j, get_pix_color(4, j, now));
+      scan_knobs();
+    }
+    l_strip.show();
+    r_strip.show();
+    usecount++;
+    unsigned long elaps = millis() - now;
+    usesum += elaps;
+    if (elaps < 20) {
+      now += 20;
+    } else {
+      now += elaps;
+    }
+    while (now < millis()) {
+      delay(1);
+      scan_knobs();
+    }
+    if (usecount >= 100) {
+        // Serial.print("Load/100: ");
+        // Serial.println(usesum);
+        usecount = 0;
+        usesum = 0;
+    }
+  }
 }
 
 void setup()
@@ -177,29 +321,15 @@ void setup()
   r_strip.setPixelColor(0, 0xcccc00);
   r_strip.setPixelColor(1, 0x00cccc);
   r_strip.show();
+
+  for (int i = 0; i < 12; i++) {
+    pinMode(inpins[i], INPUT_PULLUP);
+  }
   
-  //Serial.begin(9600);
-  //delay(4000);
-  //Serial.println("DBG");
-  //Serial.println(sizeof(long), DEC);
+  Serial.begin(9600);
+  delay(1000);
+  Serial.println("DBG");
   unsigned long now = millis();
   set_point(0, now, 0x000, 0b11000110,  1);
   set_point(1, now, 0x200, 0b01101100, -1);
-}
-
-void loop()
-{
-  // put your main code here, to run repeatedly:
-  while(1) {
-    unsigned long now = millis();
-    update_points(now);
-    for (int j = 2; j <= 16; j++) {
-      l_strip.setPixelColor(j, get_pix_color(0, j, now));
-      r_strip.setPixelColor(j, get_pix_color(4, j, now));
-    }
-    l_strip.show();
-    r_strip.show();
-    delay(20);
-  }
-  // Serial.println("Done one round");
 }
