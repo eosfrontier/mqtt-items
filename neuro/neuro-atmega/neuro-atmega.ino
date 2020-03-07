@@ -6,6 +6,7 @@
 #define LED_COUNT 17
 
 #define FIXEDP ((long)256)
+#define SPDFACT ((long)16)
 
 Adafruit_NeoPixel l_strip(LED_COUNT, L_LED_PIN, NEO_RGB + NEO_KHZ800);
 Adafruit_NeoPixel r_strip(LED_COUNT, R_LED_PIN, NEO_RGB + NEO_KHZ800);
@@ -150,14 +151,14 @@ uint32_t get_pix_color(int off, int pos, long tick)
             debug_p("idx * FIXEDP", idx * FIXEDP);
             debug_p("(pt->ppos2-pt->ppos1)*(FIXEDP/2)", (pt->ppos2-pt->ppos1)*(FIXEDP/2));
             debug_p("(idx * FIXEDP) - (pt->ppos2-pt->ppos1)*(FIXEDP/2)", (idx * FIXEDP) - (pt->ppos2-pt->ppos1)*(FIXEDP/2));
-            debug_p("(((tick - pt->tick) * pt->spd) / 1024) * pt->dir", (((tick - pt->tick) * pt->spd) / 1024) * pt->dir);
+            debug_p("(((tick - pt->tick) * pt->spd) / 16) * pt->dir", (((tick - pt->tick) * pt->spd) / 16) * pt->dir);
             debug_p("(pt->size/2)", (pt->size/2));
-            idx = (idx * FIXEDP) - (pt->ppos2-pt->ppos1)*(FIXEDP/2) - (((tick - pt->tick) * pt->spd) / 1024 - (pt->size/2)) * pt->dir;
+            idx = (idx * FIXEDP) - (pt->ppos2-pt->ppos1)*(FIXEDP/2) - (((tick - pt->tick) * pt->spd) / 16 - (pt->size/2)) * pt->dir;
             debug_p("idx (2)", idx);
             debug_p("tick - pt->tick", tick - pt->tick);
             debug_p("pt->spd * pt->dir", pt->spd * pt->dir);
             debug_p("(((tick - pt->tick) * pt->spd * pt->dir))",        (((tick - pt->tick) * pt->spd * pt->dir)));
-            debug_p("(((tick - pt->tick) * pt->spd * pt->dir) / 1024)", (((tick - pt->tick) * pt->spd) / 1024) * pt->dir);
+            debug_p("(((tick - pt->tick) * pt->spd * pt->dir) / 16)", (((tick - pt->tick) * pt->spd) / 16) * pt->dir);
             // Serial.print("Time "); Serial.print(tick - pt->tick); Serial.print(" offset index="); Serial.println(idx);
             // idx is now fixedpoint index of pixel relative to point animation
             if (idx >= pt->idx[0] && idx < pt->idx[NUM_COLS-1]) {
@@ -206,7 +207,7 @@ void set_point(int p, unsigned long now, short hue, unsigned char line, int dir)
     pt->hcl[4].chroma = 0;
     pt->hcl[4].luma = 0;
 
-    pt->spd = 4 * FIXEDP;
+    pt->spd = 16;
     pt->dir = dir;
     pt->size = 16 * FIXEDP + 3000;
     pt->line = line;
@@ -222,7 +223,7 @@ void update_points(unsigned long now)
     if (points[p].spd > 0) {
       debug_p("size",points[p].size);
       debug_p("spd", points[p].spd);
-      uint32_t aspd = (points[p].size * 1024 / (points[p].spd));
+      uint32_t aspd = (points[p].size * 16 / (points[p].spd));
       debug_p("aspd", aspd);
       if (points[p].tick + aspd <= now) {
           // Serial.print("Updating "); Serial.print(p); Serial.print(" : tick = "); Serial.print(points[p].tick);
@@ -236,9 +237,40 @@ void update_points(unsigned long now)
 
 #define DEBOUNCE 100
 
+void rotate_spd(unsigned char dir)
+{
+  for (int i = 0; i < NUM_POINTS; i++) {
+    if (dir) {
+      if (points[i].spd < 1024) {
+        points[i].spd++;
+      }
+    } else {
+      if (points[i].spd > 4) {
+        points[i].spd--;
+      }
+    }
+  }
+}
+
 void rotate_hue(unsigned char dir)
 {
-  
+  for (int i = 0; i < NUM_POINTS; i++) {
+    uint32_t wrap = 0;
+    for (int h = 0; h < NUM_COLS; h++) {
+      if (dir) {
+        points[i].hcl[h].hue += 8;
+        if (points[i].hcl[h].hue > 0x1800) wrap = 0xfa00;
+      } else {
+        points[i].hcl[h].hue -= 8;
+        if (points[i].hcl[h].hue < 0x600) wrap = 0x0600;
+      }
+    }
+    if (wrap) {
+      for (int h = 0; h < NUM_COLS; h++) {
+        points[i].hcl[h].hue += wrap;
+      }
+    }
+  }
 }
 
 void rotate_knob(int pos, unsigned char dir)
@@ -248,36 +280,10 @@ void rotate_knob(int pos, unsigned char dir)
   // Serial.println(dir ? " Right" : " Left");
   switch(pos) {
     case 0:
-      for (int i = 0; i < NUM_POINTS; i++) {
-        if (dir) {
-          if (points[i].spd < (10*FIXEDP)) {
-            points[i].spd += 16;
-          }
-        } else {
-          if (points[i].spd > (FIXEDP/4)) {
-            points[i].spd -= 16;
-          }
-        }
-      }
+      rotate_spd(dir);
       break;
     case 1:
-      for (int i = 0; i < NUM_POINTS; i++) {
-        uint32_t wrap = 0;
-        for (int h = 0; h < NUM_COLS; h++) {
-          if (dir) {
-            points[i].hcl[h].hue += 8;
-            if (points[i].hcl[h].hue > 0x1800) wrap = 0xfa00;
-          } else {
-            points[i].hcl[h].hue -= 8;
-            if (points[i].hcl[h].hue < 0x600) wrap = 0x0600;
-          }
-        }
-        if (wrap) {
-          for (int h = 0; h < NUM_COLS; h++) {
-            points[i].hcl[h].hue += wrap;
-          }
-        }
-      }
+      rotate_hue(dir);
       break;
     case 2:
       break;
@@ -411,6 +417,6 @@ void setup()
   unsigned long now = millis();
   //set_point(0, now, 0x000, 0b11000110,  1);
   //set_point(1, now, 0x200, 0b01101100, -1);
-  set_point(0, now-3000, 0x000, 0b10000010,  1);
-  set_point(1, now-3000, 0x200, 0b00101000, -1);
+  set_point(0, now, 0x000, 0b10000010,  1);
+  set_point(1, now, 0x200, 0b00101000,  1);
 }
