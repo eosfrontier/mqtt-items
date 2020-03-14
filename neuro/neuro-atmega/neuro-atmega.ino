@@ -1,7 +1,9 @@
 #include <Adafruit_NeoPixel.h>
 
+bool debugging = false;
+
 #define R_LED_PIN 10
-#define L_LED_PIN 7
+#define L_LED_PIN 9
 
 #define LED_COUNT 17
 
@@ -28,7 +30,7 @@ const char r_line4[] = { 2,3,4,12,13,14,15,16 };
 const char *lines[] = { l_line1, l_line2, l_line3, l_line4, r_line1, r_line2, r_line3, r_line4 };
 const char ln_lens[] = { 5,8,7,8,5,8,6,8 };
 
-const char inpins[] = { 3,4,5,6,8,9,14,15,16,18,19,20 };
+const char inpins[] = { 3,4,5,6,7,8,14,15,16,18,19,20 };
 
 #define NUM_POINTS 2
 #define NUM_COLS 5
@@ -69,9 +71,9 @@ rgb_t get_hcl_color(hcl_t ca, hcl_t cb, uint32_t pos, uint32_t tot)
     debug_p("luma2", cb.luma);
     debug_p("pos", pos);
     debug_p("tot", tot);
-    long hue =    (cb.hue    * pos + ca.hue    * (tot-pos-1)) / tot + (36 * FIXEDP); // Is cyclisch, in het positieve trekken (slechte hack maarja)
-    long chroma = (cb.chroma * pos + ca.chroma * (tot-pos-1)) / tot;
-    long luma =   (cb.luma   * pos + ca.luma   * (tot-pos-1)) / tot;
+    long hue =    (cb.hue    * pos + ca.hue    * (tot-pos)) / tot + (36 * FIXEDP); // Is cyclisch, in het positieve trekken (slechte hack maarja)
+    long chroma = (cb.chroma * pos + ca.chroma * (tot-pos)) / tot;
+    long luma =   (cb.luma   * pos + ca.luma   * (tot-pos)) / tot;
     long x = chroma * (FIXEDP - abs(hue % (FIXEDP*2) - FIXEDP)) / FIXEDP;
     long r = 0, g = 0, b = 0;
     switch ((hue / FIXEDP) % 6) {
@@ -82,6 +84,7 @@ rgb_t get_hcl_color(hcl_t ca, hcl_t cb, uint32_t pos, uint32_t tot)
         case 4: r = x; b = chroma; break;
         case 5: r = chroma; b = x; break;
     }
+    debug_p("x", x);
     debug_p("hue", hue);
     debug_p("chroma", chroma);
     debug_p("luma", luma);
@@ -101,10 +104,11 @@ rgb_t get_hcl_color(hcl_t ca, hcl_t cb, uint32_t pos, uint32_t tot)
     if (b > 255) b = 255;
     rgb_t rgb = { .r = r, .g = g, .b = b };
     //rgb_t rgb = { .r = constrain(r+m, 0, 255), .g = constrain(g+m, 0, 255), .b = constrain(b+m, 0, 255) };
+    debug_p("r.", rgb.r);
+    debug_p("g.", rgb.g);
+    debug_p("b.", rgb.b);
     return rgb;
 }
-
-bool debugging = false;
 
 void debug_p(char *msg, long val)
 {
@@ -126,6 +130,8 @@ int get_pointindex(int off, int pos, unsigned char ptline)
             char *line = lines[ln];
             for (int i = 0; i < ln_lens[ln]; i++) {
                 if (line[i] == pos) {
+                    debug_p("line", ln);
+                    debug_p("i", i);
                     return (off ? 16-i : i);
                 }
             }
@@ -139,10 +145,11 @@ uint32_t get_pix_color(int off, int pos, long tick)
 {
     uint32_t r = 0, g = 0, b = 0;
     for (int p = 0; p < NUM_POINTS; p++) {
+        debug_p("pixel", pos);
+        debug_p("point", p);
         struct point *pt = &points[p];
         long idx = get_pointindex(off, pos, pt->line) - pt->ppos1;
         // idx is now integer index of pixel
-        debug_p("pixel", pos);
         debug_p("idx", idx);
         if (idx >= 0 && idx <= (pt->ppos2 - pt->ppos1)) {
             debug_p("idx (1.5)", (idx * FIXEDP) - (pt->ppos2-pt->ppos1)*(FIXEDP/2));
@@ -175,9 +182,15 @@ uint32_t get_pix_color(int off, int pos, long tick)
             }
         }
     }
+    debug_p("r(t)",r);
+    debug_p("g(t)",g);
+    debug_p("b(t)",b);
     if (r > 255) r = 255;
     if (g > 255) g = 255;
     if (b > 255) b = 255;
+    debug_p("r(b)",r);
+    debug_p("g(b)",g);
+    debug_p("b(b)",b);
     return (r + (g << 8) + (b << 16));
 }
 
@@ -296,6 +309,7 @@ void press_knob(int pos)
 {
   // Serial.print("Press knob ");
   // Serial.println(pos);
+  if (pos == 2) debugging = true;
 }
 
 void process_knob(unsigned int pos, unsigned char rot1, unsigned char rot2, unsigned char btn)
@@ -338,12 +352,13 @@ void process_knob(unsigned int pos, unsigned char rot1, unsigned char rot2, unsi
 void scan_knobs()
 {
   unsigned char pb = PINB;
+  unsigned char pe = PINE;
   unsigned char pc = PINC;
   unsigned char pd = PIND;
   unsigned char pf = PINF;
   process_knob(0, P_BIT(pf,6), P_BIT(pf,5), P_BIT(pf,7));
   process_knob(1, P_BIT(pb,2), P_BIT(pb,3), P_BIT(pb,1));
-  process_knob(2, P_BIT(pb,5), P_BIT(pb,4), P_BIT(pd,7));
+  process_knob(2, P_BIT(pe,6), P_BIT(pb,4), P_BIT(pd,7));
   process_knob(3, P_BIT(pd,4), P_BIT(pd,0), P_BIT(pc,6));
 
 }
@@ -355,23 +370,28 @@ void loop()
   while(1) {
     unsigned long now = millis();
     update_points(now);
-    for (int j = 2; j <= 16; j++) {
+    for (int j = 2; j < LED_COUNT; j++) {
+      //get_pix_color(0, j, now);
       l_strip.setPixelColor(j, get_pix_color(0, j, now));
+      //get_pix_color(4, j, now);
       r_strip.setPixelColor(j, get_pix_color(4, j, now));
       scan_knobs();
     }
     l_strip.show();
     r_strip.show();
+    if (debugging) {
+      delay(2000);
+    }
     debugging = false;
     usecount++;
     unsigned long elaps = millis() - now;
     usesum += elaps;
-    if (elaps < 500) {
-      now += 500;
+    if (elaps < 20) {
+      now += 20;
     } else {
       now += elaps;
     }
-    while (now < millis()) {
+    while (now > millis()) {
       delay(1);
       scan_knobs();
     }
