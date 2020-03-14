@@ -150,12 +150,27 @@ void msg_receive(const char *topic, const char *msg)
 void msg_subscribe(const char *topic)
 {
   IPAddress bcast = WiFi.localIP();
-  IPAddress smask = WiFi.subnetMask();
-  for (int i = 0; i < 4; i++) bcast[i] |= ~smask[i];
-  udp.beginPacket(bcast, mqtt_port);
-  udp.write("SUB\n", 4);
-  udp.write(topic, strlen(topic));
-  udp.endPacket();
+  if (bcast) {
+    IPAddress smask = WiFi.subnetMask();
+    Serial.print("Sending sub from ip "); Serial.print(bcast); Serial.print(" mask "); Serial.println(smask);
+    for (int i = 0; i < 4; i++) bcast[i] |= ~smask[i];
+    Serial.print("Broadcast to "); Serial.println(bcast);
+    udp.beginPacket(bcast, mqtt_port);
+    udp.write("SUB\n", 4);
+    udp.write(topic, strlen(topic));
+    udp.endPacket();
+  }
+  
+  bcast = WiFi.softAPIP();
+  if (bcast) {
+    Serial.print("Sending sub from SoftAP ip "); Serial.println(bcast);
+    bcast[3] = 255;
+    Serial.print("Broadcast to "); Serial.println(bcast);
+    udp.beginPacket(bcast, mqtt_port);
+    udp.write("SUB\n", 4);
+    udp.write(topic, strlen(topic));
+    udp.endPacket();
+  }
 }
 
 unsigned long lastscan = 0;
@@ -164,23 +179,23 @@ char wifiidx = 0;
 void msg_check()
 {
   if (WiFi.status() != WL_CONNECTED) {
-      if (strcmp(state, "nowifi")) { // Als we van iets anders naar nowifi gaan (NB: initieel is nowifi)
+      if (!strcmp(state, "nosubs")) { // Als we van nosubs anders naar nowifi gaan (NB: initieel is nosubs omdat ESP automatisch connecten ij powerup)
+          Serial.println("No WiFi connection");
           leds_set("nowifi");
           lastscan = lasttick + 5 * 1000; // 5 seconden wachten tot active reconnect
       }
       if (lasttick > lastscan) {
-          lastscan = lasttick + 10 * 1000; // Elke 10 seconden een ssid proberen
+          lastscan = lasttick + 5 * 1000; // Elke 10 seconden een ssid proberen
 #ifdef MQTT_SOFTAP
           if (wifiidx == 0) {
               wifiidx = 1;
-              if (!WiFi.softAPIP()) {
-                  File wifitxt = SPIFFS.open("wifiA.txt", "r");
-                  String assid = wifitxt.readStringUntil('\n');
-                  String apwd = wifitxt.readStringUntil('\n');
-                  wifitxt.close();
-                  WiFi.softAP(assid, apwd);
-                  Serial.print("SoftAP Listening on "); Serial.print(assid); Serial.print(" IP="); Serial.println(WiFi.softAPIP());
-              }
+              File wifitxt = SPIFFS.open("/wifiA.txt", "r");
+              String assid = wifitxt.readStringUntil('\n');
+              String apwd = wifitxt.readStringUntil('\n');
+              wifitxt.close();
+              WiFi.softAP(assid, apwd);
+              Serial.print("SoftAP Listening on '"); Serial.print(assid); Serial.print("' pwd='"); Serial.print(apwd); Serial.print("' IP="); Serial.println(WiFi.softAPIP());
+              Serial.print("Currently we have "); Serial.print(WiFi.softAPgetStationNum()); Serial.println(" clients connected to SoftAP");
           }
 #endif
           wifiidx++;
@@ -188,20 +203,26 @@ void msg_check()
           wififn[5] = 'A' + (wifiidx-1);
           if (!SPIFFS.exists(wififn)) {
               Serial.print("Scanned wifi up to "); Serial.print(wififn); Serial.println(" redo from start");
-              lastscan = lasttick + 60 * 1000; // 60 seconden wachten en opnieuw beginnen
+              lastscan = lasttick + 30 * 1000; // 60 seconden wachten en opnieuw beginnen
               wifiidx = 0;
-              return;
+              int nap = WiFi.scanNetworks();
+              if (nap == 0) {
+                Serial.println("WiFi scan found zero networks!");
+              }
+              for (int i = 0; i < nap; i++) {
+                Serial.print("Found network "); Serial.print(WiFi.SSID(i)); Serial.print(" on Channel "); Serial.print(WiFi.channel(i)); Serial.print(" ("); Serial.print(WiFi.RSSI()); Serial.println(")");
+              }
+              WiFi.scanDelete();
+          } else {
+              File wifitxt = SPIFFS.open(wififn, "r");
+              String wssid = wifitxt.readStringUntil('\n');
+              String wpwd = wifitxt.readStringUntil('\n');
+              wifitxt.close();
+              Serial.print("Wifi trying to connect to '"); Serial.print(wssid); Serial.print("' pwd '"); Serial.print(wpwd); Serial.println("'...");
+              WiFi.begin(wssid, wpwd);
           }
-          File wifitxt = SPIFFS.open(wififn, "r");
-          String wssid = wifitxt.readStringUntil('\n');
-          String wpwd = wifitxt.readStringUntil('\n');
-          wifitxt.close();
-          Serial.print("Wifi trying to connect to '"); Serial.print(wssid); Serial.print("' pwd '"); Serial.print("********"); Serial.println("'...");
-          WiFi.begin(wssid, wpwd);
       }
-      return;
-  }
-  if (!strcmp(state, "nowifi")) {
+  } else if (!strcmp(state, "nowifi")) {
 #ifdef MQTT_SOFTAP
       if (WiFi.softAPIP()) {
           Serial.println("Connected to real WiFI, disconnecting soft AP");
@@ -251,21 +272,23 @@ void msg_check()
       msg_subscribe(MSG_SUBSCRIPTIONS[i]);
     }
   }
-  if (numsubs == 0) {
-    if (strcmp(state, "nosubs")) {
-      Serial.println("No subs, not live, waiting a while and then disconnecting from WiFi");
-      lastscan = lasttick + random(60 * 1000, 90 * 1000); // 60-90 seconden wachten op subs
-      leds_set("nosubs");
-    } else if (lasttick > lastscan) {
-      leds_set("nowifi");
-      Serial.println("No subs for a while, disconnecting from wifi");
-      WiFi.disconnect();
-    }
-  } else {
-    lastscan = lasttick + 10 * 1000;
-    if (!strcmp(state, "nosubs")) {
-      Serial.println("We have subscribers, we are live!");
-      leds_set("idle");
+  if (strcmp(state, "nowifi")) {
+    if (numsubs == 0) {
+      if (strcmp(state, "nosubs")) {
+        Serial.println("No subs, not live, waiting a while and then disconnecting from WiFi");
+        lastscan = lasttick + random(60 * 1000, 90 * 1000); // 60-90 seconden wachten op subs
+        leds_set("nosubs");
+      } else if (lasttick > lastscan) {
+        leds_set("nowifi");
+        Serial.println("No subs for a while, disconnecting from wifi");
+        WiFi.disconnect();
+      }
+    } else {
+      lastscan = lasttick + 10 * 1000;
+      if (!strcmp(state, "nosubs")) {
+        Serial.println("We have subscribers, we are live!");
+        leds_set("idle");
+      }
     }
   }
 }

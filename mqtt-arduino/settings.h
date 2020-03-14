@@ -12,7 +12,7 @@ const char * BUTTONS_NAMES[] = {};
 const int LEDS_NUM = 3;
 const int BUTTONS_PINS[] = {14,12,13};
 const char * BUTTONS_NAMES[] = {"b1","b2","b3"};
-#define COLORS_DEFAULT "2000:180000,001800,000020"
+#define COLORS_DEFAULT "2000:000000,001800,000000"
 
 #define MSG_NAME "eos/portal/buttons_out"
 #endif
@@ -21,7 +21,7 @@ const char * BUTTONS_NAMES[] = {"b1","b2","b3"};
 const int LEDS_NUM = 4;
 const int BUTTONS_PINS[] = {4,14,12,13};
 const char * BUTTONS_NAMES[] = {"b4","b3","b2","b1"};
-#define COLORS_DEFAULT "2000:101000,000020,001800,180000"
+#define COLORS_DEFAULT "2000:000000,000000,001800,180000"
 
 #define MSG_NAME "eos/portal/buttons_in"
 #endif

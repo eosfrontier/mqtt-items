@@ -1,15 +1,15 @@
 #include <ESP8266WiFi.h>
 
 //#define MQTT_BUTTONS_OUT
-//#define MQTT_BUTTONS_IN
-#define MQTT_LIGHTS
+#define MQTT_BUTTONS_IN
+//#define MQTT_LIGHTS
 #include "settings.h"
 
 #ifdef MQTT_LIGHTS
 #define MQTT_SOFTAP
 #endif
 
-const char *state = "nowifi";
+const char *state = "nosubs";
 
 unsigned long loadavg = 0;
 unsigned long lasttick = 0;
