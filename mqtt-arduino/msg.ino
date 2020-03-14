@@ -261,7 +261,8 @@ void msg_check()
               wififn[5] = 'A' + wifiidx;
             }
             Serial.print("Scanned wifi down from "); Serial.print(wififn); Serial.println(" redo from start");
-            int nap = WiFi.scanNetworks();
+            /*
+            int nap = WiFi.scanNetworks(false, true);
             if (nap == 0) {
                 Serial.println("WiFi scan found zero networks!");
             }
@@ -269,6 +270,7 @@ void msg_check()
                 Serial.print("Found network "); Serial.print(WiFi.SSID(i)); Serial.print(" on Channel "); Serial.print(WiFi.channel(i)); Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.println(")");
             }
             WiFi.scanDelete();
+            */
             lastscan = lasttick + 60 * 1000; // Na de hele lijst 60 seconden wachten
           } else {
             wifiidx--;
@@ -282,7 +284,7 @@ void msg_check()
               static int softapchannel = 1;
               if (!WiFi.softAPIP()) {
                   uint32_t seenchannels = 0;
-                  int nap = WiFi.scanNetworks();
+                  int nap = WiFi.scanNetworks(false, true);
                   if (nap == 0) { Serial.println("WiFi scan found zero networks!"); }
                   for (int i = 0; i < nap; i++) {
                       int ch = WiFi.channel(i);
