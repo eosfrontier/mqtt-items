@@ -4,7 +4,10 @@
 //#define MQTT_BUTTONS_IN
 #define MQTT_LIGHTS
 #include "settings.h"
-#include "config.h"
+
+#ifdef MQTT_LIGHTS
+#define MQTT_SOFTAP
+#endif
 
 const char *state = "nowifi";
 
@@ -14,7 +17,7 @@ unsigned long lasttick = 0;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  WiFi.begin(SSID_SETTINGS[0], SSID_SETTINGS[1]);
+  // WiFi.begin(SSID_SETTINGS[0], SSID_SETTINGS[1]);
   /*
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
@@ -28,7 +31,7 @@ void setup() {
   msg_setup();
   leds_setup();
   buttons_setup();
-  ws_setup();
+  // ws_setup();
   lasttick = millis();
 }
 
@@ -37,7 +40,7 @@ void loop() {
   leds_animate();
   buttons_check();
   check_status();
-  ws_check();
+  // ws_check();
 
   unsigned long nexttick = millis();
   unsigned long elaps = nexttick - lasttick;

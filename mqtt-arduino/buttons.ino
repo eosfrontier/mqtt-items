@@ -21,7 +21,7 @@ void buttons_check()
       if ((idx + strlen(BUTTONS_NAMES[i])) > 1024) {
         Serial.print("Button message too long! <<<");
         Serial.write(msgbuf, idx);
-        Serial.println("<<<");
+        Serial.println(">>>");
         return;
       }
       strcpy(msgbuf+idx, BUTTONS_NAMES[i]);
