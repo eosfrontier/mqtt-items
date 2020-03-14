@@ -1,2 +1,2 @@
 gaia
-bastion2019
+gaia-password
