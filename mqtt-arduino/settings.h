@@ -60,6 +60,7 @@ const char * MSG_SUBSCRIPTIONS[] = {
   "eos/portal/*/button/*",
   NULL
 };
+/*
 const char * WS_BROADCAST_RECEIVE[] = {
   "bcportalinc", MSG_NAME "/set", "inc",
   "bcportalincdanger", MSG_NAME "/set", "red",
@@ -75,6 +76,7 @@ const char * WS_BROADCAST_SEND[] = {
          "\"file\":\"bcportalincdanger\",\"priority\":3,\"duration\":\"30000\",\"colorscheme\":\"0\"}]",
   NULL
 };
+*/
 #else
 const char * MSG_MAPPING[] = {
   "eos/portal/light/ack","*",MSG_NAME "/set",NULL,
