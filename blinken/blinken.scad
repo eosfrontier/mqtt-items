@@ -14,14 +14,14 @@ boxheight = 20;
 boxthick = 2;
 edge = 0;
 
-*for (i = [0:numstuds-1]) {
+for (i = [0:numstuds-1]) {
     color("white")
     translate([(i-(numstuds-1)/2)*(studwidth+studspace),0,0])
     lightstud();
 }
-*color("DimGray")
+color("DimGray")
 lightbox();
-color("Gray") translate([0,0,-boxheight-sideheight]) lightbottom();
+*color("Gray") translate([0,0,-boxheight-sideheight]) lightbottom();
 
 *color("Teal") translate([0,1,-boxheight-sideheight+boxthick+1]) rotate([180,0,-90]) batteryholder();
 
@@ -93,24 +93,7 @@ module lightbox() {
                 [[for(i=[5:-1:0]) i+42]]
             )
         );
-        /*
-        for (i = [0:numstuds-1]) {
-            translate([(i-(numstuds-1)/2)*(studwidth+studspace),0,-hi-0.1]) {
-                linear_extrude(height=hi+0.2)
-                polygon([[-sxs,0],[0,sys],[sxs,0],[0,-sys]]);
-                translate([0,0,hi-0.3])
-                linear_extrude(height=0.5,scale=(sys+0.5)/sys)
-                polygon([[-sxs,0],[0,sys],[sxs,0],[0,-sys]]);
-            }
-        }
-        */
-        /*
-        for (i = [0:numstuds-1]) {
-            translate([(i-(numstuds-1)/2)*(studwidth+studspace),0,-hi-0.1]) {
-                cylinder(boxthick+0.2,holesize/2,holesize/2,$fn=64);
-            }
-        }
-        */
+
         ys2 = ys-hi*2;
         #for (i = [1:numstuds-2]) {
             translate([(i-(numstuds-1)/2)*(studwidth+studspace),0,0]) 
@@ -142,36 +125,12 @@ module lightbox() {
                 ]
             );
         }
-    }
-    /*
-    for (i = [0:numstuds-2]) {
-        translate([(i-(numstuds-1)/2)*(studwidth+studspace),0,-hi-(0.75/2)]) {
-            translate([(holesize+1)/2,0,0]) cube([1,ys*2+1.5,0.75],true);
-        }
-        translate([(i+1-(numstuds-1)/2)*(studwidth+studspace),0,-hi-(0.75/2)]) {
-            translate([-(holesize+1)/2,0,0]) cube([1,ys*2+1.5,0.75],true);
+        // Switch hole
+        translate([(numstuds/2-1)*(studwidth+studspace)+20,yi,boxthick-1-h2]) {
+            translate([0,1,3.8])
+            #cube([7.5,2.2,5.7],true);
         }
     }
-    for (i = [0:numstuds-1]) {
-        translate([(i-(numstuds-1)/2)*(studwidth+studspace),0,-hi-(0.45/2)]) {
-            translate([0,(holesize+1)/2,0]) cube([holesize+1,1,0.45],true);
-            translate([0,-(holesize+1)/2,0]) cube([holesize+1,1,0.45],true);
-        }
-        translate([(i-(numstuds-1)/2)*(studwidth+studspace),0,-hi-(0.15/2)]) {
-            for (a = [45:90:315]) rotate([0,0,a]) {
-                translate([0,(holesize+1)/2,0]) cube([holesize/sqrt(2)-1.6,1,0.15],true);
-            }
-        }
-    }
-
-    translate([((numstuds-1)/2)*(studwidth+studspace),0,-hi-(0.75/2)]) {
-        translate([(holesize+1)/2,0,0]) cube([1,ys*2-(holesize-1.6)/s3,0.75],true);
-    }
- 
-    translate([(-(numstuds-1)/2)*(studwidth+studspace),0,-hi-(0.75/2)]) {
-        translate([-(holesize+1)/2,0,0]) cube([1,ys*2-(holesize-1.6)/s3,0.75],true);
-    }
-    */
 
     translate([0,0,-boxheight-sideheight+5]) {
         for (i = [0:numstuds-2]) {
@@ -227,6 +186,11 @@ module lightbottom() {
             // rotate([0,0,30]) cylinder(boxthick+0.2,10,10,$fn=6);
             rotate([0,0,30]) hexslice();
         }
+        // Switch hole
+        translate([(numstuds/2-1)*(studwidth+studspace)+20,ye,boxthick-1]) {
+            translate([0,1.1,4.3])
+            #cube([7.5,2.4,5.8],true);
+        }
     }
     translate([0,0,5]) {
         for (i = [0:numstuds-2]) {
@@ -243,6 +207,43 @@ module lightbottom() {
     translate([(numstuds/2-1) * (studwidth+studspace) + studwidth/2+2, 0, boxthick-1]) mirror([0,0,1]) wemosd1();
 
     rotate([180,0,90]) translate([1,0,-boxthick-1]) batteryclips();
+    
+    // Switch holder
+    translate([(numstuds/2-1)*(studwidth+studspace)+20,ye,boxthick-1]) {
+        translate([0,-0.4,0]) difference() {
+            union() {
+                translate([ 8.25,0,3.5])
+                cube([5.5,4,7], true);
+                translate([-8.25,0,3.5])
+                cube([5.5,4,7], true);
+            }
+            #translate([0,0,3.9])
+            cube([20,0.3,6.4],true);
+            #translate([0,0,7.1]) rotate([45,0,0])
+            cube([20,0.6,0.6],true);
+        }
+        translate([0,3.1,0.2])
+        cube([7.3,2.6,2.4],true);
+        
+        *translate([0,0,3])
+        cube([7,20,3], true);
+    }
+    
+    /*
+    sch = boxheight;
+    sth = boxheight + sideheight-2.5;
+    stw = sideheight-2.5;
+    for (i = [0:numstuds-1]) {
+        translate([(i-(numstuds-1)/2)*(studwidth+studspace)+4.5,0,0]) {
+            rotate([0,-90,0])
+            linear_extrude(9) polygon([
+                [0, yi],[sch,   yi],[sth, yi-stw],[sth  ,-yi+stw],[sch,  -yi],[0,-yi],
+                [0,-ye],[sch-1,-ye],[sth-2,-ye+stw-1],[sth-2, ye-stw+1],[sch-1, ye],[0, ye]
+            ]);
+        }
+    }
+    */
+    
 }
 
 module batteryclips() {
@@ -331,7 +332,7 @@ module wemosd1() {
 
     translate([ 10,-12.7-2/2,-7/2+0.1]) cube([7,2,7],true);
     translate([ 10, 12.7+2/2,-7/2+0.1]) cube([7,2,7],true);
-    translate([-10,-12.7-2/2,-7/2+0.1]) cube([7,2,7],true);
+    translate([-05,-12.7-2/2,-7/2+0.1]) cube([7,2,7],true);
     translate([-10, 12.7+2/2,-7/2+0.1]) cube([7,2,7],true);
 }
 
