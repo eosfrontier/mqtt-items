@@ -55,10 +55,10 @@ module boxsq() {
 }
 
 module boxtri() {
-    color("gray")
-    front2();
     *color("gray")
-    *translate([0,0,-tol]) bottom2();
+    front2();
+    color("gray")
+    translate([0,0,-tol]) bottom2();
     *switches(180);
     *color("teal") translate([0,-19.8,height-wid-1.1]) rotate([0,0,180]) batteryholder();
 }
@@ -234,7 +234,11 @@ module bottom2() {
         #for (n = [360/trivec:360/trivec:360]) rotate([0,0,n]) {
             translate([0,0,-bott-0.5]) slitgroup();
         }
+        #translate([0,-69,4.1])
+        cube([25.2,2.7,8.2],true);
     }
+    translate([0,-71.019,0.7])
+    cube([7.3,3.7,1.6],true);
     for (n = [360/trivec:360/trivec:360]) {
         rotate([0,0,n]) {
             translate([40,-taboff,sheight-2])
@@ -366,8 +370,22 @@ module front2() {
             );
             #translate([0,0,height-0.2]) slitgroup(0.5,4.5,6);
         }
-        #translate([0,-20,height-wid-1.1])
+        #translate([0,-71.55,2.25])
+        cube([7.5,2.7,4.8],true);
+        translate([0,-20,height-wid-1.1])
         translate([-0.5,-95/2-4,-4.8]) cube([8.5,3,2.6],true);
+    }
+    translate([0,-68.3,0]) difference() {
+        union() {
+            translate([ 9,0,5])
+            cube([7,4,10], true);
+            translate([-9,0,5])
+            cube([7,4,10], true);
+        }
+        #translate([0,0,2.9])
+        cube([20,0.3,6.2],true);
+        #translate([0,2.1,10]) rotate([45,0,0])
+        cube([25.2,6,6],true);
     }
     for (n=[360/trivec:360/trivec:360]) {
         rotate([0,0,n])
