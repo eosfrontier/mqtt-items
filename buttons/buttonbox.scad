@@ -23,8 +23,8 @@ crv = 10;
 
 taboff = trioff-bsize-cwid-1.114-tol;
 
-*boxsq();
-boxtri();
+boxsq();
+*boxtri();
 
 module boxsq() {
     bw = 110;
@@ -33,10 +33,10 @@ module boxsq() {
     bt = 2;
     btw = 3.65;
     
-    color("gray")
+    *color("gray")
     sqfront(bw,bh,bt,btw*s2);
     
-    *color("gray")
+    color("gray")
     translate([0,0,-0.1])
     sqback(bw,bt,3,eh);
     
@@ -96,6 +96,24 @@ module sqfront(bw,bh,bt,btw) {
             translate([-0.5,-95/2-4,-5.8]) cube([8.5,3,2.6],true);
         
         }
+        // Switch hole
+        #translate([13.5,-56,2.25])
+        cube([7.5,2.7,4.8],true);
+    }
+    // Switch holder
+    translate([13.5,-53.1,0]) difference() {
+        union() {
+            translate([ 8.25,0,5])
+            cube([5.5,4,10], true);
+            translate([-8.25,0,5])
+            cube([5.5,4,10], true);
+        }
+        #translate([0,0,2.9])
+        cube([20,0.3,6.2],true);
+        #translate([0,2.1,10]) rotate([45,0,0])
+        cube([22.2,6,6],true);
+        #translate([0,0,-0.1]) rotate([45,0,0])
+        cube([20,0.6,0.6],true);
     }
     
     for (n=[0:3]) {
@@ -196,8 +214,13 @@ module sqback(bw,bt,et,eh) {
             rotate([0,0,45])
             cur_prism(2, [[32,0.5,-8],[32,-2.5,-8]]);
         }
+        // Switch hole
+        #translate([13.5,-53.5,4.1])
+        cube([22.2,3.2,8.2],true);
     }
-
+    // Switch hole filler
+    translate([13.5,-55.246,0.7])
+    cube([7.3,3.7,1.6],true);
     
     translate([35,-bw/2+bt/2,tabheight])
     rotate([0,0,180])
@@ -234,9 +257,11 @@ module bottom2() {
         #for (n = [360/trivec:360/trivec:360]) rotate([0,0,n]) {
             translate([0,0,-bott-0.5]) slitgroup();
         }
+        // Switch hole
         #translate([0,-69,4.1])
-        cube([25.2,2.7,8.2],true);
+        cube([22.2,2.7,8.2],true);
     }
+    // Switch hole filler
     translate([0,-71.019,0.7])
     cube([7.3,3.7,1.6],true);
     for (n = [360/trivec:360/trivec:360]) {
@@ -370,22 +395,26 @@ module front2() {
             );
             #translate([0,0,height-0.2]) slitgroup(0.5,4.5,6);
         }
-        #translate([0,-71.55,2.25])
-        cube([7.5,2.7,4.8],true);
         translate([0,-20,height-wid-1.1])
         translate([-0.5,-95/2-4,-4.8]) cube([8.5,3,2.6],true);
+        // Switch hole
+        #translate([0,-71.55,2.25])
+        cube([7.5,2.7,4.8],true);
     }
+    // Switch holder
     translate([0,-68.3,0]) difference() {
         union() {
-            translate([ 9,0,5])
-            cube([7,4,10], true);
-            translate([-9,0,5])
-            cube([7,4,10], true);
+            translate([ 8.25,0,5])
+            cube([5.5,4,10], true);
+            translate([-8.25,0,5])
+            cube([5.5,4,10], true);
         }
         #translate([0,0,2.9])
         cube([20,0.3,6.2],true);
         #translate([0,2.1,10]) rotate([45,0,0])
-        cube([25.2,6,6],true);
+        cube([22.2,6,6],true);
+        #translate([0,0,-0.1]) rotate([45,0,0])
+        cube([20,0.6,0.6],true);
     }
     for (n=[360/trivec:360/trivec:360]) {
         rotate([0,0,n])
