@@ -23,8 +23,8 @@ crv = 10;
 
 taboff = trioff-bsize-cwid-1.114-tol;
 
-boxsq();
-*boxtri();
+*boxsq();
+boxtri();
 
 module boxsq() {
     bw = 110;
@@ -33,10 +33,10 @@ module boxsq() {
     bt = 2;
     btw = 3.65;
     
-    *color("gray")
+    color("gray")
     sqfront(bw,bh,bt,btw*s2);
     
-    color("gray")
+    *color("gray")
     translate([0,0,-0.1])
     sqback(bw,bt,3,eh);
     
@@ -55,9 +55,9 @@ module boxsq() {
 }
 
 module boxtri() {
-    *color("gray")
-    front2();
     color("gray")
+    front2();
+    *color("gray")
     translate([0,0,-tol]) bottom2();
     *switches(180);
     *color("teal") translate([0,-19.8,height-wid-1.1]) rotate([0,0,180]) batteryholder();
@@ -109,11 +109,11 @@ module sqfront(bw,bh,bt,btw) {
             cube([5.5,4,10], true);
         }
         #translate([0,0,2.9])
-        cube([20,0.3,6.2],true);
+        cube([20,0.4,6.2],true);
         #translate([0,2.1,10]) rotate([45,0,0])
         cube([22.2,6,6],true);
         #translate([0,0,-0.1]) rotate([45,0,0])
-        cube([20,0.6,0.6],true);
+        cube([20,0.8,0.8],true);
     }
     
     for (n=[0:3]) {
@@ -410,11 +410,11 @@ module front2() {
             cube([5.5,4,10], true);
         }
         #translate([0,0,2.9])
-        cube([20,0.3,6.2],true);
+        cube([20,0.4,6.2],true);
         #translate([0,2.1,10]) rotate([45,0,0])
         cube([22.2,6,6],true);
         #translate([0,0,-0.1]) rotate([45,0,0])
-        cube([20,0.6,0.6],true);
+        cube([20,0.8,0.8],true);
     }
     for (n=[360/trivec:360/trivec:360]) {
         rotate([0,0,n])

@@ -58,7 +58,7 @@ buttonsp = 75;
 ledholes = false;
 fixit = ledholes?0:1;
 
-complete = true;
+complete = false;
 
 if (complete) {
 
@@ -101,7 +101,7 @@ if (complete) {
         translate([-5,height,breadth/2]) topdisc();
     }
 
-    *center_p();
+    center_p();
     *translate([0,0,-0.1]) center_bottom();
 
     *translate([0,0.1,0]) sidebox();
@@ -268,12 +268,14 @@ module center_bottom(w = centerwidth, b = centerthick, t = wall, tol=0.2) {
              [for (s=[tsds-1:-1:tsds-csds]) s]]
              ));
 
+        // Micro-usb port hole
         translate([-w/2+18, y+b-t-t/2, 4.5]) cube([14, t+1, 3], true);
         translate([-w/2+18, y+b-t-t/2, 3]) cube([8, t+1, 6], true);
 
         b_centerholes();
         b_centerholes(f=-1);
     }
+    // Micro-usb port holder
     translate([-w/2+18, y+b-t-9.5, 0]) {
         translate([0,0,1.45]) cube([12, 4, 3.1], true);
         translate([-5,3,1.45]) cube([2, 8.5, 3.1], true);
@@ -405,7 +407,10 @@ module center_p(w = centerwidth, b = centerthick, h = 40, eh=40, t=wall, st=cent
         centerholes(f = -1);
 
         translate([-w/2+14, y+b-t/2, 25]) switchhole();
+        
+        // Micro-usb hole
         translate([-w/2+18, y+b-t/2, 1.5]) cube([9, t+1, 3.2], true);
+        
         translate([0, y+t+0.5, tabhi]) cube([29.2, 1, 4], true);
     }
     translate([0, y+t, 0]) battery_slot();

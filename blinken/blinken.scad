@@ -21,7 +21,7 @@ for (i = [0:numstuds-1]) {
 }
 color("DimGray")
 lightbox();
-*color("Gray") translate([0,0,-boxheight-sideheight]) lightbottom();
+color("Gray") translate([0,0,-boxheight-sideheight]) lightbottom();
 
 *color("Teal") translate([0,1,-boxheight-sideheight+boxthick+1]) rotate([180,0,-90]) batteryholder();
 
@@ -130,6 +130,12 @@ module lightbox() {
             translate([0,1,3.8])
             #cube([7.5,2.2,5.7],true);
         }
+
+        // Micro-usb hole
+        translate([-(numstuds/2-1)*(studwidth+studspace)-20,yi,boxthick-h2]) { 
+            translate([0,1,2.6])
+            #cube([8, 2.2, 5.2], true);
+        }
     }
 
     translate([0,0,-boxheight-sideheight+5]) {
@@ -191,7 +197,31 @@ module lightbottom() {
             translate([0,1.1,4.3])
             #cube([7.5,2.4,5.8],true);
         }
+
+        // Micro-usb port hole
+        translate([-(numstuds/2-1)*(studwidth+studspace)-20,ye,boxthick]) {
+
+            #translate([0, 1.1, 4.6]) cube([14, 2.4, 3.2], true);
+            #translate([0, 1.1, 3]) cube([8, 2.4, 6], true);
+        }
     }
+
+    // Micro-usb port holder
+    translate([-(numstuds/2-1)*(studwidth+studspace)-20,ye-7,boxthick]) {
+        translate([ 0,0,0.9]) cube([12, 4, 4.2], true);
+        translate([-5,3,0.9]) cube([2, 8.5, 4.2], true);
+        translate([ 5,3,0.9]) cube([2, 8.5, 4.2], true);
+        translate([ 4.2,0,3]) cylinder(3, 1.5, 1.5, $fn=36);
+        translate([-4.2,0,3]) cylinder(3, 1.5, 1.5, $fn=36);
+        translate([ 4.2,0,6]) cylinder(0.5, 1.5, 1.0, $fn=36);
+        translate([-4.2,0,6]) cylinder(0.5, 1.5, 1.0, $fn=36);
+
+        translate([-6.8, 0, 0]) musb_tab();
+        translate([ 6.8, 0, 0]) mirror([1,0,0]) musb_tab();
+        
+        translate([ 0, 10, -1.1]) cube([7.8,2.8,2.2], true);
+    }
+
     translate([0,0,5]) {
         for (i = [0:numstuds-2]) {
             bottomtab((i-(numstuds-2)/2)*(studwidth+studspace));
@@ -218,9 +248,9 @@ module lightbottom() {
                 cube([5.5,4,7], true);
             }
             #translate([0,0,3.9])
-            cube([20,0.3,6.4],true);
+            cube([20,0.4,6.4],true);
             #translate([0,0,7.1]) rotate([45,0,0])
-            cube([20,0.6,0.6],true);
+            cube([20,0.8,0.8],true);
         }
         translate([0,3.1,0.2])
         cube([7.3,2.6,2.4],true);
@@ -244,6 +274,12 @@ module lightbottom() {
     }
     */
     
+}
+
+module musb_tab(h=4.6, w=8) {
+    rotate([0,-90,-90]) translate([0,0,-w/2]) linear_extrude(height=w) polygon([
+        [-1.5,0],[h,0],[h+0.4,0.4],[h+2,-0.4],[h+1, -1.4],[-1.5,-1.4]
+    ]);
 }
 
 module batteryclips() {
