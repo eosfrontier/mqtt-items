@@ -1,4 +1,5 @@
 s3 = sqrt(3);
+s2 = sqrt(2);
 
 studwidth = 64;
 studheight = studwidth/s3/2;
@@ -21,7 +22,7 @@ for (i = [0:numstuds-1]) {
 }
 color("DimGray")
 lightbox();
-color("Gray") translate([0,0,-boxheight-sideheight]) lightbottom();
+*color("Gray") translate([0,0,-boxheight-sideheight]) lightbottom();
 
 *color("Teal") translate([0,1,-boxheight-sideheight+boxthick+1]) rotate([180,0,-90]) batteryholder();
 
@@ -94,7 +95,7 @@ module lightbox() {
             )
         );
 
-        ys2 = ys-hi*2;
+        ys2 = ys-hi*3;
         #for (i = [1:numstuds-2]) {
             translate([(i-(numstuds-1)/2)*(studwidth+studspace),0,0]) 
             polyhedron(
@@ -137,6 +138,21 @@ module lightbox() {
             #cube([8, 2.2, 5.2], true);
         }
     }
+    
+    for (i = [1:numstuds-1]) {
+        translate([(i-(numstuds)/2)*(studwidth+studspace),0,-boxthick]) {
+            translate([-30.7,0,0]) rotate([90,0,0]) cylinder(ys*2+1.7,0.8,0.8,true,$fn=20);
+            translate([  -10,0,0]) rotate([90,0,0]) cylinder(ys*2+1.7,0.8,0.8,true,$fn=20);
+            translate([   10,0,0]) rotate([90,0,0]) cylinder(ys*2+1.7,0.8,0.8,true,$fn=20);
+            translate([ 30.7,0,0]) rotate([90,0,0]) cylinder(ys*2+1.7,0.8,0.8,true,$fn=20);
+        }
+    }
+    translate([(-numstuds/2)*(studwidth+studspace),0,-boxthick])
+    translate([ 30.7,0,0]) rotate([90,0,0]) cylinder(ys*2-4.5,0.8,0.8,true,$fn=20);
+    translate([(numstuds/2)*(studwidth+studspace),0,-boxthick])
+
+    translate([-30.7,0,0]) rotate([90,0,0]) cylinder(ys*2-4.5,0.8,0.8,true,$fn=20);
+
 
     translate([0,0,-boxheight-sideheight+5]) {
         for (i = [0:numstuds-2]) {
