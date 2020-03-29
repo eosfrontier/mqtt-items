@@ -5,7 +5,7 @@ const int BUTTONS_PINS[] = {};
 const char * BUTTONS_NAMES[] = {};
 #define COLORS_DEFAULT "2000:000000"
 
-#define MSG_NAME "eos/portal/light"
+#define MQTT_NAME "light"
 #endif
 
 #ifdef MQTT_BUTTONS_OUT
@@ -14,7 +14,7 @@ const int BUTTONS_PINS[] = {14,12,13};
 const char * BUTTONS_NAMES[] = {"b1","b2","b3"};
 #define COLORS_DEFAULT "2000:000000,001800,000000"
 
-#define MSG_NAME "eos/portal/buttons_out"
+#define MQTT_NAME "buttons_out"
 #endif
 
 #ifdef MQTT_BUTTONS_IN
@@ -23,8 +23,11 @@ const int BUTTONS_PINS[] = {4,14,12,13};
 const char * BUTTONS_NAMES[] = {"b4","b3","b2","b1"};
 #define COLORS_DEFAULT "2000:000000,000000,001800,180000"
 
-#define MSG_NAME "eos/portal/buttons_in"
+#define MQTT_NAME "buttons_in"
 #endif
+
+#define MSG_NAME "eos/portal/" MQTT_NAME
+#define OTA_NAME "eos-portal-" MQTT_NAME
 
 #define COLORS_NOWIFI "r 1000:100008,000000 2000:000000 5000:000000 6000:000000,080010 7000:000000 10000:000000"
 #define COLORS_NOSUBS "r 500:000108,000000 1000:000000,000810"

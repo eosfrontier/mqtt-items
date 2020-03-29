@@ -1,8 +1,8 @@
 #include <ESP8266WiFi.h>
 
 //#define MQTT_BUTTONS_OUT
-//#define MQTT_BUTTONS_IN
-#define MQTT_LIGHTS
+#define MQTT_BUTTONS_IN
+//#define MQTT_LIGHTS
 #include "settings.h"
 
 #ifdef MQTT_LIGHTS
@@ -17,25 +17,17 @@ unsigned long lasttick = 0;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  // WiFi.begin(SSID_SETTINGS[0], SSID_SETTINGS[1]);
-  /*
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
-    delay(500);
-  }
-  Serial.println(" WiFi Connected");
-  Serial.print("IP: ");
-  Serial.println(WiFi.localIP());
-  */
 
   msg_setup();
   leds_setup();
   buttons_setup();
+  ota_setup();
   // ws_setup();
   lasttick = millis();
 }
 
 void loop() {
+  ota_check();
   msg_check();
   leds_animate();
   buttons_check();

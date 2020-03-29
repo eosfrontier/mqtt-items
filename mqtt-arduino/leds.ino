@@ -12,7 +12,9 @@ bool anim_rpt = false;
 int anim_len = 0;
 LedAnimation anim[MAX_ANIM];
 
-uint32_t interpolate(uint32_t cola, uint32_t colb, unsigned long frac, unsigned long denom)
+uint32_t curcolor[LEDS_NUM];
+
+uint32_t set_interpolate(uint32_t cola, uint32_t colb, unsigned long frac, unsigned long denom, int idx)
 {
   uint32_t ra = (cola) & 0xff;
   uint32_t ga = (cola >> 8) & 0xff;
@@ -23,7 +25,13 @@ uint32_t interpolate(uint32_t cola, uint32_t colb, unsigned long frac, unsigned 
   uint32_t ri = (rb * frac + ra * (denom-frac))/denom;
   uint32_t gi = (gb * frac + ga * (denom-frac))/denom;
   uint32_t bi = (bb * frac + ba * (denom-frac))/denom;
-  return (ri + (gi << 8) + (bi << 16));  
+  curcolor[idx] = (ri + (gi << 8) + (bi << 16));
+  ledstrip.setPixelColor(idx, curcolor[idx]);
+}
+
+void leds_show()
+{
+  ledstrip.show();
 }
 
 void leds_setup()
@@ -43,9 +51,9 @@ void leds_animate()
           unsigned long frac = elaps - anim[t-1].tm;
           unsigned long denom = anim[t].tm - anim[t-1].tm;
           for (int c = 0; c < LEDS_NUM; c++) {
-            ledstrip.setPixelColor(c, interpolate(anim[t-1].color[c], anim[t].color[c], frac, denom));
+            set_interpolate(anim[t-1].color[c], anim[t].color[c], frac, denom, c);
           }
-          ledstrip.show();
+          leds_show();
         }
         return;
       }
@@ -58,9 +66,9 @@ void leds_animate()
     } else {
       tick = 0;
       for (int c = 0; c < LEDS_NUM; c++) {
-        ledstrip.setPixelColor(c, anim[anim_len-1].color[c]);
+        set_interpolate(anim[anim_len-1].color[c], anim[anim_len-1].color[c], 0, 1, c);
       }
-      ledstrip.show();
+      leds_show();
     }
   }
 }
@@ -69,7 +77,7 @@ void leds_clear()
 {
   anim[0].tm = 0;
   for (int c = 0; c < LEDS_NUM; c++) {
-    anim[0].color[c] = ledstrip.getPixelColor(c);
+    anim[0].color[c] = curcolor[c];
   }
   for (int st = 1; st < MAX_ANIM; st++) {
     anim[st].tm = 0;
