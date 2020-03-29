@@ -142,8 +142,8 @@ module lightbox() {
     for (i = [1:numstuds-1]) {
         translate([(i-(numstuds)/2)*(studwidth+studspace),0,-boxthick]) {
             translate([-30.7,0,0]) rotate([90,0,0]) cylinder(ys*2+1.7,0.8,0.8,true,$fn=20);
-            translate([  -10,0,0]) rotate([90,0,0]) cylinder(ys*2+1.7,0.8,0.8,true,$fn=20);
-            translate([   10,0,0]) rotate([90,0,0]) cylinder(ys*2+1.7,0.8,0.8,true,$fn=20);
+            //translate([  -10,0,0]) rotate([90,0,0]) cylinder(ys*2+1.7,0.8,0.8,true,$fn=20);
+            translate([    0,0,0]) rotate([90,0,0]) cylinder(ys*2+1.7,0.8,0.8,true,$fn=20);
             translate([ 30.7,0,0]) rotate([90,0,0]) cylinder(ys*2+1.7,0.8,0.8,true,$fn=20);
         }
     }

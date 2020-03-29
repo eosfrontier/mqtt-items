@@ -55,7 +55,7 @@ module boxsq() {
 }
 
 module boxtri() {
-    color("gray")
+    *color("gray")
     front2();
     *color("gray")
     translate([0,0,-tol]) bottom2();
@@ -63,7 +63,7 @@ module boxtri() {
     *color("teal") translate([0,-19.8,height-wid-1.1]) rotate([0,0,180]) batteryholder();
 }
 
-*rotate([0,180,0]) union() {
+rotate([0,180,0]) union() {
     button(180);
     // Sacrificial layer to bridge hole
     #translate([0,0,sheight+wid-0.1]) cube([11,11,0.2],true);
@@ -339,7 +339,7 @@ module button(rot) {
             [bs2,height+bth-bbev,-cwid-bwid],
             [bs2,height+bth-bwid,-cwid-bbev] ]);
         for (n=[360/trivec:360/trivec:360]) rotate([0,0,n+180])
-        translate([0,0,height+bth-bwid-0.1]) slitgroup(3,2,2,1,1.1);
+        translate([0,0,height+bth-bwid-0.1]) slitgroup(3,2,2,1,1.3);
     }
     rotate([0,0,rot]) swtabs();
 }
