@@ -286,6 +286,20 @@ void rotate_hue(unsigned char dir)
   }
 }
 
+void rotate_chroma(unsigned char dir)
+{
+  for (int i = 0; i < NUM_POINTS; i++) {
+    uint32_t wrap = 0;
+    for (int h = 0; h < NUM_COLS; h++) {
+      if (dir) {
+        if (points[i].hcl[h].chroma <= 0xf8) points[i].hcl[h].chroma += 8;
+      } else {
+        if (points[i].hcl[h].chroma >= 0x08) points[i].hcl[h].chroma -= 8;
+      }
+    }
+  }
+}
+
 void rotate_knob(int pos, unsigned char dir)
 {
   // Serial.print("Rotate knob ");
@@ -299,6 +313,7 @@ void rotate_knob(int pos, unsigned char dir)
       rotate_hue(dir);
       break;
     case 2:
+      rotate_chroma(dir);
       break;
     case 3:
       break;
@@ -309,7 +324,16 @@ void press_knob(int pos)
 {
   // Serial.print("Press knob ");
   // Serial.println(pos);
-  if (pos == 2) debugging = true;
+  switch(pos) {
+    case 0:
+      break;
+    case 1:
+      break;
+    case 2:
+      break;
+    case 3:
+      break;
+  }
 }
 
 void process_knob(unsigned int pos, unsigned char rot1, unsigned char rot2, unsigned char btn)
