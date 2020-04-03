@@ -5,7 +5,6 @@ typedef struct {
   uint32_t color[LEDS_NUM];
 } LedAnimation;
 
-
 Adafruit_NeoPixel ledstrip(LEDS_NUM, LEDS_PIN, NEO_GRB + NEO_KHZ800);
 unsigned long tick = 0;
 bool anim_rpt = false;
@@ -14,29 +13,88 @@ LedAnimation anim[MAX_ANIM];
 
 uint32_t curcolor[LEDS_NUM];
 
+/*
+#define PIN_OUT_SET(b)    (*((volatile uint32_t *)0x60000304)=(1<<(b)))
+#define PIN_OUT_CLEAR(b)  (*((volatile uint32_t *)0x60000308)=(1<<(b)))
+#define PIN_DIR_OUTPUT(b) (*((volatile uint32_t *)0x60000310)=(1<<(b)))
+#define NS_TO_CYCLES(n) ((n) / (1000000000L / F_CPU))
+#define STORE_CYCLES(r) __asm__ __volatile__("rsr %0, CCOUNT \n\t" : "=a" (r))
+
+// Delay an arbitrary number of cycles past the specified cycle count.
+#define DELAY_CYCLES(_cs, _delay) do { \
+  uint32_t _cc; \
+  do { \
+    STORE_CYCLES(_cc); \
+  } while ((_cc - _cs) < _delay); \
+} while(0);
+
+#define ENTER_CRITICAL(r) __asm__ __volatile__("rsil %0,15 ; esync":"=a" (r))
+#define LEAVE_CRITICAL(w) __asm__ __volatile__("wsr %0,ps ; esync"::"a" (w):"memory")
+
+void send_led_byte(uint8_t bt)
+{
+  uint32_t cc_delay;
+  uint32_t intr_state;
+  for (uint8_t i = 8; i > 0; i--) {
+    if (bt & (1 << (i-1))) {
+      STORE_CYCLES(cc_delay);
+      PIN_OUT_SET(LEDS_PIN);
+      DELAY_CYCLES(cc_delay, 56);
+      PIN_OUT_CLEAR(LEDS_PIN);
+      DELAY_CYCLES(cc_delay, 100);
+    } else {
+      //ENTER_CRITICAL(intr_state);
+      STORE_CYCLES(cc_delay);
+      PIN_OUT_SET(LEDS_PIN);
+      DELAY_CYCLES(cc_delay, 32);
+      PIN_OUT_CLEAR(LEDS_PIN);
+      //LEAVE_CRITICAL(intr_state);
+      DELAY_CYCLES(cc_delay, 90);
+    }
+  }
+}
+*/
+
 uint32_t set_interpolate(uint32_t cola, uint32_t colb, unsigned long frac, unsigned long denom, int idx)
 {
-  uint32_t ra = (cola) & 0xff;
   uint32_t ga = (cola >> 8) & 0xff;
-  uint32_t ba = (cola >> 16) & 0xff;
-  uint32_t rb = (colb) & 0xff;
   uint32_t gb = (colb >> 8) & 0xff;
-  uint32_t bb = (colb >> 16) & 0xff;
-  uint32_t ri = (rb * frac + ra * (denom-frac))/denom;
   uint32_t gi = (gb * frac + ga * (denom-frac))/denom;
+  //send_led_byte(gi);
+
+  uint32_t ra = (cola) & 0xff;
+  uint32_t rb = (colb) & 0xff;
+  uint32_t ri = (rb * frac + ra * (denom-frac))/denom;
+  //send_led_byte(ri);
+
+  uint32_t ba = (cola >> 16) & 0xff;
+  uint32_t bb = (colb >> 16) & 0xff;
   uint32_t bi = (bb * frac + ba * (denom-frac))/denom;
+  //send_led_byte(bi);
+  
   curcolor[idx] = (ri + (gi << 8) + (bi << 16));
   ledstrip.setPixelColor(idx, curcolor[idx]);
 }
 
 void leds_show()
 {
+  /*
+  uint32_t intr_state;
+  ENTER_CRITICAL(intr_state);
+  for (int c = 0; c < LEDS_NUM; c++) {
+    send_led_byte((curcolor[c] >> 8) & 0xff);
+    send_led_byte((curcolor[c]) & 0xff);
+    send_led_byte((curcolor[c] >> 16) & 0xff);
+  }
+  LEAVE_CRITICAL(intr_state);
+  */
   ledstrip.show();
 }
 
 void leds_setup()
 {
   ledstrip.begin();
+  //PIN_DIR_OUTPUT(LEDS_PIN);
   leds_set(state);
 }
 

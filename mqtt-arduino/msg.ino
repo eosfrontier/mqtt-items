@@ -174,7 +174,6 @@ void msg_receive(const char *topic, const char *msg)
   if (!strcmp(topic, MSG_NAME "/set")) {
     leds_set(msg);
     msg_send("ack", msg);
-    // ws_send_ack(msg);
     if (strlen(msg) < (sizeof(lastack)-1)) {
       strcpy(lastack, msg);
     } else {
@@ -183,6 +182,17 @@ void msg_receive(const char *topic, const char *msg)
     buttons_ack();
     return;
   }
+#ifdef MQTT_GPIO
+  if (strmatch(MSG_NAME "/gpio/*", topic)) {
+    gpio_set(topic+strlen(MSG_NAME "/gpio/"), msg);
+    return;
+  }
+#endif
+#ifdef MQTT_WEBSOCKETS
+  if (!strcmp(topic, WS_BROADCAST_ACK)) {
+    ws_send_ack(msg);
+  }
+#endif
   // De mapping array bevat mappings van andere topics,
   // dit is effectief de koppeling tussen acties en hun reacties
   for (int m = 0; MSG_MAPPING[m]; m += 4) {

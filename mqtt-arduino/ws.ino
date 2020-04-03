@@ -1,19 +1,8 @@
 // Async-ish websockets
-#ifdef MQTT_LIGHTS
-#ifdef WS_ASYNC
-
-#include <ESPAsyncTCP.h>
-
-AsyncClient wsclient;
-
-#else
-
+#ifdef MQTT_WEBSOCKETS
 #include <WiFiClientSecure.h>
 
 WiFiClientSecure wsclient;
-
-#endif
-
 
 #define WS_FIN            0x80
 #define WS_OPCODE_TEXT    0x01
@@ -26,8 +15,6 @@ WiFiClientSecure wsclient;
 #define WS_PATH "/socket.io/?transport=websocket"
 #define WS_PORT 443
 
-
-
 enum WSState { noconn, errwait, handshake, handshaking, connected } wsstate;
 int ws_timeout = 0;
 
@@ -39,8 +26,6 @@ int ws_shakes; // Check all handshake requirements
 #define WSH_WEBSOCKET (1 << 2)
 #define WSH_KEY       (1 << 3)
 #define WSH_COMPLETE  (WSH_STATUS|WSH_UPGRADE|WSH_WEBSOCKET|WSH_KEY)
-
-bool justgotack = false;
 
 String generateKey() {
   String key = "";
@@ -56,28 +41,12 @@ String generateKey() {
   return key;
 }
 
-#ifdef WS_ASYNC
-static void ws_handleConnect(void *arg, void *data)
-{
-  Serial.println("WS Connected to client");
-}
-
-void ws_setup()
-{
-    wsstate = noconn;
-    // wsclient.setInsecure();
-    // wsclient.setBufferSizes(512, 512);
-    wsclient.onConnect(&ws_handleConnect, NULL);
-    wsclient.onData(&ws_handleData, NULL);
-}
-#else
 void ws_setup()
 {
     wsstate = noconn;
     wsclient.setInsecure();
     wsclient.setBufferSizes(512, 512);
 }
-#endif
 
 void ws_send(const char *msg)
 {
@@ -106,7 +75,7 @@ void ws_send(const char *msg)
     *bufptr++ = msg[i] ^ mask[i%4];
   }
   Serial.print("WS Writing "); Serial.print(bufptr-buf); Serial.println(" bytes");
-  wsclient.write((const char *)buf, (bufptr-buf));
+  wsclient.write((const uint8_t *)buf, (bufptr-buf));
 }
 
 static inline bool startswith(const char *str, const char *prefix)
@@ -114,15 +83,29 @@ static inline bool startswith(const char *str, const char *prefix)
   return (!strncmp(str, prefix, strlen(prefix)));
 }
 
+int ws_message_last = -1;
+int ws_message_retry = 0;
 
 void ws_receive_broadcast(const char *bc)
 {
   for (int i = 0; WS_BROADCAST_RECEIVE[i]; i += 3) {
     if (!strcmp(bc, WS_BROADCAST_RECEIVE[i])) {
-      justgotack = true;
-      msg_receive(WS_BROADCAST_RECEIVE[i+1], WS_BROADCAST_RECEIVE[i+2]);
-      justgotack = false;
+      ws_message_last = i;
+      ws_message_retry = WS_MESSAGE_RETRIES * WS_MESSAGE_RETRY_DELAY + 1;
+      msg_send(WS_BROADCAST_RECEIVE[i+1], WS_BROADCAST_RECEIVE[i+2]);
       return;
+    }
+  }
+}
+
+void ws_resend_message(void)
+{
+  if (ws_message_last >= 0) {
+    if (ws_message_retry > 0) {
+      ws_message_retry--;
+      if (!(ws_message_retry % WS_MESSAGE_RETRY_DELAY)) {
+        msg_send(WS_BROADCAST_RECEIVE[ws_message_last+1], WS_BROADCAST_RECEIVE[ws_message_last+2]);
+      }
     }
   }
 }
@@ -185,86 +168,6 @@ static void hexdump(Stream& s, const char *data, size_t len)
   s.println("");
 }
 
-#ifdef WS_ASYNC
-
-static void ws_handleData(void *arg, void *client, void *data, size_t len)
-{
-  const char *msg = (const char *)data;
-  // Serial.println("WS received data: ");
-  // hexdump(Serial, msg,len);
-  if (wsstate == handshaking) {
-    const char *eol;
-    // Serial.print("WS received handshake: ");
-    // Serial.println(msg);
-    while ((eol = (char *)memchr(msg, '\n', len))) {
-      if (*msg == '\r') {
-        if (ws_shakes != WSH_COMPLETE) {
-            Serial.print("WS End of handshake, status not ok: ");
-            Serial.println(ws_shakes);
-            wsclient.stop();
-            return;
-        }
-        Serial.println("WS End of handshake");
-        break;
-      } else if (!strncmp(msg, "HTTP/", 5)) {
-        if ((len > 12) && !strncmp(msg+9, "101", 3)) {
-            ws_shakes |= WSH_STATUS;
-            Serial.println("WS Status is OK");
-        } else {
-            Serial.print("WS Wrong status received: ");
-            Serial.println(msg);
-            wsclient.stop();
-            return;
-        }
-      } else if (!strncmp(msg, "Connection: ", 12)) {
-        if ((len>18) && !strncmp(msg+13, "pgrade", 6)) {
-            ws_shakes |= WSH_UPGRADE;
-            Serial.println("WS Upgrade OK");
-        }
-      } else if (!strncmp(msg, "Sec-WebSocket-Accept:", 21)) {
-        ws_shakes |= WSH_KEY;
-        Serial.println("WS key OK");
-      } else if (!strncmp(msg, "Upgrade: websocket", 18)) {
-        ws_shakes |= WSH_WEBSOCKET;
-        Serial.println("WS Websocket OK");
-      }
-      len -= (eol+1-msg);
-      msg = eol+1;
-    }
-    if (ws_shakes == WSH_COMPLETE) {
-      Serial.println("WS is connected successfully");
-      wsstate = connected;
-    }
-  }
-  if (wsstate == connected) {
-    const unsigned char *d = (const unsigned char *)msg;
-    const unsigned char *dend = d+len;
-    while (d < dend) {
-      unsigned int msgtype = *d++;
-      int length = *d++;
-      bool masked = false;
-      if (length & WS_MASK) {
-          length &= ~WS_MASK;
-          masked = true;
-      }
-      if (length == WS_SIZE16) {
-          length = (*d++ << 8) | *d++;
-      }
-      const uint8_t *mask = (uint8_t *)"\0\0\0\0";
-      if (masked) {
-          mask = d;
-          d += 4;
-      }
-      char sio_msg[length+1];
-      for (int i = 0; i < length; i++) {
-          sio_msg[i] = *d++ ^ mask[i%4];
-      }
-      sio_msg[length] = 0;
-      ws_receive(sio_msg);
-    }
-  }
-}
-
 void ws_check()
 {
     if (WiFi.status() != WL_CONNECTED) {
@@ -274,69 +177,12 @@ void ws_check()
     }
     if (wsstate == errwait) {
         if (ws_timeout-- > 0) return;
-        wsstate = noconn;
-    }
-    if (wsstate == noconn) {
-        Serial.print("WS Connecting to " WS_HOST ":"); Serial.println(WS_PORT);
-        if (!wsclient.connect(WS_HOST, WS_PORT, true)) {
-            Serial.println("WS Connection error");
-            wsstate = errwait;
-            ws_timeout = 500;
-            return;
-        }
-        ws_timeout = 500;
-        wsstate = handshake;
-        return;
-    }
-    if (!wsclient.connected()) {
-        if (ws_timeout-- > 0) return;
-        wsstate = errwait;
-        ws_timeout = 200;
-        return;
-    }
-    if (wsstate == handshake) {
-        String hs = "GET " WS_PATH " HTTP/1.1\r\n"
-            "Host: " WS_HOST "\r\n"
-            "Connection: Upgrade\r\n"
-            "Upgrade: websocket\r\n"
-            "Sec-WebSocket-Version: 13\r\n"
-            "Sec-WebSocket-Key: " + generateKey() + "=\r\n\r\n";
-        Serial.println("WS Send handshake");
-        Serial.println(hs);
-        wsclient.add(hs.c_str(), hs.length());
-        wsclient.send();
-        Serial.println("WS Handshake sent");
-        ws_shakes = 0;
-        wsstate = handshaking;
-        return;
-    }
-    if (wsstate == handshaking) {
-    }
-    if (wsstate == connected) {
-        if ((lasttick - ws_ping_time) > 25000) {
-            ws_send("2ping");
-            ws_ping_time = lasttick;
-        }
-    }
-}
-
-#else
-
-void ws_check()
-{
-    if (WiFi.status() != WL_CONNECTED) {
-        wsclient.stop();
-        wsstate = noconn;
-        return;
-    }
-    if (wsstate == errwait) {
-        if (timeout-- > 0) return;
         wsstate = noconn;
     }
     if (wsstate == noconn) {
         if (!wsclient.connect(WS_HOST, WS_PORT)) {
             wsstate = errwait;
-            timeout = 100;
+            ws_timeout = 100;
             return;
         }
         wsstate = handshake;
@@ -344,7 +190,7 @@ void ws_check()
     }
     if (!wsclient.connected()) {
         wsstate = errwait;
-        timeout = 20;
+        ws_timeout = 20;
         return;
     }
     if (wsstate == handshake) {
@@ -357,7 +203,7 @@ void ws_check()
         Serial.println("WS Send handshake");
         Serial.println(hs);
         wsclient.write(hs.c_str());
-        shakes = 0;
+        ws_shakes = 0;
         wsstate = handshaking;
         return;
     }
@@ -368,9 +214,9 @@ void ws_check()
             Serial.println(s);
             const char *ss = s.c_str();
             if (s == "\r") {
-                if (shakes != WSH_COMPLETE) {
+                if (ws_shakes != WSH_COMPLETE) {
                     Serial.print("WS End of handshake, status not ok: ");
-                    Serial.println(shakes);
+                    Serial.println(ws_shakes);
                     wsclient.stop();
                     return;
                 }
@@ -378,7 +224,7 @@ void ws_check()
                 break;
             } else if (s.indexOf("HTTP/") != -1) {
                 if (!memcmp(ss+9, "101", 3)) {
-                    shakes |= WSH_STATUS;
+                    ws_shakes |= WSH_STATUS;
                     Serial.println("WS Status is OK");
                 } else {
                     Serial.print("WS Wrong status received: ");
@@ -388,18 +234,18 @@ void ws_check()
                 }
             } else if (!strncmp(ss, "Connection: ", 12)) {
                 if (!strncmp(ss+13, "pgrade", 6)) {
-                    shakes |= WSH_UPGRADE;
+                    ws_shakes |= WSH_UPGRADE;
                     Serial.println("WS Upgrade OK");
                 }
             } else if (!strncmp(ss, "Sec-WebSocket-Accept:", 21)) {
-                shakes |= WSH_KEY;
+                ws_shakes |= WSH_KEY;
                 Serial.println("WS key OK");
             } else if (!strncmp(ss, "Upgrade: websocket", 18)) {
-                shakes |= WSH_WEBSOCKET;
+                ws_shakes |= WSH_WEBSOCKET;
                 Serial.println("WS Websocket OK");
             }
         }
-        if (shakes == WSH_COMPLETE) {
+        if (ws_shakes == WSH_COMPLETE) {
             Serial.println("WS is connected successfully");
             wsstate = connected;
         }
@@ -435,18 +281,22 @@ void ws_check()
             ws_ping_time = lasttick;
         }
     }
+    ws_resend_message();
 }
-
-#endif
 
 void ws_send_ack(const char *ack)
 {
-  if (!justgotack) {
-    for (int i = 0; WS_BROADCAST_SEND[i]; i += 2) {
-      if (!strcmp(WS_BROADCAST_SEND[i], ack)) {
-        ws_send(WS_BROADCAST_SEND[i+1]);
-        return;
-      }
+  if (ws_message_last >= 0) {
+    if (!strcmp(WS_BROADCAST_RECEIVE[ws_message_last+2], ack)) {
+      // Received mqtt-ack from a websocket message
+      ws_message_retry = 0;
+      return;
+    }
+  }
+  for (int i = 0; WS_BROADCAST_SEND[i]; i += 2) {
+    if (!strcmp(WS_BROADCAST_SEND[i], ack)) {
+      ws_send(WS_BROADCAST_SEND[i+1]);
+      return;
     }
   }
 }

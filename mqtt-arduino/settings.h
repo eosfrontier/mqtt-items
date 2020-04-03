@@ -1,5 +1,7 @@
 
 #ifdef MQTT_LIGHTS
+#define MQTT_SOFTAP
+
 const int LEDS_NUM = 4;
 const int BUTTONS_PINS[] = {};
 const char * BUTTONS_NAMES[] = {};
@@ -24,6 +26,29 @@ const char * BUTTONS_NAMES[] = {"b4","b3","b2","b1"};
 #define COLORS_DEFAULT "2000:000000,000000,001800,180000"
 
 #define MQTT_NAME "buttons_in"
+#endif
+
+#ifdef MQTT_SONOFF
+#define MQTT_WEBSOCKETS
+#define MQTT_GPIO
+
+const int LEDS_NUM = 0;
+const int BUTTONS_PINS[] = {0};
+const char * BUTTONS_NAMES[] = {"b1"};
+#define COLORS_DEFAULT "1000:000000"
+
+#define MQTT_NAME "sonoff_" MQTT_SONOFF
+
+const int WS_MESSAGE_RETRIES = 5;
+const int WS_MESSAGE_RETRY_DELAY = 10;
+
+// Yes, I know, it's a hack to get ints into a char array
+const char *GPIO_PORTS[] = {
+  "led",    (const char *)13, "L",
+  "relais", (const char *)12, "H",
+  NULL
+};
+
 #endif
 
 #define MSG_NAME "eos/portal/" MQTT_NAME
@@ -57,29 +82,27 @@ const char * MSG_MAPPING[] = {
   "eos/portal/buttons_in/button/b2","idle",MSG_NAME "/set","inc",
   "eos/portal/buttons_out/button/b2","idle",MSG_NAME "/set","out",
   "eos/portal/*/button/*","*",MSG_NAME "/set","idle",
+  "eos/portal/*/beacon","*",MSG_NAME "/set",NULL,
   NULL
 };
 const char * MSG_SUBSCRIPTIONS[] = {
   "eos/portal/*/button/*",
+  "eos/portal/*/beacon",
   NULL
 };
-/*
-const char * WS_BROADCAST_RECEIVE[] = {
-  "bcportalinc", MSG_NAME "/set", "inc",
-  "bcportalincdanger", MSG_NAME "/set", "red",
-  "bcportalout", MSG_NAME "/set", "out",
+#else
+#ifdef MQTT_GPIO
+const char * MSG_MAPPING[] = {
+  "eos/portal/light/ack","inc",MSG_NAME "/gpio/led","H",
+  "eos/portal/light/ack","red",MSG_NAME "/gpio/led","H",
+  "eos/portal/light/ack","out",MSG_NAME "/gpio/led","H",
+  "eos/portal/light/ack","*",MSG_NAME "/gpio/led","L",
   NULL
 };
-const char * WS_BROADCAST_SEND[] = {
-  "inc", "42[\"broadcastSend\",{\"title\":\"Scheduled Incoming Portal Activation\","
-         "\"file\":\"bcportalinc\",\"priority\":3,\"duration\":\"30000\",\"colorscheme\":\"0\"}]",
-  "out", "42[\"broadcastSend\",{\"title\":\"Portal Outgoing\","
-         "\"file\":\"bcportalout\",\"priority\":3,\"duration\":\"17500\",\"colorscheme\":\"0\"}]",
-  "red", "42[\"broadcastSend\",{\"title\":\"Unscheduled Incoming Portal Activation\","
-         "\"file\":\"bcportalincdanger\",\"priority\":3,\"duration\":\"30000\",\"colorscheme\":\"0\"}]",
+const char * MSG_SUBSCRIPTIONS[] = {
+  "eos/portal/light/ack",
   NULL
 };
-*/
 #else
 const char * MSG_MAPPING[] = {
   "eos/portal/light/ack","*",MSG_NAME "/set",NULL,
@@ -89,6 +112,25 @@ const char * MSG_SUBSCRIPTIONS[] = {
   "eos/portal/light/ack",
   NULL
 };
+#endif
+#endif
+#ifdef MQTT_WEBSOCKETS
+const char * WS_BROADCAST_RECEIVE[] = {
+  "bcportalinc", "beacon", "inc",
+  "bcportalincdanger", "beacon", "red",
+  "bcportalout", "beacon", "out",
+  NULL
+};
+const char * WS_BROADCAST_SEND[] = {
+  "inc", "42[\"broadcastSend\",{\"title\":\"Scheduled Incoming Portal Activation\","
+         "\"file\":\"bcportalinc\",\"priority\":3,\"duration\":\"30000\",\"colorscheme\":\"0\"}]",
+  "red", "42[\"broadcastSend\",{\"title\":\"Unscheduled Incoming Portal Activation\","
+         "\"file\":\"bcportalincdanger\",\"priority\":3,\"duration\":\"30000\",\"colorscheme\":\"0\"}]",
+  "out", "42[\"broadcastSend\",{\"title\":\"Portal Outgoing\","
+         "\"file\":\"bcportalout\",\"priority\":3,\"duration\":\"17500\",\"colorscheme\":\"0\"}]",
+  NULL
+};
+const char *WS_BROADCAST_ACK = "eos/portal/light/ack";
 #endif
 
 const int BUTTON_RETRIES = 5;

@@ -1,13 +1,10 @@
 #include <ESP8266WiFi.h>
 
 //#define MQTT_BUTTONS_OUT
-#define MQTT_BUTTONS_IN
-//#define MQTT_LIGHTS
+//#define MQTT_BUTTONS_IN
+#define MQTT_LIGHTS
+//#define MQTT_SONOFF "A"
 #include "settings.h"
-
-#ifdef MQTT_LIGHTS
-#define MQTT_SOFTAP
-#endif
 
 const char *state = "nosubs";
 
@@ -16,13 +13,14 @@ unsigned long lasttick = 0;
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   msg_setup();
   leds_setup();
   buttons_setup();
+  gpio_setup();
   ota_setup();
-  // ws_setup();
+  ws_setup();
   lasttick = millis();
 }
 
@@ -31,8 +29,9 @@ void loop() {
   msg_check();
   leds_animate();
   buttons_check();
+  gpio_check();
   check_status();
-  // ws_check();
+  ws_check();
 
   unsigned long nexttick = millis();
   unsigned long elaps = nexttick - lasttick;
