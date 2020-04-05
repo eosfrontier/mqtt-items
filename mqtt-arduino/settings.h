@@ -55,13 +55,18 @@ const char *GPIO_PORTS[] = {
 const int LEDS_NUM = 24;
 const int BUTTONS_PINS[] = {};
 const char *BUTTONS_NAMES[] = {};
-#define COLORS_DEFAULT "1000:000008"
+#define COLORS_DEFAULT "1000:000000,000008"
 
-#define MQTT_NAME "rfid_" MQTT_RFID
+#define MQTT_NAME MQTT_RFID
 #endif
 
+#ifdef MQTT_RFID
+#define MSG_NAME "eos/rfid/" MQTT_NAME
+#define OTA_NAME "eos-rfid-" MQTT_NAME
+#else
 #define MSG_NAME "eos/portal/" MQTT_NAME
 #define OTA_NAME "eos-portal-" MQTT_NAME
+#endif
 
 #define COLORS_NOWIFI "r 1000:100008,000000 2000:000000 5000:000000 6000:000000,080010 7000:000000 10000:000000"
 #define COLORS_NOSUBS "r 500:000108,000000 1000:000000,000810"
@@ -72,7 +77,11 @@ const int MAX_SUBSCRIBERS = 10;
 
 const int BUTTONS_NUM = sizeof(BUTTONS_PINS)/sizeof(*BUTTONS_PINS);
 
+#ifdef MQTT_RFID
+const int LEDS_PIN = 2;
+#else
 const int LEDS_PIN = 0;
+#endif
 
 const char * LEDS_ANIMATIONS[] = {
   "inc","r 1000:00ff00,00aa00,005500 2000:00aa00,005500,00ff00 3000:005500,00ff00,00aa00",
@@ -99,8 +108,7 @@ const char * MSG_SUBSCRIPTIONS[] = {
   "eos/portal/*/beacon",
   NULL
 };
-#else
-#ifdef MQTT_GPIO
+#elif defined(MQTT_GPIO)
 const char * MSG_MAPPING[] = {
   "eos/portal/light/ack","inc",MSG_NAME "/gpio/led","H",
   "eos/portal/light/ack","red",MSG_NAME "/gpio/led","H",
@@ -110,6 +118,13 @@ const char * MSG_MAPPING[] = {
 };
 const char * MSG_SUBSCRIPTIONS[] = {
   "eos/portal/light/ack",
+  NULL
+};
+#elif defined(MQTT_RFID)
+const char * MSG_MAPPING[] = {
+  NULL
+};
+const char * MSG_SUBSCRIPTIONS[] = {
   NULL
 };
 #else
@@ -122,7 +137,7 @@ const char * MSG_SUBSCRIPTIONS[] = {
   NULL
 };
 #endif
-#endif
+
 #ifdef MQTT_WEBSOCKETS
 const char * WS_BROADCAST_RECEIVE[] = {
   "bcportalinc", "beacon", "inc",

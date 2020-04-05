@@ -105,7 +105,10 @@ int rfid_statemachine()
 {
   switch(rfid_state) {
     case R_reset:
-      return 2;
+      if (rfid_timeout < 10) {
+        return 2;
+      }
+      return 0;
     case R_configsam:
       if (RFID_SENDFRAME(rfid_configsam)) {
         return 10;
@@ -164,13 +167,13 @@ int rfid_statemachine()
 
 void rfid_check()
 {
-  Serial.print("DBG: RFID step "); Serial.println(rfid_state);
   int newtimeout = rfid_statemachine();
   rfid_timeout--;
   if (newtimeout > 0) {
     rfid_timeout = newtimeout;
     rfid_state = rfid_state + 1;
     if (rfid_state >= R_toidle) rfid_state = R_idle;
+    Serial.print("DBG: RFID step "); Serial.println(rfid_state);
   } else if (rfid_timeout <= 0) {
     Serial.print("RFID PN532 timeout on step "); Serial.println(rfid_state);
     rfid_timeout = 100;
