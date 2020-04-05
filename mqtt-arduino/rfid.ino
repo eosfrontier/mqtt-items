@@ -7,12 +7,12 @@
 
 #define R_reset 0
 #define R_resetwait 1
+#define R_getfirmware 2
+#define R_waitgetfirmware 3
 #define R_configsam 4
 #define R_waitconfigsam 5
 #define R_configretry 6
 #define R_waitconfigretry 7
-#define R_getfirmware 2
-#define R_waitgetfirmware 3
 #define R_idle 8
 #define R_scancard 9
 #define R_waitscancard 10
@@ -78,15 +78,12 @@ bool rfid_sendframe(uint8_t len, uint8_t *frame)
   rbytes = Wire.readBytes(ack, rbytes);
   if (rbytes < sizeof(ack)) {
     Serial.print("RFID Failed to send frame: short read on "); Serial.println(frame[0], HEX);
-    Serial.print("Got bytes");
-    print_bytes(ack, rbytes);
+    Serial.print("Got bytes"); print_bytes(ack, rbytes);
     return false;
   }
   if (memcmp(ack,ackok,sizeof(ack))) {
-    Serial.print("RFID Failed to send frame: got bad ack");
-    print_bytes(ack, sizeof(ack));
-    Serial.print("RFID sent frame:");
-    print_bytes(buff, bufp);
+    Serial.print("RFID Failed to send frame: got bad ack"); print_bytes(ack, sizeof(ack));
+    Serial.print("RFID sent frame:"); print_bytes(buff, bufp);
     return false;
   }
   return true;
@@ -99,8 +96,7 @@ uint8_t *rfid_readframe(uint8_t cmd, uint8_t len)
   rbytes = Wire.readBytes(buf, rbytes);
   if (rbytes < len+8) {
     Serial.print("RFID short read "); Serial.print(rbytes); Serial.print(" wanted "); Serial.print(len+8); Serial.print(" on cmd "); Serial.println(cmd, HEX);
-    Serial.print("Got response");
-    print_bytes(buf, rbytes);
+    Serial.print("Got response"); print_bytes(buf, rbytes);
     return NULL;
   }
   if (buf[0] != 0x01) {
@@ -109,12 +105,10 @@ uint8_t *rfid_readframe(uint8_t cmd, uint8_t len)
   }
   if (buf[7] != cmd+1) {
     Serial.print("RFID bad response on cmd "); Serial.println(cmd, HEX);
-    Serial.print("Got response");
-    print_bytes(buf, rbytes);
+    Serial.print("Got response"); print_bytes(buf, rbytes);
     return NULL;
   }
-  // Serial.print("DBG: got frame: ");
-  print_bytes(buf, len+8);
+  // Serial.print("DBG: got frame: "); print_bytes(buf, len+8);
   return buf+8;
 }
 
@@ -189,8 +183,8 @@ int rfid_statemachine()
       if (uint8_t *frame = rfid_readframe(0x4a, 10)) {
         if (frame[0] == 1) {
           uint32_t cardid = (frame[6]<<24)+(frame[7]<<16)+(frame[8]<<8)+(frame[9]);
-          Serial.print("RFID got cardid: "); Serial.println(cardid, HEX);
           if (cardid != rfid_cardid) {
+            //Serial.print("RFID got cardid: "); Serial.println(cardid, HEX);
             rfid_cardid = cardid;
             api_got_cardid(cardid);
           }

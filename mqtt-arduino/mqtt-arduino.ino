@@ -11,6 +11,7 @@ const char *state = "nosubs";
 
 unsigned long loadavg = 0;
 unsigned long lasttick = 0;
+unsigned long anim_tick = 0;
 
 void setup() {
   // put your setup code here, to run once:
@@ -23,6 +24,7 @@ void setup() {
   gpio_setup();
   ota_setup();
   ws_setup();
+  api_setup();
   lasttick = millis();
 }
 
@@ -35,6 +37,7 @@ void loop() {
   gpio_check();
   check_status();
   ws_check();
+  api_check();
 
   unsigned long nexttick = millis();
   unsigned long elaps = nexttick - lasttick;

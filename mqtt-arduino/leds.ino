@@ -6,7 +6,6 @@ typedef struct {
 } LedAnimation;
 
 Adafruit_NeoPixel ledstrip(LEDS_NUM, LEDS_PIN, NEO_GRB + NEO_KHZ800);
-unsigned long tick = 0;
 bool anim_rpt = false;
 int anim_len = 0;
 LedAnimation anim[MAX_ANIM];
@@ -100,8 +99,8 @@ void leds_setup()
 
 void leds_animate()
 {
-  while (tick > 0) { // Voor de repeat, als we voorbij het einde zijn.
-    unsigned long elaps = millis() - tick;
+  while (anim_tick > 0) { // Voor de repeat, als we voorbij het einde zijn.
+    unsigned long elaps = millis() - anim_tick;
     // Look in which step of the animation we are
     for (int t = 1; t < anim_len; t++) {
       if (anim[t].tm > elaps) {
@@ -120,9 +119,9 @@ void leds_animate()
       for (int c = 0; c < LEDS_NUM; c++) {
         anim[0].color[c] = anim[anim_len-1].color[c];
       }
-      tick += anim[anim_len-1].tm;
+      anim_tick += anim[anim_len-1].tm;
     } else {
-      tick = 0;
+      anim_tick = 0;
       for (int c = 0; c < LEDS_NUM; c++) {
         set_interpolate(anim[anim_len-1].color[c], anim[anim_len-1].color[c], 0, 1, c);
       }
@@ -203,7 +202,7 @@ void leds_set(const char *color)
     }
   }
   anim_len = st+1;
-  tick = millis();
+  anim_tick = millis();
   /*
   for (st = 0; st < anim_len; st++) {
     Serial.print("DBG: st = "); Serial.print(st);
