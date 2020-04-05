@@ -2,8 +2,9 @@
 
 //#define MQTT_BUTTONS_OUT
 //#define MQTT_BUTTONS_IN
-#define MQTT_LIGHTS
-//#define MQTT_SONOFF "A"
+//#define MQTT_LIGHTS
+//#define MQTT_SONOFF "B"
+#define MQTT_RFID "armory"
 #include "settings.h"
 
 const char *state = "nosubs";
@@ -15,6 +16,7 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
 
+  rfid_setup();
   msg_setup();
   leds_setup();
   buttons_setup();
@@ -26,6 +28,7 @@ void setup() {
 
 void loop() {
   ota_check();
+  rfid_check();
   msg_check();
   leds_animate();
   buttons_check();

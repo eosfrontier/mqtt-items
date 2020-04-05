@@ -51,6 +51,15 @@ const char *GPIO_PORTS[] = {
 
 #endif
 
+#ifdef MQTT_RFID
+const int LEDS_NUM = 24;
+const int BUTTONS_PINS[] = {};
+const char *BUTTONS_NAMES[] = {};
+#define COLORS_DEFAULT "1000:000008"
+
+#define MQTT_NAME "rfid_" MQTT_RFID
+#endif
+
 #define MSG_NAME "eos/portal/" MQTT_NAME
 #define OTA_NAME "eos-portal-" MQTT_NAME
 

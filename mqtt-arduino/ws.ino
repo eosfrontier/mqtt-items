@@ -145,6 +145,7 @@ void ws_receive(char *msg)
     }
 }
 
+/*
 static void hexdump(Stream& s, const char *data, size_t len)
 {
   size_t i = 0;
@@ -167,6 +168,7 @@ static void hexdump(Stream& s, const char *data, size_t len)
   }
   s.println("");
 }
+*/
 
 void ws_check()
 {
