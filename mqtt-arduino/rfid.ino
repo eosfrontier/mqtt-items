@@ -1,13 +1,18 @@
 #ifdef MQTT_RFID
 #include <Wire.h>
 
-#define R_reset 1
-#define R_configsam 2
-#define R_waitconfigsam 3
-#define R_configretry 4
-#define R_waitconfigretry 5
-#define R_getfirmware 6
-#define R_waitgetfirmware 7
+#define PN532 0x24
+#define I2C_SDA 0
+#define I2C_SCL 4
+
+#define R_reset 0
+#define R_resetwait 1
+#define R_configsam 4
+#define R_waitconfigsam 5
+#define R_configretry 6
+#define R_waitconfigretry 7
+#define R_getfirmware 2
+#define R_waitgetfirmware 3
 #define R_idle 8
 #define R_scancard 9
 #define R_waitscancard 10
@@ -20,12 +25,14 @@ uint32_t rfid_cardid = 0;
 void rfid_setup()
 {
     rfid_state = R_reset;
-    rfid_timeout = 10;
-    Wire.begin();
+    rfid_timeout = 2;
+    Wire.begin(I2C_SDA, I2C_SCL);
+    Wire.setClock(100000);
 }
 
+uint8_t rfid_reset[]       = {0x00,0x00,0xff,0x00,0xff,0x00};
 uint8_t rfid_configsam[]   = {0x14, 1, 20, 1};
-uint8_t rfid_configretry[] = {0x32, 0x05, 0x02, 0x02, 10};
+uint8_t rfid_configretry[] = {0x32, 0x05, 0x02, 0x02, 200};
 uint8_t rfid_getfirmware[] = {0x02};
 uint8_t rfid_scancard[]    = {0x4a, 0x01, 0x00};
 
@@ -44,25 +51,30 @@ bool rfid_sendframe(uint8_t len, uint8_t *frame)
   uint8_t buff[32] = {0x00,0xff};
   uint8_t ack[7];
   uint8_t ackok[7] = {0x01,0x00,0x00,0xff,0x00,0xff,0x00};
-  buff[2] = len+1;
-  buff[3] = 0xff-len;
-  buff[4] = 0xd4;
+  int bufp = 2;
+  buff[bufp++] = len+1;
+  buff[bufp++] = 0xff-len;
+  buff[bufp++] = 0xd4;
   uint8_t chk = 0;
   chk -= 0xd4;
   for (uint8_t i = 0; i < len; i++) {
-    buff[i+5] = frame[i];
+    buff[bufp++] = frame[i];
     chk -= frame[i];
   }
-  buff[len+5] = chk;
-  buff[len+6] = 0;
-  Wire.beginTransmission(0x24);
-  if (Wire.write(buff, len+7) < len+7) {
+  buff[bufp++] = chk;
+  buff[bufp++] = 0;
+  Wire.beginTransmission(PN532);
+  if (Wire.write(buff, bufp) < bufp) {
     Serial.print("RFID Failed to send frame: short write on "); Serial.println(frame[0], HEX);
     return false;
   }
-  Wire.endTransmission();
-
-  int rbytes = Wire.requestFrom(0x24, sizeof(ack));
+  int err = Wire.endTransmission();
+  if (err != 0) {
+    Serial.print("RFID transmission error "); Serial.print(err); Serial.print(" on "); Serial.println(frame[0], HEX);
+    return false;
+  }
+  delay(1);
+  int rbytes = Wire.requestFrom(PN532, sizeof(ack));
   rbytes = Wire.readBytes(ack, rbytes);
   if (rbytes < sizeof(ack)) {
     Serial.print("RFID Failed to send frame: short read on "); Serial.println(frame[0], HEX);
@@ -74,7 +86,7 @@ bool rfid_sendframe(uint8_t len, uint8_t *frame)
     Serial.print("RFID Failed to send frame: got bad ack");
     print_bytes(ack, sizeof(ack));
     Serial.print("RFID sent frame:");
-    print_bytes(buff, len+7);
+    print_bytes(buff, bufp);
     return false;
   }
   return true;
@@ -83,7 +95,7 @@ bool rfid_sendframe(uint8_t len, uint8_t *frame)
 uint8_t *rfid_readframe(uint8_t cmd, uint8_t len)
 {
   static uint8_t buf[32];
-  int rbytes = Wire.requestFrom(0x24, len+8);
+  int rbytes = Wire.requestFrom(PN532, len+8);
   rbytes = Wire.readBytes(buf, rbytes);
   if (rbytes < len+8) {
     Serial.print("RFID short read "); Serial.print(rbytes); Serial.print(" wanted "); Serial.print(len+8); Serial.print(" on cmd "); Serial.println(cmd, HEX);
@@ -91,13 +103,18 @@ uint8_t *rfid_readframe(uint8_t cmd, uint8_t len)
     print_bytes(buf, rbytes);
     return NULL;
   }
-  if ((buf[0] != 0x01) || (buf[7] != cmd+1)) {
+  if (buf[0] != 0x01) {
+    // No data ready
+    return NULL;
+  }
+  if (buf[7] != cmd+1) {
     Serial.print("RFID bad response on cmd "); Serial.println(cmd, HEX);
     Serial.print("Got response");
     print_bytes(buf, rbytes);
     return NULL;
   }
-
+  // Serial.print("DBG: got frame: ");
+  print_bytes(buf, len+8);
   return buf+8;
 }
 
@@ -105,9 +122,30 @@ int rfid_statemachine()
 {
   switch(rfid_state) {
     case R_reset:
-      if (rfid_timeout < 10) {
+      Wire.beginTransmission(PN532);
+      if (Wire.write(rfid_reset, sizeof(rfid_reset)) < sizeof(rfid_reset)) {
+        Serial.println("RFID Failed to send frame: short write on RESET");
+      } else {
+        int err = Wire.endTransmission();
+        if (err != 0) {
+          Serial.print("RFID transmission error "); Serial.print(err); Serial.println(" on RESET");
+        }
+      }
+      return 127;
+    case R_resetwait:
+      if (rfid_timeout < 8) {
         return 2;
       }
+      /*
+      Wire.beginTransmission(rfid_timeout);
+      if (int err = Wire.endTransmission()) {
+        if (err == 4) {
+          Serial.print("RFID: I2C error at "); Serial.println(rfid_timeout, HEX);
+        }
+      } else {
+        Serial.print("RFID: I2C device found at "); Serial.println(rfid_timeout, HEX);
+      }
+      */
       return 0;
     case R_configsam:
       if (RFID_SENDFRAME(rfid_configsam)) {
@@ -159,7 +197,7 @@ int rfid_statemachine()
         } else {
           rfid_cardid = 0;
         }
-        return 100;
+        return 1;
       }
       return 0;
   }
@@ -173,11 +211,11 @@ void rfid_check()
     rfid_timeout = newtimeout;
     rfid_state = rfid_state + 1;
     if (rfid_state >= R_toidle) rfid_state = R_idle;
-    Serial.print("DBG: RFID step "); Serial.println(rfid_state);
+    // Serial.print("DBG: RFID step "); Serial.println(rfid_state);
   } else if (rfid_timeout <= 0) {
     Serial.print("RFID PN532 timeout on step "); Serial.println(rfid_state);
-    rfid_timeout = 100;
     rfid_state = R_reset;
+    rfid_timeout = 2;
   }
 }
 
