@@ -12,7 +12,7 @@ const char *state = "nosubs";
 unsigned long loadavg = 0;
 unsigned long lasttick = 0;
 unsigned long anim_tick = 0;
-bool api_check_status = false;
+int api_check_status = -1;
 
 void setup() {
   // put your setup code here, to run once:
@@ -45,7 +45,14 @@ void loop() {
   lasttick = nexttick;
   loadavg = (loadavg * 99 / 100) + (elaps * 1000 / ms_per_frame);
   if (elaps < ms_per_frame) {
-    delay(ms_per_frame - elaps);
     lasttick += (ms_per_frame - elaps);
+    if (api_check_status > 0) {
+      while (millis() < (lasttick - 1)) {
+        delay(1);
+        if (api_check_status > 0) { api_check(); }
+      }
+    } else {
+      delay(ms_per_frame - elaps);
+    }
   }
 }

@@ -80,8 +80,6 @@ const int MAX_SUBSCRIBERS = 10;
 const int BUTTONS_NUM = sizeof(BUTTONS_PINS)/sizeof(*BUTTONS_PINS);
 
 #ifdef MQTT_RFID
-const int LEDS_PIN = 2;
-
 const char * LEDS_ANIMATIONS[] = {
   "idle",COLORS_DEFAULT,
   "nowifi",COLORS_NOWIFI,
@@ -101,9 +99,9 @@ const char * LEDS_ANIMATIONS[] = {
   "nosubs",COLORS_NOSUBS,
   NULL
 };
-const int LEDS_PIN = 0;
 #endif
 
+const int LEDS_PIN = 0;
 const int MAX_ANIM = 16;
 
 #ifdef MQTT_LIGHTS

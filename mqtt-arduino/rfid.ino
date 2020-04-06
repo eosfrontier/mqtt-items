@@ -2,7 +2,7 @@
 #include <Wire.h>
 
 #define PN532 0x24
-#define I2C_SDA 0
+#define I2C_SDA 2
 #define I2C_SCL 4
 
 #define R_reset 0
