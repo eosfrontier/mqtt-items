@@ -368,7 +368,7 @@ void msg_check()
     }
   }
   if (strcmp(state, "nowifi")) {
-    if (numsubs == 0) {
+    if ((numsubs == 0) && !api_check_status) {
       if (strcmp(state, "nosubs")) {
         Serial.println("No subs, not live, waiting a while and then disconnecting from WiFi");
         lastscan = lasttick + random(60 * 1000, 90 * 1000); // 60-90 seconden wachten op subs

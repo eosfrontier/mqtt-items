@@ -12,11 +12,13 @@ const char *state = "nosubs";
 unsigned long loadavg = 0;
 unsigned long lasttick = 0;
 unsigned long anim_tick = 0;
+bool api_check_status = false;
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
 
+  lasttick = millis();
   rfid_setup();
   msg_setup();
   leds_setup();
@@ -25,7 +27,6 @@ void setup() {
   ota_setup();
   ws_setup();
   api_setup();
-  lasttick = millis();
 }
 
 void loop() {
