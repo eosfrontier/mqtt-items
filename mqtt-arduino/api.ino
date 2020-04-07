@@ -4,8 +4,6 @@
 
 WiFiClientSecure apiclient;
 
-#define MAX_API_ACCESS 1024
-
 #define API_STATUS_OK 0
 #define API_STATUS_HEADERS 1
 #define API_STATUS_DATA 2
@@ -13,14 +11,12 @@ WiFiClientSecure apiclient;
 #define API_STATUS_META 32
 
 #define API_FLAGS_ACCESS (1<<0)
-#define API_FLAGS_CHARID (1<<6)
-#define API_FLAGS_FOUND (1<<7)
+#define API_FLAGS_CHARID (1<<8)
+#define API_FLAGS_CARDID (1<<9)
 
-struct api_access {
-  long character_id;
-  uint32_t cardid;
-  uint8_t flags;
-} api_granted[MAX_API_ACCESS];
+#define API_PARSE_NONE       0
+#define API_PARSE_CHARACTERS 1
+#define API_PARSE_META       2
 
 int api_num_granted = -1;
 unsigned long api_next_load_characters = 0;
@@ -33,14 +29,9 @@ void api_got_cardid(uint32_t cardid)
   char cardid_str[9];
   sprintf(cardid_str, "%08x", cardid);
   msg_send("card", cardid_str);
-  int l = 0;
-  int r = api_num_granted - 1;
-  while (r > l) {
-    int m = (l+r)/2;
-    if (api_granted[m].cardid < cardid) { l = m; } else { r = m; }
-  }
-  if (api_granted[l].cardid == cardid) {
-    if (api_granted[l].flags & API_FLAGS_ACCESS) {
+  avl_access_t *entry = avl_find(cardid);
+  if (entry) {
+    if (entry->bitfield & API_FLAGS_ACCESS) {
       msg_send("granted", cardid_str);
       leds_set(RFID_LEDS_GRANTED);
     } else {
@@ -111,17 +102,13 @@ int api_post_json(String path, String json)
   return api_parse_headers();
 }
 
-struct {
-  long character_id;
-  uint32_t card_id;
-  uint8_t flags;
-} json_current;
+avl_access_t json_current;
 
 void json_begin_object(int depth)
 {
   json_current.character_id = 0;
   json_current.card_id = 0;
-  json_current.flags = 0;
+  json_current.bitfield = 0;
 }
 
 long json_parse_int(String val)
@@ -151,7 +138,7 @@ void json_object_value(int depth, String key, String val)
     long cid = json_parse_int(val);
     if (cid > 0) {
       json_current.character_id = json_parse_int(val);
-      json_current.flags |= API_FLAGS_CHARID;
+      json_current.bitfield |= API_FLAGS_CHARID;
     }
   }
   if ((key == "card_id") && (val != "null") && (val != "")) {
@@ -176,21 +163,34 @@ void json_object_value(int depth, String key, String val)
       s += 4;
     }
     json_current.card_id = cid;
-    json_current.flags |= API_FLAGS_FOUND;
+    json_current.bitfield |= API_FLAGS_CARDID;
   }
   if (key == "character_id") {
     long cid = json_parse_int(val);
     if (cid > 0) {
       json_current.character_id = json_parse_int(val);
-      json_current.flags |= API_FLAGS_ACCESS|API_FLAGS_FOUND;
+      json_current.bitfield |= API_FLAGS_ACCESS;
     }
   }
 }
 
+char api_parse_type;
+
 void json_end_object(int depth)
 {
-  if (json_current.flags & API_FLAGS_FOUND) {
-    Serial.print("Got character id "); Serial.print(json_current.character_id); Serial.print(" with card "); Serial.print(json_current.card_id, HEX); Serial.print(" and access "); Serial.println(json_current.flags & API_FLAGS_ACCESS);
+  if (api_parse_type == API_PARSE_CHARACTERS) {
+    if ((json_current.bitfield & (API_FLAGS_CARDID|API_FLAGS_CHARID)) == (API_FLAGS_CARDID|API_FLAGS_CHARID)) {
+      Serial.print("Got character id "); Serial.print(json_current.character_id); Serial.print(" with card "); Serial.println(json_current.card_id, HEX);
+      json_current.bitfield = json_current.bitfield & 0x3f;
+      avl_insert(&json_current);
+    }
+  }
+  if (api_parse_type == API_PARSE_META) {
+    if ((json_current.bitfield & (API_FLAGS_ACCESS)) == (API_FLAGS_ACCESS)) {
+      Serial.print("Got character id "); Serial.print(json_current.character_id); Serial.print(" with access "); Serial.println(json_current.bitfield & API_FLAGS_ACCESS);
+      json_current.bitfield = json_current.bitfield & 0x3f;
+      avl_update_data(&json_current);
+    }
   }
 }
 
@@ -201,6 +201,7 @@ int json_parse_stream_step()
   if (!apiclient.connected()) {
     apiclient.stop();
     Serial.print(F("Parsed ")); Serial.print(api_parse_count); Serial.println(F(" bytes"));
+    api_parse_type = API_PARSE_NONE;
     return 0;
   }
   while (apiclient.available()) {
@@ -219,6 +220,7 @@ int json_parse_stream()
 
 int api_load_acl()
 {
+  api_parse_type = API_PARSE_META;
   api_check_status = API_STATUS_META;
   return api_post_json("/orthanc/character/meta/",
     String("{\"token\":\"" + api_token + "\",\"meta\":\"roster:access_" MQTT_RFID "\"}"));
@@ -226,6 +228,7 @@ int api_load_acl()
 
 int api_load_characters()
 {
+  api_parse_type = API_PARSE_CHARACTERS;
   api_check_status = API_STATUS_CHARACTERS;
   return api_post_json("/orthanc/character/",
     String("{\"token\":\"" + api_token + "\",\"all_characters\":\"all_characters\"}"));

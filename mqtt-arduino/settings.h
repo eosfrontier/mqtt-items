@@ -54,6 +54,12 @@ const char *GPIO_PORTS[] = {
 #ifdef MQTT_RFID
 #define MQTT_JSON
 
+typedef struct {
+    long character_id;
+    uint32_t card_id;
+    uint32_t bitfield; // 6 bits data, 2 bits AVL-flags, 12 bits leftchild, 12 bits rightchild
+} avl_access_t;
+
 const int LEDS_NUM = 24;
 const int BUTTONS_PINS[] = {};
 const char *BUTTONS_NAMES[] = {};
