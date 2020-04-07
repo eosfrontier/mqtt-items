@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Tree</title>
+    <meta charset="utf-8">
+	<meta name="robots" content="noindex, nofollow">
+    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"></script>
+    <style>
+body {
+    background-color: #bcf;
+    color: #225;
+    margin: 0;
+    padding: 0;
+}
+svg#graph {
+    width: 100vw;
+    height: 75vh;
+}
+svg circle {
+    stroke: #447;
+    stroke-width: 1;
+    fill: #4fb;
+}
+svg line {
+    stroke: #447;
+    stroke-width: 2;
+}
+svg text {
+    stroke: #000;
+    text-anchor: middle;
+    dominant-baseline: middle;
+}
+div button {
+    height: 20px;
+    margin: 0 30px;
+    padding: 0;
+}
+div#log {
+    position: relative;
+    margin: 0 20px;
+    height: calc(25vh - 50px);
+    overflow-y: scroll;
+}
+
+div#log p {
+    margin: 2px;
+    padding: 0;
+}
+    </style>
+</head>
+<body>
+    <svg id="graph">
+    </svg>
+    <div>
+    <button id="step">Step</button>
+    <div id="log"></div>
+    </div>
+	<script>
+function svgnew(tag, attrs)
+{
+    return $(document.createElementNS('http://www.w3.org/2000/svg', tag)).attr(attrs)
+}
+
+
+var btree = [0]
+var broot = 0
+var numentries = 0
+
+function log() {
+    $('#log').append('<p>'+Array.prototype.join.apply(arguments, [' '])+'</p>')
+}
+
+function insert_tree(node, key) {
+    var treenode = btree[node]
+    log('inserting', key, 'at node', node, '=', treenode.key)
+    if (treenode.key == key) {
+        // Add data
+        log('found', key, 'at node', node)
+        return 0
+    }
+    var l_r = (treenode.key < key) ? 1 : 0
+    var leftright = l_r ? 'right' : 'left'
+    if (treenode.children[l_r]) {
+        log('going to', leftright, 'child')
+        var newchild = insert_tree(treenode.children[l_r], key) // Sentinels: 0 = end recursion, -1/-2/03 = tree height increase (left/right/newleaf)
+        if (newchild == 0) return 0 // unwind recursion
+        log('insert returned', newchild)
+        if (newchild > 0) {
+            log('tree modified,', node, 'new', leftright, 'child node is', newchild)
+            treenode.children[l_r] = newchild
+            return 0 // end recursion
+        }
+        var child_l_r = newchild + 2
+        if (child_l_r < 0) {
+            log('child balanced')
+        } else {
+            log('child heavy on',child_l_r?'right':'left','side')
+        }
+        if (treenode.flags == 2) {
+            log('parent balanced, unbalancing to ',leftright)
+            // Become unbalanced on l_r side
+            treenode.flags = l_r // 0 or 1 for unbalanced left/right
+            return l_r - 2 // Height increase left/right
+        }
+        if (l_r != treenode.flags) {
+            log('node unbalanced opposite',leftright,', balancing')
+            // Height increase on opposite of heavy side.  Makes us balanced
+            treenode.flags = 2
+            return 0 // end recursion
+        }
+        var newnode
+        // We're now over-unbalanced, need to rebalance
+        if (child_l_r != l_r) { // Double rotate
+            log('Double rotate', leftright)
+            var oldchild = treenode.children[l_r]
+            treenode.children[l_r] = rotate(oldchild, child_l_r)
+            newnode = rotate(node, l_r)
+            // oldchild = node on previous light side, newnode = new top, node = node on previous heavy side
+            // Set new balances, the children of the new top are divided among the new children on either side (but swapped)
+            btree[oldchild].flags = 2
+            btree[node].flags = 2
+            if (btree[newnode].flags == l_r) {
+                btree[node].flags = (1 - l_r)
+            } else if (btree[newnode].flags == (1 - l_r)) {
+                btree[oldchild].flags = l_r
+            }
+            btree[newnode].flags = 2
+            btree[newnode].flags = 2
+        } else { // Single rotate
+            log('Single rotate', leftright)
+            newnode = rotate(node, l_r)
+            // Always becomes balanced
+            btree[node].flags = 2
+            btree[newnode].flags = 2
+        }
+        return newnode
+    } else {
+        numentries++
+        btree[numentries] = { key: key, children: [0,0], flags: 2 }
+        treenode.children[l_r] = numentries
+        if (treenode.flags != 2) {
+            treenode.flags = 2
+            log('insert new child', key, 'as second', leftright, 'child of', node)
+            return 0
+        } else {
+            treenode.flags = l_r
+            log('insert new child', key, 'as first', leftright, 'child of', node)
+            return l_r-2
+        }
+    }
+}
+
+function rotate(node, l_r) {
+    var newnode = btree[node].children[l_r]
+    var newleaf = btree[newnode].children[1 - l_r]
+    btree[node].children[l_r] = newleaf
+    btree[newnode].children[1 - l_r] = node
+    return newnode
+}
+
+function insert_item(key) {
+    if (numentries == 0) {
+        numentries++
+        btree[numentries] = { key: key, children: [0,0], flags: 2 }
+        broot = numentries
+    } else {
+        var newroot = insert_tree(broot, key)
+        if (newroot > 0) broot = newroot
+    }
+}
+
+function svgcircle(svg, x, y, r=20) {
+    svg.append(svgnew('circle', {cx:x, cy:y, r:r}))
+}
+
+function svgline(svg, x1, y1, x2, y2) {
+    svg.prepend(svgnew('line', {x1:x1,y1:y1,x2:x2,y2:y2}))
+}
+
+function svgtext(svg, x, y, text) {
+    var el = svgnew('text', {x:x, y:y})
+    el.text(text)
+    svg.append(el)
+}
+
+function drawsubtree(svg, node, depth, x, ystp = 50) {
+    var y = depth*ystp
+    var xstp = svg.width()/Math.pow(2, depth+1)
+    svgcircle(svg, x, y)
+    svgtext(svg, x, y, btree[node].key)
+    if (btree[node].flags != 2) {
+        svgtext(svg, x, y-30, btree[node].flags ? '+' : '-')
+    }
+    for (var c = 0; c < 2; c++) {
+        if (btree[node].children[c]) {
+            var cx = x-xstp + 2*c*xstp
+            svgline(svg, x, y, cx, y+ystp)
+            drawsubtree(svg, btree[node].children[c], depth+1, cx, ystp)
+        }
+    }
+}
+
+function drawtree() {
+    if (broot > 0) {
+        var svg = $('#graph')
+        svg.empty()
+        drawsubtree(svg, broot, 1, svg.width()/2)
+    }
+}
+
+insert_test()
+
+function insert_test() {
+    var itm = Math.floor(Math.random()*99)+1
+    insert_item(itm)
+    drawtree()
+}
+
+function insert_many(n=100) {
+    for (var i = 0; i < n; i++) {
+        var itm = Math.floor(Math.random()*99)+1
+        insert_item(itm)
+    }
+    drawtree()
+}
+
+$('#step').click(insert_test)
+
+    </script>
+</body>
