@@ -176,7 +176,7 @@ const char *WS_BROADCAST_ACK = "eos/portal/light/ack";
 const int BUTTON_RETRIES = 5;
 const int BUTTON_RETRY_DELAY = 10;
 
-const int STATUS_FREQ = 10 * 1000;
+const int STATUS_FREQ = 60 * 1000;
 const int FPS = 40;
 
 const int MSG_TIMEOUT = 125 * 1000;      // Forget subscription (if not resubscribed) after 2 minutes

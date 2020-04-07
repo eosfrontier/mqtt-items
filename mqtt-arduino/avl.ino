@@ -64,12 +64,12 @@ int avl_insert_tree(int node, avl_access_t *entry)
             avl_access_t *oldchild = AVL_ENTRY(child);
             // Double rotate
             int newchild = avl_rotate(child, child_l_r);
-            AVL_ACCESS_SET_CHILD(treenode, newchild);
+            AVL_ACCESS_SET_CHILD(treenode, l_r, newchild);
             newnode = avl_rotate(node, l_r);
             newtreenode = AVL_ENTRY(newnode);
             // oldchild = now on previous heavy side, newnode = new top, treenode = now on previous light side
             // Set new balances, the children of the new top are divided among the new children on either side (but swapped and flipped)
-            char old_bal = AVL_ACCESS_GET_BAL(newtreenode)
+            char old_bal = AVL_ACCESS_GET_BAL(newtreenode);
             if (old_bal == l_r) {
                 AVL_ACCESS_SET_BAL(treenode, (1 - l_r));
                 AVL_ACCESS_SET_BAL(oldchild, 2);
@@ -136,7 +136,7 @@ void avl_insert(avl_access_t *entry)
 void avl_update_data(avl_access_t *entry)
 {
     long character_id = entry->character_id;
-    for (int i = 0; i < avl_num_entries) {
+    for (int i = 0; i < avl_num_entries; i++) {
         if (avl_access_tree[i].character_id == character_id) {
             AVL_ACCESS_SET_DATA(&avl_access_tree[i], entry->bitfield);
             return;
@@ -157,6 +157,11 @@ avl_access_t *avl_find(uint32_t card_id)
         node = AVL_ACCESS_GET_CHILD(treenode, l_r);
     }
     return NULL;
+}
+
+void avl_print_status()
+{
+    Serial.print("AVL tree has "); Serial.print(avl_num_entries); Serial.println(" entries");
 }
 
 #endif

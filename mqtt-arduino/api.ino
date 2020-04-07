@@ -31,11 +31,14 @@ void api_got_cardid(uint32_t cardid)
   msg_send("card", cardid_str);
   avl_access_t *entry = avl_find(cardid);
   if (entry) {
+    char characterid_str[12];
+    sprintf(characterid_str, "%d", entry->character_id);
+    Serial.print("Found character id "); Serial.print(characterid_str); Serial.print(" with access "); Serial.print(entry->bitfield & API_FLAGS_ACCESS); Serial.println(".");
     if (entry->bitfield & API_FLAGS_ACCESS) {
-      msg_send("granted", cardid_str);
+      msg_send("granted", characterid_str);
       leds_set(RFID_LEDS_GRANTED);
     } else {
-      msg_send("denied", cardid_str);
+      msg_send("denied", characterid_str);
       leds_set(RFID_LEDS_DENIED);
     }
   } else {
@@ -180,7 +183,7 @@ void json_end_object(int depth)
 {
   if (api_parse_type == API_PARSE_CHARACTERS) {
     if ((json_current.bitfield & (API_FLAGS_CARDID|API_FLAGS_CHARID)) == (API_FLAGS_CARDID|API_FLAGS_CHARID)) {
-      Serial.print("Got character id "); Serial.print(json_current.character_id); Serial.print(" with card "); Serial.println(json_current.card_id, HEX);
+      // Serial.print("Got character id "); Serial.print(json_current.character_id); Serial.print(" with card "); Serial.println(json_current.card_id, HEX);
       json_current.bitfield = json_current.bitfield & 0x3f;
       avl_insert(&json_current);
     }
@@ -201,6 +204,13 @@ int json_parse_stream_step()
   if (!apiclient.connected()) {
     apiclient.stop();
     Serial.print(F("Parsed ")); Serial.print(api_parse_count); Serial.println(F(" bytes"));
+    avl_print_status();
+    if (api_parse_type == API_PARSE_CHARACTERS) {
+      api_next_load_characters = lasttick + 600000;
+    }
+    if (api_parse_type == API_PARSE_META) {
+      api_next_load_acl = lasttick + 300000;
+    }
     api_parse_type = API_PARSE_NONE;
     return 0;
   }
@@ -270,9 +280,7 @@ void api_check()
   // Don't recheck if there s an animation running
   if ((api_next_load_characters < lasttick) && ((anim_tick == 0) || (api_num_granted < 0))) {
     api_next_load_characters = lasttick + ((api_num_granted >= 0) ? 30000 : 5000);
-    if (api_check_status = api_load_characters()) {
-      api_next_load_characters = lasttick + 300000;
-    }
+    api_check_status = api_load_characters();
     if (api_next_load_acl < (lasttick + 2000)) {
       api_next_load_acl = lasttick + 2000;
     }
@@ -281,9 +289,7 @@ void api_check()
   // Don't recheck if there s an animation running
   if ((api_next_load_acl < lasttick) && ((anim_tick == 0) || (api_num_granted < 0))) {
     api_next_load_acl = lasttick + ((api_num_granted >= 0) ? 30000 : 5000);
-    if (api_check_status = api_load_acl()) {
-      api_next_load_acl = lasttick + 300000;
-    }
+    api_check_status = api_load_acl();
   }
 }
 
