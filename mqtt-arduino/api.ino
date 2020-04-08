@@ -191,7 +191,7 @@ void json_end_object(int depth)
   }
   if (api_parse_type == API_PARSE_META) {
     if ((json_current.bitfield & (API_FLAGS_ACCESS)) == (API_FLAGS_ACCESS)) {
-      Serial.print("Got character id "); Serial.print(json_current.key.character_id); Serial.print(" with access "); Serial.println(json_current.data.access);
+      // Serial.print("Got character id "); Serial.print(json_current.key.character_id); Serial.print(" with access "); Serial.println(json_current.data.access);
       avl_insert(&json_current, 1);
     }
   }
@@ -297,7 +297,7 @@ void api_check()
     return;
   }
   // Don't recheck if there s an animation running
-  if ((api_next_load_characters < lasttick) && ((anim_tick == 0) || (api_failcount_characters < 0))) {
+  if ((api_next_load_characters < lasttick) && ((anim_tick == 0) || (api_failcount_characters <= 0))) {
     api_next_load_characters = lasttick + ((api_failcount_characters > 0) ? 30000 : 5000);
     api_check_status = api_load_characters();
     if (api_next_load_meta < (lasttick + 2000)) {
@@ -306,7 +306,7 @@ void api_check()
     return;
   }
   // Don't recheck if there s an animation running
-  if ((api_next_load_meta < lasttick) && ((anim_tick == 0) || (api_failcount_meta < 0))) {
+  if ((api_next_load_meta < lasttick) && ((anim_tick == 0) || (api_failcount_meta <= 0))) {
     api_next_load_meta = lasttick + ((api_failcount_meta >= 0) ? 30000 : 5000);
     api_check_status = api_load_meta();
   }

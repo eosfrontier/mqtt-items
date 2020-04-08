@@ -108,11 +108,11 @@ int avl_insert_tree(int node, avl_access_t *entry)
             // Set new balances, the children of the new top are divided among the new children on either side (but swapped and flipped)
             char old_bal = AVL_ACCESS_GET_BAL(newtreenode);
             if (old_bal == l_r) {
-                AVL_ACCESS_SET_BAL(treenode, 2);
-                AVL_ACCESS_SET_BAL(oldchild, (1 - l_r));
-            } else if (old_bal == (1 - l_r)) {
-                AVL_ACCESS_SET_BAL(treenode, l_r);
+                AVL_ACCESS_SET_BAL(treenode, (1 - l_r));
                 AVL_ACCESS_SET_BAL(oldchild, 2);
+            } else if (old_bal == (1 - l_r)) {
+                AVL_ACCESS_SET_BAL(treenode, 2);
+                AVL_ACCESS_SET_BAL(oldchild, l_r);
             } else {
                 AVL_ACCESS_SET_BAL(treenode, 2);
                 AVL_ACCESS_SET_BAL(oldchild, 2);
