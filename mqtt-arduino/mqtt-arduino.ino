@@ -13,6 +13,7 @@ unsigned long loadavg = 0;
 unsigned long lasttick = 0;
 unsigned long anim_tick = 0;
 int api_check_status = -1;
+int avl_num_entries[2] = {0,0};
 
 void setup() {
   // put your setup code here, to run once:

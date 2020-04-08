@@ -55,9 +55,17 @@ const char *GPIO_PORTS[] = {
 #define MQTT_JSON
 
 typedef struct {
-    long character_id;
-    uint32_t card_id;
-    uint32_t bitfield; // 6 bits data, 2 bits AVL-flags, 12 bits leftchild, 12 bits rightchild
+    union {
+        uint32_t v;
+        uint32_t card_id;
+        long character_id;
+    } key;
+    union {
+        uint32_t v;
+        long character_id;
+        uint32_t access;
+    } data;
+    uint32_t bitfield; // 12 bits leftchild, 12 bits rightchild, 2 bits balance
 } avl_access_t;
 
 const int LEDS_NUM = 24;
