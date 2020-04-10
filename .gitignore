@@ -2,3 +2,5 @@
 *.gcode
 *.bin
 password.json
+ApiToken.txt
+WifiC.txt

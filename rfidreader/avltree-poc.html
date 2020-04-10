@@ -4,7 +4,7 @@
 	<title>Tree</title>
     <meta charset="utf-8">
 	<meta name="robots" content="noindex, nofollow">
-    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <style>
 body {
     background-color: #bcf;
@@ -53,6 +53,8 @@ div#log p {
     </svg>
     <div>
     <button id="step">Step</button>
+    <button id="run">Run</button>
+    <button id="print">Print</button>
     <div id="log"></div>
     </div>
 	<script>
@@ -81,7 +83,7 @@ function insert_tree(node, key) {
     var l_r = (treenode.key < key) ? 1 : 0
     var leftright = l_r ? 'right' : 'left'
     if (treenode.children[l_r]) {
-        log('going to', leftright, 'child')
+        // log('going to', leftright, 'child')
         var newchild = insert_tree(treenode.children[l_r], key) // Sentinels: 0 = end recursion, -1/-2/03 = tree height increase (left/right/newleaf)
         if (newchild == 0) return 0 // unwind recursion
         log('insert returned', newchild)
@@ -208,6 +210,7 @@ function drawtree() {
     }
 }
 
+/*
 insert_test()
 
 function insert_test() {
@@ -225,6 +228,65 @@ function insert_many(n=100) {
 }
 
 $('#step').click(insert_test)
+*/
+
+var toinsert = []
+function insert_cards(characters)
+{
+    for (var i = 0; i < characters.length; i++) {
+        if (characters[i].card_id) {
+            var cardid = characters[i].card_id.substring(0,8).toLowerCase()
+            toinsert.push(cardid)
+        }
+    }
+    insert_item(toinsert.shift())
+    drawtree()
+}
+
+function get_cards()
+{
+    if (toinsert.length == 0) {
+        var data = {'token':'3uHvXYKaDOft7GnHftFA','all_characters':'all_characters'}
+        $.ajax({
+            'type':'POST',
+            'url':'https://api.eosfrontier.space/orthanc/character/',
+            'contentType':'text/plain',
+            'data': JSON.stringify(data),
+            'dataType':'json',
+            'success':insert_cards
+        })
+    } else {
+        insert_item(toinsert.shift())
+        drawtree()
+    }
+}
+
+function printtree(node,depth)
+{
+    if (node) {
+        printtree(btree[node].children[0], depth+1)
+        log('Node',node,'at depth',depth,'key',btree[node].key,'balance',btree[node].flags,'left',btree[node].children[0],'right',btree[node].children[1])
+        printtree(btree[node].children[1], depth+1)
+    }
+}
+
+function insert_all()
+{
+    while (toinsert.length > 0) {
+        insert_item(toinsert.shift())
+    }
+    drawtree()
+}
+
+function print_all()
+{
+    $('#log').html('')
+    printtree(broot,1)
+}
+
+$('#step').click(get_cards)
+$('#run').click(insert_all)
+$('#print').click(print_all)
 
     </script>
 </body>

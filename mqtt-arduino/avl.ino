@@ -227,6 +227,7 @@ void avl_print_tree(int node, int depth)
 
 void avl_print_status()
 {
+    Serial.print("AVL tree uses "); Serial.print(sizeof(avl_access_tree)); Serial.println(" bytes");
     Serial.print("AVL tree 1 has "); Serial.print(avl_num_entries[0]); Serial.println(" entries");
     avl_print_tree(avl_root[0], 1);
     Serial.print("AVL tree 2 has "); Serial.print(avl_num_entries[1]); Serial.println(" entries");
