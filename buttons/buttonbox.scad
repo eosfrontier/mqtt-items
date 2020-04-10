@@ -23,8 +23,8 @@ crv = 10;
 
 taboff = trioff-bsize-cwid-1.114-tol;
 
-*boxsq();
-boxtri();
+boxsq();
+*boxtri();
 
 module boxsq() {
     bw = 110;
@@ -63,7 +63,7 @@ module boxtri() {
     *color("teal") translate([0,-19.8,height-wid-1.1]) rotate([0,0,180]) batteryholder();
 }
 
-rotate([0,180,0]) union() {
+*rotate([0,180,0]) union() {
     button(180);
     // Sacrificial layer to bridge hole
     #translate([0,0,sheight+wid-0.1]) cube([11,11,0.2],true);
@@ -84,18 +84,17 @@ module sqfront(bw,bh,bt,btw) {
             [w-t,0,0],
             [w-t,bh-bt,0]]);
         
-            #for (n=[0:3]) {
-                translate([-41.4,n*(82.8/3)-41.4,0])
-                rotate([0,0,45])
-                cur_prism(4, [
-                    [bs2,bh+0.5,1-cwid],
-                    [bs2,bh-0.5,-cwid],
-                    [bs2,bh-bt-0.5,-cwid]]);
-        
-            #translate([26,-4.6,bh-bt-0.1])
-            translate([-0.5,-95/2-4,-5.8]) cube([8.5,3,2.6],true);
-        
+        #for (n=[0:3]) {
+            translate([-41.4,n*(82.8/3)-41.4,0])
+            rotate([0,0,45])
+            cur_prism(4, [
+                [bs2,bh+0.5,1-cwid],
+                [bs2,bh-0.5,-cwid],
+                [bs2,bh-bt-0.5,-cwid]]);
+    
         }
+        #translate([26,-4.6,bh-bt-0.1])
+        translate([-0.5,-95/2-4,-5.8]) cube([8.5,3,2.6],true);
         // Switch hole
         #translate([13.5,-56,2.25])
         cube([7.5,2.7,4.8],true);

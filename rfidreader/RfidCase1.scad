@@ -11,14 +11,14 @@ dimples=false;
 sidecovers=false;
 black=true;
 
-diamondcase();
-diamondbottom();
-translate([0,0,caseheight]) hexfront();
-translate([0,0,caseheight]) diffuser();
-translate([0,0,caseheight-2]) covers();
+*diamondcase();
+*diamondbottom();
+*translate([0,0,caseheight]) hexfront();
+*translate([0,0,caseheight]) diffuser();
+*translate([0,0,caseheight-2]) covers();
 
 *mirror([0,0,1]) diamondcase();
-*diamondbottom();
+mirror([1,0,0]) diamondbottom();
 *mirror([0,0,1]) hexfront();
 *translate([0,0,-5.8]) diffuser();
 
@@ -58,19 +58,51 @@ module diamondcase() {
             }
 
             for (a=[0:60:300]) rotate([0,0,a]) casepinhole();
+
+            rotate([0,0,210])
+            translate([0,-2.5,caseheight-2-1.5])
+            translate([ 0.5,-95/2-4,-5.8]) cube([8.5,3,2.6],true);
+
+            // Switch hole
+            rotate([0,0,210])
+            translate([16.2,-54,3.25])
+            cube([7.5,2.7,6.8],true);
         }
+        // Switch holder
+        rotate([0,0,210])
+        translate([16.2,-51.1,2]) difference() {
+            union() {
+                translate([ 8.25,0,5])
+                cube([5.5,4,10], true);
+                translate([-8.25,0,5])
+                cube([5.5,4,10], true);
+            }
+            translate([0,0,2.9])
+            cube([20,0.4,6.2],true);
+            translate([0,2.1,10]) rotate([45,0,0])
+            cube([22.2,6,6],true);
+            translate([0,0,-0.1]) rotate([45,0,0])
+            cube([20,0.8,0.8],true);
+        }
+
+        
         rotate([0,0, 30]) bottomtablip(-55);
         rotate([0,0,-30]) bottomtablip( 55);
         rotate([0,0,150]) bottomtablip( 55);
         rotate([0,0,210]) bottomtablip(-55);
-        rotate([0,0, 30]) bottomtablip(  5);
+        #rotate([0,0, 30]) bottomtablip(  5);
         rotate([0,0,-30]) bottomtablip( -5);
         rotate([0,0,150]) bottomtablip( -5);
         rotate([0,0,210]) bottomtablip(  5);
         translate([-66, 0, caseheight-2]) wemosd1();
 
-        *#translate([0,0,caseheight-2-1.5]) rotate([0,0,30]) batteryholder();
-        translate([0,0,caseheight-2-1.5]) rotate([0,0,30]) batteryclips();
+        *#rotate([0,0,210])
+        translate([0,0,caseheight-2-1.5])
+        batteryholder();
+        
+        rotate([0,0,210])
+        translate([0,-2.5,caseheight-2-1.5])
+        batteryclips();
     }
 }
 
@@ -87,29 +119,44 @@ module wemosd1() {
 }
 
 module batteryclips() {
-    translate([-33/2,-94.8/2,0]) batterypin();
-    translate([-33/2, 94.8/2,0]) batterypin();
-    translate([ 33/2,-94.8/2,0]) batterypin();
-    translate([ 33/2, 94.8/2,0]) batterypin();
-    translate([-14,-50.2,0]) rotate([0,0,180]) batterytab(10);
-    translate([-14, 50.2,0]) batterytab(10);
-    translate([ 14,-50.2,0]) rotate([0,0,180]) batterytab(10);
-    translate([ 14, 50.2,0]) batterytab(10);
+    translate([-33/2,-95/2,0]) batterypin_w();
+    translate([-33/2, 95/2,0]) batterypin();
+    translate([ 33/2,-95/2,0]) batterypin_w();
+    translate([ 33/2, 95/2,0]) batterypin();
+    translate([-15,-50.6,0]) rotate([0,0,180]) batterytab_w(15);
+    translate([-15, 50.3,0]) batterytab(15);
+    translate([ 15,-50.6,0]) rotate([0,0,180]) batterytab_w(15);
+    translate([ 15, 50.3,0]) batterytab(15);
 }
 
 module batterypin() {
     rotate([0,0,360/48]) {
-        translate([0,0,-1.9]) cylinder(3.4,2.25,2.25, $fn=24);
-        translate([0,0,-3.5]) cylinder(1.7,1.2,1.2, $fn=24);
-        translate([0,0,-4.0]) cylinder(0.5,0.8,1.2, $fn=24);
+        translate([0,0, 1.5]) rotate([0,0,-360/48]) scale([1,0.5,1]) cylinder(2.0,5,5, $fn=24);
+        translate([0,0,-1.9]) cylinder(4.0,2.25,2.25, $fn=24);
+        translate([0,0,-3.0]) cylinder(1.2,1.1,1.2, $fn=24);
+        translate([0,0,-4.0]) cylinder(1.0,0.8,1.1, $fn=24);
+    }
+}
+
+module batterypin_w() {
+    rotate([0,0,360/48]) {
+        translate([0,0,-1.9]) cylinder(4.0,2.25,2.25, $fn=24);
+        translate([0,0,-2.5]) cylinder(1.2,1.1,1.1, $fn=24);
     }
 }
 
 module batterytab(w) {
     translate([-w/2,0,0]) rotate([0,90,0]) linear_extrude(height=w) polygon([
-        [-2,0],[3.0,0],[3.7,-0.7],[5.7,0.5],[4.5,1.5],[-2,1.5]
+        [-2.1,0],[3.5,0],[4.2,-0.8],[7,0.5],[6,1.5],[-2.1,1.5]
     ]);
 }
+
+module batterytab_w(w) {
+    translate([-w/2,0,0]) rotate([0,90,0]) linear_extrude(height=w) polygon([
+        [-0.1,0],[3.5,0],[4.2,-0.8],[7,0.5],[6,1.5],[-0.1,1.5]
+    ]);
+}
+
 
 module batteryholder() {
     cr=5;
@@ -151,11 +198,44 @@ module diamondbottom() {
             rotate([0,0,-30]) bottomtab( -5);
             rotate([0,0,150]) bottomtab( -5);
             rotate([0,0,210]) bottomtab(  5);
+            
+            // Switch hole filler
+            rotate([0,0,210])
+            translate([16.2,-54,1.7])
+            cube([7.3,2,3.6],true);
         }
-        translate([-diamondsize/2.5,0,-0.5]) linear_extrude(height=3) diamond(diamondsize/4, 1);
-        translate([ diamondsize/2.5,0,-0.5]) linear_extrude(height=3) diamond(diamondsize/4, 1);
-        translate([0,-diamondsize/s3/2.5,-0.5]) linear_extrude(height=3) diamond(diamondsize/4, 1);
-        translate([0, diamondsize/s3/2.5,-0.5]) linear_extrude(height=3) diamond(diamondsize/4, 1);
+    
+        /*
+        translate([-diamondsize/2.5,0,-0.5])
+        linear_extrude(height=3) diamond(diamondsize/4, 1);
+        translate([ diamondsize/2.5,0,-0.5])
+        linear_extrude(height=3) diamond(diamondsize/4, 1);
+        translate([0,-diamondsize/s3/2.5,-0.5])
+        linear_extrude(height=3) diamond(diamondsize/4, 1);
+        translate([0, diamondsize/s3/2.5,-0.5])
+        linear_extrude(height=3) diamond(diamondsize/4, 1);
+        */
+        translate([-diamondsize/2.3,0,-0.5])
+        mirror([1,0,0]) bottomcut();
+        translate([ diamondsize/2.3,0,-0.5])
+        mirror([1,0,0]) bottomcut();
+        translate([0,-diamondsize/s3/2.3,-0.5])
+        bottomcut();
+        translate([0, diamondsize/s3/2.3,-0.5])
+        bottomcut();
+    }
+}
+
+module bottomcut(dw = diamondsize/3, rd=2)
+{
+    for (n = [-2:2]) {
+        translate([n*dw/4, n*dw/4/s3,-0.5])
+        linear_extrude(height=3)
+        polygon(concat(
+        [for (an = [-60:10:120]) [-dw/2-rd*cos(an), dw/2/s3+rd*sin(an)] ],
+        [for (an = [120:10:300]) [ dw/2-rd*cos(an),-dw/2/s3+rd*sin(an)] ]
+        ));
+
     }
 }
 
