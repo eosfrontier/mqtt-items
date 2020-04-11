@@ -11,14 +11,14 @@ dimples=false;
 sidecovers=false;
 black=true;
 
-*diamondcase();
-*diamondbottom();
+*mirror([1,0,0]) diamondcase();
+*mirror([1,0,0]) diamondbottom();
 *translate([0,0,caseheight]) hexfront();
 *translate([0,0,caseheight]) diffuser();
 *translate([0,0,caseheight-2]) covers();
 
-*mirror([0,0,1]) diamondcase();
-mirror([1,0,0]) diamondbottom();
+mirror([0,0,1]) diamondcase();
+*mirror([1,0,0]) diamondbottom();
 *mirror([0,0,1]) hexfront();
 *translate([0,0,-5.8]) diffuser();
 
@@ -61,7 +61,7 @@ module diamondcase() {
 
             rotate([0,0,210])
             translate([0,-2.5,caseheight-2-1.5])
-            translate([ 0.5,-95/2-4,-5.8]) cube([8.5,3,2.6],true);
+            translate([ 0.5,-95/2-4,-4.8]) cube([8.5,3,2.6],true);
 
             // Switch hole
             rotate([0,0,210])
@@ -141,7 +141,8 @@ module batterypin() {
 module batterypin_w() {
     rotate([0,0,360/48]) {
         translate([0,0,-1.9]) cylinder(4.0,2.25,2.25, $fn=24);
-        translate([0,0,-2.5]) cylinder(1.2,1.1,1.1, $fn=24);
+        translate([0,0,-2.7]) cylinder(1.4,1.1,1.1, $fn=24);
+        translate([0,0,-3.2]) cylinder(0.5,0.7,1.1, $fn=24);
     }
 }
 
