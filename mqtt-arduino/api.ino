@@ -306,6 +306,8 @@ int api_send_queue()
             ent->time + (ent->access ? ":Granted" : ":DENIED") + "\"}]}"));
 }
 
+BearSSL::Session api_session;
+
 void api_setup()
 {
   api_failcount[API_CHARACTERS] = 0;
@@ -321,7 +323,18 @@ void api_setup()
   } else {
     api_token = "xxxx";
   }
-  apiclient.setInsecure();
+  if (SPIFFS.exists("/EosPubKey.txt")) {
+    File pubkeytxt = SPIFFS.open("/EosPubKey.txt", "r");
+    String eos_pubkey = pubkeytxt.readString();
+    pubkeytxt.close();
+    BearSSL::PublicKey *eos_key = new BearSSL::PublicKey(eos_pubkey.c_str());
+    apiclient.setKnownKey(eos_key);
+    //Serial.print("Public key:"); Serial.println(eos_key);
+  } else {
+    apiclient.setInsecure();
+  }
+  apiclient.setSession(&api_session);
+
   apiclient.setBufferSizes(512, 512);
   api_queue_start = 0;
   api_queue_end = 0;

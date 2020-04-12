@@ -41,11 +41,14 @@ String generateKey() {
   return key;
 }
 
+BearSSL::Session ws_session;
+
 void ws_setup()
 {
     wsstate = noconn;
     wsclient.setInsecure();
     wsclient.setBufferSizes(512, 512);
+    wsclient.setSession(&api_session);
 }
 
 void ws_send(const char *msg)
