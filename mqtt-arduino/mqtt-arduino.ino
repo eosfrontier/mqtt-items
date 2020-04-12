@@ -20,6 +20,7 @@ void setup() {
   Serial.begin(115200);
 
   lasttick = millis();
+  ntp_setup();
   rfid_setup();
   msg_setup();
   leds_setup();
@@ -31,6 +32,7 @@ void setup() {
 }
 
 void loop() {
+  ntp_check();
   ota_check();
   rfid_check();
   msg_check();

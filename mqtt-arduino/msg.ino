@@ -2,7 +2,7 @@
 #include <FS.h>
 
 unsigned int mqtt_port = 1883;
-WiFiUDP udp;
+WiFiUDP msg_udp;
 
 struct {
     IPAddress ip;
@@ -12,7 +12,7 @@ struct {
 
 void msg_setup()
 {
-  udp.begin(mqtt_port);
+  msg_udp.begin(mqtt_port);
   SPIFFS.begin();
 }
 
@@ -44,12 +44,12 @@ void msg_send_sub(const char *topic, const char *msg, int idx)
 {
   if (subscribers[idx].topic[0]) {
     if (strmatch(subscribers[idx].topic, topic)) {
-      udp.beginPacket(subscribers[idx].ip, mqtt_port);
-      udp.write(MSG_NAME "/", strlen(MSG_NAME)+1);
-      udp.write(topic, strlen(topic));
-      udp.write('\n');
-      udp.write(msg, strlen(msg));
-      udp.endPacket();
+      msg_udp.beginPacket(subscribers[idx].ip, mqtt_port);
+      msg_udp.write(MSG_NAME "/", strlen(MSG_NAME)+1);
+      msg_udp.write(topic, strlen(topic));
+      msg_udp.write('\n');
+      msg_udp.write(msg, strlen(msg));
+      msg_udp.endPacket();
     }
   }
 }
@@ -81,7 +81,7 @@ void msg_add_sub(const char *topic)
       Serial.print("ERROR: Subscribe topic too long: <"); Serial.print(postfix); Serial.println(">");
       return; 
     }
-    IPAddress ip = udp.remoteIP();
+    IPAddress ip = msg_udp.remoteIP();
     int idx = -1;
     bool resub = false;
     for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
@@ -128,11 +128,11 @@ void send_ssid(void)
         for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
             if (subscribers[i].topic[0]) {
               if (subscribers[i].ip[3] == 4) {
-                udp.beginPacket(subscribers[i].ip, mqtt_port);
-                udp.write("SSID", 4);
-                udp.write('\n');
-                udp.write(msg, strlen(msg));
-                udp.endPacket();
+                msg_udp.beginPacket(subscribers[i].ip, mqtt_port);
+                msg_udp.write("SSID", 4);
+                msg_udp.write('\n');
+                msg_udp.write(msg, strlen(msg));
+                msg_udp.endPacket();
               }
             }
         }
@@ -216,10 +216,10 @@ void msg_subscribe(const char *topic)
     Serial.print("Sending sub from ip "); Serial.print(bcast); Serial.print(" mask "); Serial.println(smask);
     for (int i = 0; i < 4; i++) bcast[i] |= ~smask[i];
     Serial.print("Broadcast to "); Serial.println(bcast);
-    udp.beginPacket(bcast, mqtt_port);
-    udp.write("SUB\n", 4);
-    udp.write(topic, strlen(topic));
-    udp.endPacket();
+    msg_udp.beginPacket(bcast, mqtt_port);
+    msg_udp.write("SUB\n", 4);
+    msg_udp.write(topic, strlen(topic));
+    msg_udp.endPacket();
   }
   
   bcast = WiFi.softAPIP();
@@ -227,10 +227,10 @@ void msg_subscribe(const char *topic)
     Serial.print("Sending sub from SoftAP ip "); Serial.println(bcast);
     bcast[3] = 255;
     Serial.print("Broadcast to "); Serial.println(bcast);
-    udp.beginPacket(bcast, mqtt_port);
-    udp.write("SUB\n", 4);
-    udp.write(topic, strlen(topic));
-    udp.endPacket();
+    msg_udp.beginPacket(bcast, mqtt_port);
+    msg_udp.write("SUB\n", 4);
+    msg_udp.write(topic, strlen(topic));
+    msg_udp.endPacket();
   }
 
 #ifdef MQTT_SOFTAP
@@ -331,11 +331,11 @@ void msg_check()
   char buf[1025];
   // Kijken of er packets zijn
   int pak;
-  while ((pak = udp.parsePacket()) > 0) {
-    int rd = udp.read(buf, sizeof(buf)-1);
+  while ((pak = msg_udp.parsePacket()) > 0) {
+    int rd = msg_udp.read(buf, sizeof(buf)-1);
     if (rd < pak) {
       Serial.print("Short read, got "); Serial.print(rd); Serial.print(", expected "); Serial.println(pak);
-      udp.flush();
+      msg_udp.flush();
     }
     if (rd > 0) {
       // String termineren en zoeken naar newline voor topic + message
