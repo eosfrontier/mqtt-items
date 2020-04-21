@@ -1,6 +1,6 @@
 #include <Adafruit_NeoPixel.h>
 
-bool debugging = false;
+// #define DEBUG
 
 #define R_LED_PIN 10
 #define L_LED_PIN 9
@@ -35,6 +35,19 @@ const char inpins[] = { 3,4,5,6,7,8,14,15,16,18,19,20 };
 #define NUM_POINTS 2
 #define NUM_COLS 5
 
+#define MODE_NONE      0
+#define MODE_MOVING    1
+#define MODE_BLINKING  2
+#define MODE_PULSING   3
+
+#define SUBMODE_NONE   0x00
+#define SUBMODE_BOUNCE 0x10
+#define SUBMODE_BOTH   0x20
+
+#define SUBMODE_DOWN   0x10
+#define SUBMODE_UP     0x20
+#define SUBMODE_UPDOWN 0x30
+
 typedef struct {
     uint32_t r;
     uint32_t g;
@@ -53,13 +66,30 @@ struct point {
     hcl_t hcl[NUM_COLS];
     short idx[NUM_COLS];
     short spd;
-    char dir;
+    char dir;           // direction
     unsigned char line; // 1 bit per possible line
-    char ppos1; // Position on line
-    char ppos2;
-    unsigned char mode; //  ??  Bounce oid?
-    char dly;
+    char ppos1; // Start position on line
+    char ppos2; // End position on line
 } points[NUM_POINTS];
+
+char anim_mode = MODE_NONE;
+
+#ifdef DEBUG
+bool debugging = false;
+
+void debug_p(char *msg, long val)
+{
+    if (debugging) {
+        Serial.print(msg);
+        Serial.print(" ");
+        Serial.println(val);
+        delay(1);
+    }
+}
+
+#else
+#define debug_p(m,v)
+#endif
 
 rgb_t get_hcl_color(hcl_t ca, hcl_t cb, uint32_t pos, uint32_t tot)
 {
@@ -110,16 +140,6 @@ rgb_t get_hcl_color(hcl_t ca, hcl_t cb, uint32_t pos, uint32_t tot)
     return rgb;
 }
 
-void debug_p(char *msg, long val)
-{
-    if (debugging) {
-        Serial.print(msg);
-        Serial.print(" ");
-        Serial.println(val);
-        delay(1);
-    }
-}
-
 
 // See if the point is part of a line and if so return the index on that line
 int get_pointindex(int off, int pos, unsigned char ptline)
@@ -148,24 +168,36 @@ uint32_t get_pix_color(int off, int pos, long tick)
         debug_p("pixel", pos);
         debug_p("point", p);
         struct point *pt = &points[p];
-        long idx = get_pointindex(off, pos, pt->line) - pt->ppos1;
-        // idx is now integer index of pixel
+        char ppos1, ppos2, dir;
+        if (ppos2 >= ppos1) {
+            ppos1 = pt->ppos1;
+            ppos2 = pt->ppos2;
+            dir = 1;
+        } else {
+            ppos1 = pt->ppos2;
+            ppos2 = pt->ppos1;
+            dir = -1;
+        }
+        long idx = get_pointindex(off, pos, pt->line);
+        // idx is now integer index of pixel relative to point spread
         debug_p("idx", idx);
-        if (idx >= 0 && idx <= (pt->ppos2 - pt->ppos1)) {
-            debug_p("idx (1.5)", (idx * FIXEDP) - (pt->ppos2-pt->ppos1)*(FIXEDP/2));
-            debug_p("pt->ppos1", pt->ppos1);
-            debug_p("pt->ppos2", pt->ppos2);
+        if (idx >= ppos1 && idx <= ppos2) {
+            debug_p("idx (1.5)", (idx * FIXEDP) - (ppos2-ppos1)*(FIXEDP/2));
+            debug_p("ppos1", ppos1);
+            debug_p("ppos2", ppos2);
             debug_p("idx * FIXEDP", idx * FIXEDP);
-            debug_p("(pt->ppos2-pt->ppos1)*(FIXEDP/2)", (pt->ppos2-pt->ppos1)*(FIXEDP/2));
-            debug_p("(idx * FIXEDP) - (pt->ppos2-pt->ppos1)*(FIXEDP/2)", (idx * FIXEDP) - (pt->ppos2-pt->ppos1)*(FIXEDP/2));
-            debug_p("(((tick - pt->tick) * pt->spd) / 16) * pt->dir", (((tick - pt->tick) * pt->spd) / 16) * pt->dir);
+            debug_p("(ppos2-ppos1)*(FIXEDP/2)", (ppos2-ppos1)*(FIXEDP/2));
+            debug_p("(idx * FIXEDP) - (ppos2-ppos1)*(FIXEDP/2)", (idx * FIXEDP) - (ppos2-ppos1)*(FIXEDP/2));
+            debug_p("(((tick - pt->tick) * pt->spd) / 16) * dir", (((tick - pt->tick) * pt->spd) / 16) * dir);
             debug_p("(pt->size/2)", (pt->size/2));
-            idx = (idx * FIXEDP) - (pt->ppos2-pt->ppos1)*(FIXEDP/2) - (((tick - pt->tick) * pt->spd) / 16 - (pt->size/2)) * pt->dir;
+            // idx minus halfway point : center point of spread mapped to center point of animation gradient
+            // Add speed times timeindex, minus size/2, so time runs from -size/2 to +size/2 (or if dir=-1, from +size/2 to -size/2)
+            idx = (idx * FIXEDP) - (ppos2+ppos1)*(FIXEDP/2) - (((tick - pt->tick) * pt->spd) / 16 - (pt->size/2)) * dir;
             debug_p("idx (2)", idx);
             debug_p("tick - pt->tick", tick - pt->tick);
-            debug_p("pt->spd * pt->dir", pt->spd * pt->dir);
-            debug_p("(((tick - pt->tick) * pt->spd * pt->dir))",        (((tick - pt->tick) * pt->spd * pt->dir)));
-            debug_p("(((tick - pt->tick) * pt->spd * pt->dir) / 16)", (((tick - pt->tick) * pt->spd) / 16) * pt->dir);
+            debug_p("pt->spd * dir", pt->spd * dir);
+            debug_p("(((tick - pt->tick) * pt->spd * dir))",        (((tick - pt->tick) * pt->spd * dir)));
+            debug_p("(((tick - pt->tick) * pt->spd * dir) / 16)", (((tick - pt->tick) * pt->spd) / 16) * dir);
             // Serial.print("Time "); Serial.print(tick - pt->tick); Serial.print(" offset index="); Serial.println(idx);
             // idx is now fixedpoint index of pixel relative to point animation
             if (idx >= pt->idx[0] && idx < pt->idx[NUM_COLS-1]) {
@@ -221,16 +253,18 @@ void set_point(int p, unsigned long now, short hue, unsigned char line, int dir)
     pt->hcl[4].luma = 0;
 
     pt->spd = 16;
-    pt->dir = dir;
+    if (dir > 0) {
+        pt->ppos1 = 0;
+        pt->ppos2 = 16;
+    } else {
+        pt->ppos1 = 16;
+        pt->ppos2 = 0;
+    }
     pt->size = 16 * FIXEDP + 3000;
     pt->line = line;
-    pt->ppos1 = 0;
-    pt->ppos2 = 16;
-    pt->mode = 0;
-    pt->dly = 0;
 }
 
-void update_points(unsigned long now)
+void update_moving(unsigned long now, unsigned char submode)
 {
   for (int p = 0; p < NUM_POINTS; p++) {
     if (points[p].spd > 0) {
@@ -239,12 +273,39 @@ void update_points(unsigned long now)
       uint32_t aspd = (points[p].size * 16 / (points[p].spd));
       debug_p("aspd", aspd);
       if (points[p].tick + aspd <= now) {
-          // Serial.print("Updating "); Serial.print(p); Serial.print(" : tick = "); Serial.print(points[p].tick);
-          // Serial.print(" now = "); Serial.print(now); Serial.print(" dir = "); Serial.println((int)points[p].dir);
-          points[p].tick += aspd;
-          points[p].dir = -points[p].dir;
+        // Serial.print("Updating "); Serial.print(p); Serial.print(" : tick = "); Serial.print(points[p].tick);
+        // Serial.print(" now = "); Serial.print(now); Serial.print(" dir = "); Serial.println((int)points[p].dir);
+        points[p].tick += aspd;
+        if (submode == SUBMODE_BOUNCE) {
+          char s = points[p].ppos1;
+          points[p].ppos1 = points[p].ppos2;;
+          points[p].ppos2 = s;
+        }
       }
     }
+  }
+}
+
+void update_blinking(unsigned long now, unsigned char submode)
+{
+}
+
+void update_pulsing(unsigned long now, unsigned char submode)
+{
+}
+
+void update_points(unsigned long now)
+{
+  switch (anim_mode & 0x0f) {
+    case MODE_MOVING:
+      update_moving(now, anim_mode & 0xf0);
+      break;
+    case MODE_BLINKING:
+      update_blinking(now, anim_mode & 0xf0);
+      break;
+    case MODE_PULSING:
+      update_pulsing(now, anim_mode & 0xf0);
+      break;
   }
 }
 
@@ -252,15 +313,29 @@ void update_points(unsigned long now)
 
 void rotate_spd(unsigned char dir)
 {
+  unsigned long now = millis();
   for (int i = 0; i < NUM_POINTS; i++) {
-    if (dir) {
-      if (points[i].spd < 1024) {
-        points[i].spd++;
+    if (points[i].spd > 0) {
+      short oldspd = points[i].spd;
+      short newspd = oldspd;
+      if (dir) {
+        if (oldspd < 1024) {
+          newspd = oldspd + 1;
+        }
+      } else {
+        if (oldspd > 4) {
+          newspd = oldspd - 1;
+        }
       }
-    } else {
-      if (points[i].spd > 4) {
-        points[i].spd--;
-      }
+      points[i].spd = newspd;
+      // Recalculate time index tick: scale passed time by speed difference
+      // Curpos = (now - tick) * oldspd
+      //        = (now - newtick) * newspd
+      // (now - tick) * oldspd = (now - newtick) * newspd
+      // (now - newtick) = (now - tick) * oldspd / newspd
+      // -newtick = (now - tick) * oldspd / newspd - now
+      // newtick = now - (now - tick) * oldspd / newspd
+      points[i].tick = now - (now - points[i].tick) * oldspd / newspd;
     }
   }
 }
@@ -403,10 +478,12 @@ void loop()
     }
     l_strip.show();
     r_strip.show();
+#ifdef DEBUG
     if (debugging) {
       delay(2000);
     }
     debugging = false;
+#endif
     usecount++;
     unsigned long elaps = millis() - now;
     usesum += elaps;
@@ -445,11 +522,11 @@ void setup()
     pinMode(inpins[i], INPUT_PULLUP);
   }
   
-  if (debugging) {
-      Serial.begin(9600);
-      delay(2000);
-      Serial.println("Starting");
-  }
+#ifdef DEBUG
+  Serial.begin(9600);
+  delay(2000);
+  Serial.println("Starting");
+#endif
   /*
   for (int i = 0; i < 100; i++) {
   delay(100);
