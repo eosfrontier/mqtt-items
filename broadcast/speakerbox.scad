@@ -1,6 +1,48 @@
 
 
-speaker();
+translate([60,0,40]) rotate([0,60,0]) speaker();
+translate([-60,0,40]) rotate([0,-60,0]) speaker();
+
+translate([10,-20,53]) rotate([90,90,90]) esp_ttgo();
+
+translate([-10,0,20]) rotate([90,0,90]) amp_tda();
+
+// translate([0,0,1]) cube([200,100,2], true);
+
+module amp_tda() {
+    wid = 33.3;
+    hei = 45.1;
+    thi = 1.5;
+    
+    bw = 23;
+    bh = 16;
+    bt = 25.3;
+    
+    vd = 15.8/2;
+    vt = 2;
+    vx = 3.4;
+    vy = 40.4;
+    vz = 3;
+    
+    translate([-wid/2,4,0]) cube([wid,hei,thi]);
+    translate([-bw/2,0,thi]) cube([bw,bh,bt]);
+    translate([vx,vy+4,vz]) cylinder(vt,vd,vd);
+}
+
+module esp_ttgo() {
+    wid = 31.1;
+    hei = 39.3;
+    thi = 1.1;
+    
+    hei2 = 40.5;
+    
+    thi3 = 4.5;
+    wid3 = 16;
+    hei3 = 24;
+    
+    translate([-wid/2,0,0]) cube([wid,hei,thi]);
+    translate([-wid3/2,6.6,0]) cube([wid3, hei3, thi3]);
+}
 
 module speaker() {
     height = 35;
@@ -34,7 +76,7 @@ module speaker() {
                 frontdia/2, frontdia/2, $fn=fn);
             translate([0,0,-ring-plate])
             // cube([platexy, platexy, plate], true);
-            plate(platexy/2, platedia/2, plate);
+            s_plate(platexy/2, platedia/2, plate);
         }
         translate([0,0,-plate-ring])
         cylinder(plate+ring,
@@ -56,7 +98,7 @@ module speaker() {
     }
 }
 
-module plate(d1, d2, h, stp = 10) {
+module s_plate(d1, d2, h, stp = 10) {
     sd2 = d2 / sqrt(2);
     off = ((d1*d1)/2 - (sd2*sd2)) / (sd2 - d1);
     ang = asin(sd2/(off+d1));
