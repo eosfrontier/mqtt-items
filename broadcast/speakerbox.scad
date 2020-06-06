@@ -1,13 +1,91 @@
 
 
-translate([60,0,40]) rotate([0,60,0]) speaker();
-translate([-60,0,40]) rotate([0,-60,0]) speaker();
+translate([65,0,40]) rotate([0,60,0]) speaker();
+translate([-65,0,40]) rotate([0,-60,0]) speaker();
 
-translate([10,-20,53]) rotate([90,90,90]) esp_ttgo();
+translate([15,-20,42]) rotate([90,90,90]) esp_ttgo();
 
-translate([-10,0,20]) rotate([90,0,90]) amp_tda();
+translate([-15,0,9.5]) rotate([90,0,90]) amp_tda();
+
+translate([-2,-5,49]) rotate([90,90,90]) conv_3v();
 
 // translate([0,0,1]) cube([200,100,2], true);
+
+hexbox();
+
+module hexbox() {
+    toph = 54.5;
+    topw = 40;
+    topt = 60;
+    thick = 2;
+
+    firsth = 70;
+    firstw = 90;
+    firstt = 76;
+
+    secw = 150;
+    sech = firsth + (firsth-toph)*((secw-firstw)/(firstw-topw));
+    sect = firstt + (firstt-topt)*((secw-firstw)/(firstw-topw));
+    
+    halfw = 260;
+    halfh = 150;
+    halft = 60;
+    
+    midh = 60;
+    midt = 0;
+    
+    botw = 400;
+    both = 80;
+    bott = 0;
+    
+    polyhedron(points = concat(
+        h_rect(topw,toph,topt),            //  0
+        h_rect(secw,sech,sect),            //  4
+        h_rect(halfw,halfh,halft),         //  8
+        h_rect(botw,both,bott),            // 12
+        [[0,-midh/2,midt],[0,midh/2,midt]],// 16
+        [[0,-midh/2+thick,midt+thick],
+         [0,midh/2-thick,midt+thick]],     // 18
+        h_rect(topw,toph,topt-thick),      // 20
+        h_rect(secw+thick*2,sech-thick,sect-thick),      // 24
+        h_rect(halfw,halfh-thick*2,halft),  // 28
+        h_rect(botw-thick*2,both-thick,bott+thick)       // 32
+      ), faces = concat(
+        [[3,2,1,0],[0,1,16],[2,3,17]],
+        [[1,2,6,5],[3,0,4,7]],
+        [[0,8,4],[1,5,9],[2,10,6],[3,7,11]],
+        [[8,0,16],[1,9,16],[10,2,17],[3,11,17]],
+        [[12,8,16],[9,13,16],[14,10,17],[11,15,17]],
+        [[12,16,17,15],[13,14,17,16]],
+        
+        [[20,21,22,23],[21,20,18],[23,22,19]],
+        [[22,21,25,26],[20,23,27,24]],
+        [[28,20,24],[25,21,29],[30,22,26],[27,23,31]],
+        [[20,28,18],[29,21,18],[22,30,19],[31,23,19]],
+        [[28,32,18],[33,29,18],[30,34,19],[35,31,19]],
+        [[18,32,35,19],[34,33,18,19]],
+        
+        [[7,4,24],[7,24,27],[12,15,35],[12,35,32]],
+        [[5,6,26],[5,26,25],[14,13,34],[13,33,34]],
+        [[4,8,28],[4,28,24],[8,12,32],[8,32,28]],
+        [[9,5,29],[5,25,29],[13,9,33],[9,29,33]],
+        [[6,10,30],[6,30,26],[10,14,34],[10,34,30]],
+        [[11,7,31],[7,27,31],[15,11,35],[11,31,35]]
+      ));
+
+}
+
+function h_rect(w, h, t) = [[-w/2,-h/2,t],[w/2,-h/2,t],[w/2,h/2,t],[-w/2,h/2,t]];
+
+module conv_3v() {
+    wid = 17.1;
+    hei = 22.2;
+    thi = 1.4;
+    thi2 = 4.4;
+
+    translate([-wid/2,0,0]) cube([wid,hei,thi]);
+    translate([(-wid+1)/2,0.5,0]) cube([wid-1,hei-1,thi2]);
+}
 
 module amp_tda() {
     wid = 33.3;
