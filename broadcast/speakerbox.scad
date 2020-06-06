@@ -1,5 +1,5 @@
 
-
+/*
 translate([65,0,40]) rotate([0,60,0]) speaker();
 translate([-65,0,40]) rotate([0,-60,0]) speaker();
 
@@ -10,8 +10,12 @@ translate([-15,0,9.5]) rotate([90,0,90]) amp_tda();
 translate([-2,-5,49]) rotate([90,90,90]) conv_3v();
 
 // translate([0,0,1]) cube([200,100,2], true);
-
+*/
 hexbox();
+
+//speaker_grille();
+//    dome(39,100,1.5);
+
 
 module hexbox() {
     toph = 54.5;
@@ -27,9 +31,9 @@ module hexbox() {
     sech = firsth + (firsth-toph)*((secw-firstw)/(firstw-topw));
     sect = firstt + (firstt-topt)*((secw-firstw)/(firstw-topw));
     
-    halfw = 260;
-    halfh = 150;
-    halft = 60;
+    halfw = 275;
+    halfh = 160;
+    halft = 48;
     
     midh = 60;
     midt = 0;
@@ -73,9 +77,123 @@ module hexbox() {
         [[11,7,31],[7,27,31],[15,11,35],[11,31,35]]
       ));
 
+    
+    translate([ 65,0,40]) rotate([0, 60,0]) speaker_grille();
+    translate([-65,0,40]) rotate([0,60,180]) speaker_grille();
 }
 
 function h_rect(w, h, t) = [[-w/2,-h/2,t],[w/2,-h/2,t],[w/2,h/2,t],[-w/2,h/2,t]];
+
+module speaker_grille(thick=2) {
+    
+    rw1 = 70/2;
+    rw2 = 111/2;
+    rw3 = 66/2;
+    rh1 = -40;
+    rh2 = 16;
+    rh3 = 46;
+    difference() {
+        translate([0,0,0.2]) linear_extrude(height=thick)
+        polygon(
+            [[rh1,-rw1],[rh2,-rw2],[rh3,-rw3],
+            [rh3,rw3],[rh2,rw2],[rh1,rw1]]);
+        translate([0,0,0.1])
+        cylinder(thick+0.2, 36,36, $fn=80);
+        for (i=[45:90:315]) {
+            rotate([0,0,i])
+            union() {
+                translate([42,0,0.1])
+                cylinder(thick+0.2, 2.2, 2.2, $fn=32);
+            }
+        }
+    }
+    /*
+    difference() {
+        translate([0,0,-91]) sphere(100, $fn=200);
+        translate([0,0,-91]) sphere(98, $fn=200);
+        translate([0,0,-98.1]) cube([200,200,200], true);
+    }*/
+    dome(39,100,1.5);
+}
+
+module dome(rad, off, thick, stp=20, rs=96) {
+    ho = off*cos(20)-2;
+    mh = rs*(stp-2);
+    mi = rs*(stp*2-2);
+    hs = 2;
+    
+    hsst = floor(rad/hs/2.4);
+    
+    difference() {
+        polyhedron(
+        points = concat(
+            [for (c=[rad/stp:rad/stp:rad],
+                  a=[0:360/rs:360-360/rs])
+                [c*sin(a),c*cos(a),off*cos(c/rad*20)-ho]],
+            [for (c=[rad:-rad/stp:rad/stp-0.1],
+                  a=[0:360/rs:360-360/rs])
+                [c*sin(a),c*cos(a),off*cos(c/rad*20)-ho-thick]]
+        ),
+        faces = concat(
+            [for (i=[0:rs:mi],j=[0:rs-1]) each
+                [[i+((j+1)%rs),i+j,i+rs+((j+1)%rs)],
+                 [i+rs+((j+1)%rs),i+j,i+rs+j]]],
+            [for (j=[0:rs-1]) each
+                [[mi+rs+((j+1)%rs),mi+rs+j,((j+1)%rs)],
+                 [((j+1)%rs),mi+rs+j,j]]]
+        ));
+        for (i=[1:hsst-1], j=[360/(i*6)-0.1:360/(i*6):360])
+            translate([sin(j)*i*rad/hsst, cos(j)*i*rad/hsst,0]) cylinder(off-ho, hs, hs,$fn=24);
+    }
+}
+
+module dome_h(rad, off, thick, stp=12, rs=36) {
+    ho = off*cos(20)-2;
+    mh = rs*(stp-2);
+    mi = rs*(stp*2-2);
+    polyhedron(
+        points = concat(
+            [for (c=[rad/stp:rad/stp:rad],
+                  a=[0:360/rs:360-360/rs])
+                [c*sin(a),c*cos(a),off*cos(c/rad*20)-ho]],
+            [for (c=[rad:-rad/stp:rad/stp-0.1],
+                  a=[0:360/rs:360-360/rs])
+                [c*sin(a),c*cos(a),off*cos(c/rad*20)-ho-thick]]
+        ),
+        faces = concat(
+            [for (i=[0:rs*2:mh],j=[0:rs-1]) each
+                [[i+((j+1)%rs),i+j,i+rs+((j+1)%rs)],
+                 [i+rs+((j+1)%rs),i+j,i+rs+j]]],
+            [for (i=[rs:rs*2:mh],
+                  j=[(((i/rs)%4)==1?1:0):2:rs-1]) each
+                [[i+((j+1)%rs),i+j,i+rs+((j+1)%rs)],
+                 [i+rs+((j+1)%rs),i+j,i+rs+j]]],
+            [for (i=[mh+rs:mh+rs],j=[0:rs-1]) each
+                [[i+((j+1)%rs),i+j,i+rs+((j+1)%rs)],
+                 [i+rs+((j+1)%rs),i+j,i+rs+j]]],
+            [for (i=[mh+rs*2:rs*2:mi],j=[0:rs-1]) each
+                [[i+((j+1)%rs),i+j,i+rs+((j+1)%rs)],
+                 [i+rs+((j+1)%rs),i+j,i+rs+j]]],
+            [for (i=[mh+rs*3:rs*2:mi],j=[(((i/rs)%4)==1?1:0):2:rs-1]) each
+                [[i+((j+1)%rs),i+j,i+rs+((j+1)%rs)],
+                 [i+rs+((j+1)%rs),i+j,i+rs+j]]],
+            [for (j=[0:rs-1]) each
+                [[mi+rs+((j+1)%rs),mi+rs+j,((j+1)%rs)],
+                 [((j+1)%rs),mi+rs+j,j]]],
+            
+            [for (i=[rs:rs*2:mh],
+                  j=[(((i/rs)%4)==1?0:1):2:rs-1]) each
+                [[i+((j+1)%rs),i+j,mi+rs-i+((j+1)%rs)],
+                 [mi+rs-i+((j+1)%rs),i+j,mi+rs-i+j],
+                 [i+rs+j,i+rs+((j+1)%rs),mi-i+((j+1)%rs)],
+                 [i+rs+j,mi-i+((j+1)%rs),mi-i+j],
+                 [i+j,i+rs+j,mi-i+j],
+                 [i+j,mi-i+j,mi+rs-i+j],
+                 [i+rs+((j+1)%rs),i+((j+1)%rs),mi-i+((j+1)%rs)],
+                 [mi-i+((j+1)%rs),i+((j+1)%rs),mi+rs-i+((j+1)%rs)],
+            ]]
+        ));
+}
 
 module conv_3v() {
     wid = 17.1;
@@ -157,7 +275,7 @@ module speaker() {
             s_plate(platexy/2, platedia/2, plate);
         }
         translate([0,0,-plate-ring])
-        cylinder(plate+ring,
+        cylinder(plate+ring+0.1,
             frontindia/2, frontindia/2, $fn=fn);
         for (i=[45:90:315]) {
             rotate([0,0,i])
@@ -170,9 +288,6 @@ module speaker() {
                 cylinder(plate+0.2, 2.2, 2.2, $fn=16);
             }
         }
-        translate([0,0,-plate-ring])
-        cylinder(plate+ring,
-            frontindia/2, frontindia/2, $fn=fn);
     }
 }
 
