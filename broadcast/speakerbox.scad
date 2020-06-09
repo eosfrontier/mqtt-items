@@ -1,25 +1,33 @@
 
-gap=100;
+gap=1;
 
-color("grey") translate([65,0,40]) rotate([0,60,0]) speaker();
+rotate([0,0,0]) translate([-gap,0,0]) {
+    color("grey") translate([-65,0,40]) rotate([0,-60,0])    speaker();
+    hexbox();
+}
 
-color("grey") translate([-65-gap,0,40]) rotate([0,-60,0]) speaker();
+rotate([0,0,180]) translate([-gap,0,0]) {
+    color("grey") translate([-65,0,40]) rotate([0,-60,0])    speaker();
+    hexbox();
+}
 
-translate([-15,20,42]) rotate([90,90,-90]) esp_ttgo();
+translate([0,0,0]) hexbox(true);
+
+*translate([-15,20,42]) rotate([90,90,-90]) esp_ttgo();
 
 translate([15,0,9.5]) rotate([90,0,-90]) amp_tda();
 
-translate([2,5,49]) rotate([90,90,-90]) conv_3v();
+*translate([2,5,49]) rotate([90,90,-90]) conv_3v();
 
-translate([0,0,0]) hexbox();
 
-translate([-gap,0,0]) hexbox(true);
+*botcover();
+
 
 //speaker_grille();
 //    dome(39,100,1.5);
 
 
-module hexbox(right = false) {
+module hexbox(middle = false, right = false) {
     toph = 54.5;
     topw = 40;
     topt = 60;
@@ -44,13 +52,12 @@ module hexbox(right = false) {
     both = 80;
     bott = 0;
     
-    faces_l = concat(
+    faces_r = concat(
         [[3,2,1,0],[0,1,16],[2,3,17]],
         [[1,2,6,5]],
         [[1,5,9],[2,10,6]],
         [[1,9,16],[10,2,17]],
         [[9,13,16],[14,10,17]],
-
 
         [[13,14,17,16],[34,33,18,19]],
         
@@ -65,9 +72,24 @@ module hexbox(right = false) {
         [[6,10,30],[6,30,26],[10,14,34],[10,34,30]],
         
         [[3,0,20],[3,20,23],[17,18,16],[17,19,18]],
-        [[16,20,0],[16,18,20],[3,19,17],[3,23,19]]
+        [[16,20,0],[16,18,20],[23,19,17],[3,23,17]],
+        
+        []
     );
-    faces_r = concat(
+    faces_m = concat(
+        [[3,2,1,0],[0,1,16],[2,3,17]],
+        [[20,21,22,23],[21,20,18],[23,22,19]],
+        
+        [[3,0,20],[3,20,23]],
+        [[16,20,0],[16,18,20],[23,19,17],[3,23,17]],
+        
+        [[1,2,22],[1,22,21]],
+        [[16,1,21],[16,21,18],[22,17,19],[2,17,22]],
+
+        
+        []
+    );
+    faces_l = concat(
         [[12,16,17,15],[18,32,35,19]],
         [[3,0,4,7],[20,23,27,24]],
         [[0,8,4],[3,7,11]],
@@ -82,8 +104,9 @@ module hexbox(right = false) {
         [[11,7,31],[7,27,31],[15,11,35],[11,31,35]],
         
         [[0,3,20],[3,23,20],[18,17,16],[17,18,19]],
-        [[20,16,0],[16,20,18],[3,17,19],[3,19,23]]
-
+        [[20,16,0],[16,20,18],[23,17,19],[3,17,23]],
+        
+        []
     );
     
     difference() {
@@ -99,31 +122,54 @@ module hexbox(right = false) {
             h_rect(secw+thick*2,sech-thick,sect-thick),      // 24
             h_rect(halfw,halfh-thick*2,halft),  // 28
             h_rect(botw-thick*2,both-thick,bott+thick)       // 32
-          ), faces = right?faces_r:faces_l);
+          ), faces = middle?faces_m:right?faces_r:faces_l);
         if (right) {
-            for (i=[-7:0]) {
-                translate([i*8,0,-0.1])
-                rline(min(midh-5,(midh-5)*(7.5-abs(i))/5), 5, thick+0.2);
-            }
-        } else {
-            for (i=[0:7]) {
-                translate([i*8,0,-0.1])
-                rline(min(midh-5,(midh-5)*(7.5-abs(i))/5), 5, thick+0.2);
-            }
-
+            translate([-0.1,-(midh-4)/2,-0.1])
+            cube([87.1,midh-4,thick+0.2]);
+        } else if (!middle) {
+            translate([-87,-(midh-4)/2,-0.1])
+            cube([87.1,midh-4,thick+0.2]);
+        }
+        if (right || middle) {
+            translate([9.5,-3.37,topt-thick])
+            rotate([90,0,90])
+            linear_extrude(height=3)
+            polygon([[-8,-0.1],[-6,2.1],[6,2.1],[8,-0.1]]);
+            
+            translate([9.5,-3.37,topt-thick])
+            rotate([90,0,90])
+            linear_extrude(height=4)
+            polygon([[-8,-0.1],[-7,1],[7,1],[8,-0.1]]);
+            
+            translate([13,-17,topt-thick-0.1])
+            cube([2.5,34,1.1]);
         }
     }
     
     if (right) {
-        translate([-65,0,40]) rotate([0,60,180]) 
-        speaker_grille();
-    } else {
         translate([ 65,0,40]) rotate([0, 60,0]) 
+        speaker_grille();
+    } else if (!middle) {
+        translate([-65,0,40]) rotate([0,60,180]) 
         speaker_grille();
     }
 }
 
 function h_rect(w, h, t) = [[-w/2,-h/2,t],[w/2,-h/2,t],[w/2,h/2,t],[-w/2,h/2,t]];
+
+module botcover() {
+    midh = 60;
+    thick = 2;
+
+    difference() {
+        translate([-87,-(midh-4)/2,0])
+            cube([87*2,midh-4,thick]);
+        for (i=[-7:7]) {
+            translate([i*8,0,-0.1])
+            rline(min(midh-5,(midh-5)*(7.5-abs(i))/5), 5, thick+0.2);
+            }
+    }
+}
 
 module rline(h, w, t, st=60) {
     linear_extrude(height=t) polygon(
