@@ -222,22 +222,34 @@ module hexbox(middle = false, right = false) {
 
         }
         
-        translate([-87,-(midh-4)/2,thick])
-        difference() {
-            linear_extrude(height=3.6) polygon([
+        translate([-87,-(midh-4)/2,thick]) union() {
+            difference() {
+              linear_extrude(height=3.6) polygon([
                 [-0.1,3.6],[10,3.6],[20,-7.1],[-0.1,-8.1]
+              ]);
+              translate([6,0.1,2]) cube([7,7.2,2], true);
+              translate([6,0,-2.1]) cylinder(8,2,2, $fn=60);
+            }
+            // Cutaway layer for support
+            #linear_extrude(height=0.2) polygon([
+                [-0.1,-8.1],[20,-7.1],[-0.5,3.6+(1.05*10.7)]
             ]);
-            translate([6,0.1,2]) cube([7,7.2,2], true);
-            translate([6,0,-2.1]) cylinder(8,2,2, $fn=60);
+            #translate([6,0,3]) cylinder(0.2,2.1,2.1, $fn=60);
         }
 
-        translate([-87,(midh-4)/2,thick])
-        difference() {
-            linear_extrude(height=3.6) polygon([
+        translate([-87,(midh-4)/2,thick]) union() {
+            difference() {
+              linear_extrude(height=3.6) polygon([
                 [-0.1,-3.6],[10,-3.6],[20,7.1],[-0.1,8.1]
+              ]);
+              translate([6,-0.1,2]) cube([7,7.2,2], true);
+              translate([6,0,-2.1]) cylinder(8,2,2, $fn=60);
+            }
+            // Cutaway layer for support
+            #linear_extrude(height=0.2) polygon([
+                [-0.1,8.1],[20,7.1],[-0.5,-3.6-(1.05*10.7)]
             ]);
-            translate([6,-0.1,2]) cube([7,7.2,2], true);
-            translate([6,0,-2.1]) cylinder(8,2,2, $fn=60);
+            #translate([6,0,3]) cylinder(0.2,2.1,2.1, $fn=60);
         }
     }
 }
