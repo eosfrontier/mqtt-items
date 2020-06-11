@@ -1,23 +1,23 @@
 
-gap=20;
+gap=0;
 
 ampoff=3.37;
 
-rotate([0,0,0]) translate([-gap,0,0]) {
-    *color("grey") translate([-65,0,40]) rotate([0,-60,0])    speaker();
-    hexbox();
-}
-
-*rotate([0,0,180]) translate([-gap,0,0]) {
+*rotate([0,0,0]) translate([-gap,0,0]) {
     color("grey") translate([-65,0,40]) rotate([0,-60,0])    speaker();
     hexbox();
 }
 
-*translate([0,0,0]) hexbox(true);
+*rotate([0,0,180]) translate([-gap,0,0]) {
+    *color("grey") translate([-65,0,40]) rotate([0,-60,0])    speaker();
+    hexbox();
+}
+
+translate([0,0,0]) hexbox(true);
 
 *translate([-15,20,42]) rotate([90,90,-90]) esp_ttgo();
 
-*translate([15,ampoff,9.5]) rotate([90,0,-90]) amp_tda();
+translate([15,ampoff,9.5]) rotate([90,0,-90]) amp_tda();
 
 *translate([2,5,49]) rotate([90,90,-90]) conv_3v();
 
@@ -155,27 +155,38 @@ module hexbox(middle = false, right = false) {
     
     g=3.4/thick;
     if (middle) {
+        // Connector to side
         translate([-topw/2,-toph/2+thick,topt]) rotate([-90,0,0])
         linear_extrude(height=toph-thick*2) polygon(thick*[
             [-1-g,0],[-0.6-g,1.4],[-g,2],[0.36,2],[1.3,1],[-g+0.3,1],[-g,0]
         ]);
+        // Gap filler
         translate([-topw/2,-toph/2+thick-0.1,topt]) rotate([-90,0,0])
         linear_extrude(height=toph-thick*2+0.2) polygon(thick*[
             [0.36,2],[1.3,1],[0.02,1]
         ]);
+        // Connector to other side
         translate([topw/2,toph/2-thick,topt]) rotate([-90,0,180])
         linear_extrude(height=toph-thick*2) polygon(thick*[
             [-1-g,0],[-0.6-g,1.4],[-g,2],[0.36,2],[1.3,1],[-g+0.3,1],[-g,0]
         ]);
+        // Gap filler
         translate([topw/2,toph/2-thick+0.1,topt]) rotate([-90,0,180])
         linear_extrude(height=toph-thick*2+0.2) polygon(thick*[
             [0.36,2],[1.3,1],[0.02,1]
         ]);
         
+        // Lips for bottom cover
         translate([0,midh/2-thick*2-0.3,0.1]) rotate([90,0,180])
             lip_mid(thick);
         translate([0,-midh/2+thick*2+0.3,0.1]) rotate([90,0,0])
             lip_mid(thick);
+            
+        // Supports for amp
+        translate([15,ampoff-17,topt-0.5])
+            amp_lip(6.5, 12);
+        translate([15,ampoff+17,topt-0.5])
+            mirror([0,1,0]) amp_lip(6.5, 12);
     } else if (right) {
         translate([ 65,0,40]) rotate([0, 60,0]) 
             speaker_grille();
@@ -224,32 +235,42 @@ module hexbox(middle = false, right = false) {
         
         translate([-87,-(midh-4)/2,thick]) union() {
             difference() {
-              linear_extrude(height=3.6) polygon([
-                [-0.1,3.6],[10,3.6],[20,-7.1],[-0.1,-8.1]
-              ]);
-              translate([6,0.1,2]) cube([7,7.2,2], true);
+              union() {
+                linear_extrude(height=3.6) polygon([
+                  [-0.1,3.6],[10,3.6],[20,-7.1],[-0.1,-8.1]
+                ]);
+                translate([0,0,3.6]) linear_extrude(height=0.6) polygon([
+                  [-0.1,3.6],[10,3.6],[21,-7.1-1.07],[-0.1,-9.1]
+                ]);
+              }
+              translate([6,0.1,2.1]) cube([7.2,7.4,2.2], true);
               translate([6,0,-2.1]) cylinder(8,2,2, $fn=60);
             }
             // Cutaway layer for support
             #linear_extrude(height=0.2) polygon([
                 [-0.1,-8.1],[20,-7.1],[-0.5,3.6+(1.05*10.7)]
             ]);
-            #translate([6,0,3]) cylinder(0.2,2.1,2.1, $fn=60);
+            #translate([6,0,3.2]) cylinder(0.2,2.1,2.1, $fn=60);
         }
 
         translate([-87,(midh-4)/2,thick]) union() {
             difference() {
-              linear_extrude(height=3.6) polygon([
-                [-0.1,-3.6],[10,-3.6],[20,7.1],[-0.1,8.1]
-              ]);
-              translate([6,-0.1,2]) cube([7,7.2,2], true);
+              union() {
+                linear_extrude(height=3.6) polygon([
+                  [-0.1,-3.6],[10,-3.6],[20,7.1],[-0.1,8.1]
+                ]);
+                translate([0,0,3.6]) linear_extrude(height=0.6) polygon([
+                  [-0.1,-3.6],[10,-3.6],[21,7.1+1.07],[-0.1,9.1]
+                ]);
+              }
+              translate([6,-0.1,2.1]) cube([7.2,7.4,2.2], true);
               translate([6,0,-2.1]) cylinder(8,2,2, $fn=60);
             }
             // Cutaway layer for support
             #linear_extrude(height=0.2) polygon([
                 [-0.1,8.1],[20,7.1],[-0.5,-3.6-(1.05*10.7)]
             ]);
-            #translate([6,0,3]) cylinder(0.2,2.1,2.1, $fn=60);
+            #translate([6,0,3.2]) cylinder(0.2,2.1,2.1, $fn=60);
         }
     }
 }
@@ -270,18 +291,94 @@ module lip_mid(thick) {
 
 function h_rect(w, h, t) = [[-w/2,-h/2,t],[w/2,-h/2,t],[w/2,h/2,t],[-w/2,h/2,t]];
 
+module amp_lip(bot=6.5, top=12, height=46.2) {
+    *rotate([0,0,90]) linear_extrude(height=bot) polygon([
+        [0,-0.2],[0,1.7],[3,1.7],[3,4],[-2,4],
+        [-2,-2.5],[3,-2.5],[3,-0.2]
+    ]);
+
+    th = 3;
+    cp = 2;
+    
+    polyhedron(points = concat(
+        u_shape(0),
+        u_shape(-bot),
+        u_shape(-bot-th),
+        u_shape(-height+top+th),
+        u_shape(-height+top),
+        u_shape(-height),
+        u_shape(-height-cp)
+    ), faces = concat(
+        [[0,1,2,3,4,5,6,7,8,9]],
+        nquads(10,0),
+        [[10,20,11],[20,23,12,11],[23,13,12],
+         [23,24,14,13],[24,25,15,14],[25,26,16,15],
+         [26,17,16],[26,29,18,17],[29,19,18],[29,20,10,19]],
+        [[20,30,33,23],[23,33,34,24],[24,34,35,25],
+         [25,35,36,26],[26,36,39,29],[29,39,30,20]],
+        [[40,41,30],[30,41,42,33],[33,42,43],
+         [33,43,44,34],[34,44,45,35],[35,45,46,36],
+         [36,46,47],[36,47,48,39],[39,48,49],[39,49,40,30]],
+        nquads(10,40),
+        [[51,61,62,52],[52,62,63,53],[53,63,64,54],
+         [54,64,65,55],[55,65,66,56],[56,66,67,57],
+         [57,67,68,58],[58,68,61,51],[51,50,59,58]],
+        [[68,67,66,65,64,63,62,61]]
+    ));
+}
+
+function u_shape(z=0, ov=3, it=1.5, th=2.5, st=2, tl=0.2) = [
+    [tl,0,z],
+    [tl,ov,z],
+    [th,ov,z],
+    [th,0,z],
+    [th,-st,z],
+    [-it-th,-st,z],
+    [-it-th,0,z],
+    [-it-th,ov,z],
+    [-it-tl,ov,z],
+    [-it-tl,0,z]
+];
+
 module botcover() {
     midh = 60;
     thick = 2;
 
     difference() {
-        translate([-87,-(midh-4)/2,0])
-            cube([87*2,midh-4,thick]);
+        union() {
+            translate([-85.9,-(midh-4)/2-0.1,0])
+                cube([85.9*2,midh-4-0.2,thick]);
+            translate([-81,-(midh-4)/2,0])
+                cylinder(thick,4.9,4.9, $fn=60);
+            translate([-81,(midh-4)/2,0])
+                cylinder(thick,4.9,4.9, $fn=60);
+            translate([81,-(midh-4)/2,0])
+                cylinder(thick,4.9,4.9, $fn=60);
+            translate([81,(midh-4)/2,0])
+                cylinder(thick,4.9,4.9, $fn=60);
+        }
         for (i=[-7:7]) {
             translate([i*8,0,-0.1])
-            rline(min(midh-5,(midh-5)*(7.5-abs(i))/5), 5, thick+0.2);
-            }
+            rline(min(midh-15,(midh-15)*(7.6-abs(i))/5), 5, thick+0.2);
+        }
+        translate([-81,-(midh-4)/2,-0.1])
+            cylinder(thick+0.2,2,2, $fn=60);
+        translate([-81,(midh-4)/2,-0.1])
+            cylinder(thick+0.2,2,2, $fn=60);
+        translate([81,-(midh-4)/2,-0.1])
+            cylinder(thick+0.2,2,2, $fn=60);
+        translate([81,(midh-4)/2,-0.1])
+            cylinder(thick+0.2,2,2, $fn=60);
+
     }
+    translate([0,midh/2-4.4,2]) rotate([90,0,0])
+    linear_extrude(height=2) polygon([
+        [-75,0],[-70,5],[-62,8],[62,8],[70,5],[75,0]
+    ]);
+    translate([0,-midh/2+6.4,2]) rotate([90,0,0])
+    linear_extrude(height=2) polygon([
+        [-75,0],[-70,5],[-62,8],[62,8],[70,5],[75,0]
+    ]);
 }
 
 module rline(h, w, t, st=60) {
