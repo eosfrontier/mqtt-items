@@ -4,7 +4,7 @@ gap=0;
 ampoff=3.37;
 
 *rotate([0,0,0]) translate([-gap,0,0]) {
-    color("grey") translate([-65,0,40]) rotate([0,-60,0])    speaker();
+    *color("grey") translate([-65,0,40]) rotate([0,-60,0])    speaker();
     hexbox();
 }
 
@@ -15,12 +15,15 @@ ampoff=3.37;
 
 translate([0,0,0]) hexbox(true);
 
-*translate([-15,20,42]) rotate([90,90,-90]) esp_ttgo();
+#if ($preview) {
+    translate([0,0,0]) powercon();
 
-translate([15,ampoff,9.5]) rotate([90,0,-90]) amp_tda();
+    translate([-15,0,18.5]) rotate([90,0,-90]) esp_ttgo();
 
-*translate([2,5,49]) rotate([90,90,-90]) conv_3v();
+    translate([15,ampoff,9.5]) rotate([90,0,-90]) amp_tda();
 
+    translate([0,-20,30]) rotate([90,0,0]) conv_3v();
+}
 
 *botcover();
 
@@ -53,6 +56,11 @@ module hexbox(middle = false, right = false) {
     botw = 400;
     both = 80;
     bott = 0;
+    
+    holeoff = 20;
+    holedia = 10;
+    midsidesl = ((midh-toph)/2)/(topt-midt);
+    midsidean = atan(midsidesl);
     
     faces_r = concat(
         [[3,2,1,0],[0,1,16],[2,3,17]],
@@ -124,7 +132,8 @@ module hexbox(middle = false, right = false) {
             h_rect(secw+thick*2,sech-thick,sect-thick),      // 24
             h_rect(halfw,halfh-thick*2,halft),  // 28
             h_rect(botw-thick*2,both-thick,bott+thick)       // 32
-          ), faces = middle?faces_m:right?faces_r:faces_l);
+          ), faces = middle?faces_m:right?faces_r:faces_l,
+            convexity=4);
         if (right) {
             translate([-0.1,-(midh-4)/2,-0.1])
             cube([86.1,midh-4,thick+0.101]);
@@ -150,6 +159,11 @@ module hexbox(middle = false, right = false) {
             
             translate([13,-17+ampoff,topt-thick-0.1])
             cube([2.5,34,1.1]);
+            
+            // Hole for power connector
+            translate([0,-midh/2+thick+holeoff*midsidesl+0.1,holeoff])
+            rotate([-midsidean+90,0,0])
+            cylinder(thick+0.2, holedia/2, holedia/2, $fn=60);
         }
     }
     
@@ -184,9 +198,15 @@ module hexbox(middle = false, right = false) {
             
         // Supports for amp
         translate([15,ampoff-17,topt-0.5])
-            amp_lip(6.5, 12);
+            amp_lip();
         translate([15,ampoff+17,topt-0.5])
-            mirror([0,1,0]) amp_lip(6.5, 12);
+            mirror([0,1,0]) amp_lip();
+            
+        // Supports for esp32
+        translate([-15,-15.7,topt-1.5])
+            esp_lip();
+        translate([-15,15.7,topt-1.5])
+            mirror([0,1,0]) esp_lip();
     } else if (right) {
         translate([ 65,0,40]) rotate([0, 60,0]) 
             speaker_grille();
@@ -291,12 +311,40 @@ module lip_mid(thick) {
 
 function h_rect(w, h, t) = [[-w/2,-h/2,t],[w/2,-h/2,t],[w/2,h/2,t],[-w/2,h/2,t]];
 
-module amp_lip(bot=6.5, top=12, height=46.2) {
-    *rotate([0,0,90]) linear_extrude(height=bot) polygon([
-        [0,-0.2],[0,1.7],[3,1.7],[3,4],[-2,4],
-        [-2,-2.5],[3,-2.5],[3,-0.2]
-    ]);
+module esp_lip(bot=4, top=4.5, height=40.2) {
+    th = 3;
+    cp = 2;
+    it = 1.1;
+    tt = 4.5;
+    
+    polyhedron(points = concat(
+        u_shape(0, it),
+        u_shape(-bot, it),
+        u_shape(-bot-th, it),
+        u_shape(-height+top+th, tt),
+        u_shape(-height+top, tt),
+        u_shape(-height, tt),
+        u_shape(-height-cp, tt)
+    ), faces = concat(
+        [[0,1,2,3,4,5,6,7,8,9]],
+        nquads(10,0),
+        [[10,20,11],[20,23,12,11],[23,13,12],
+         [23,24,14,13],[24,25,15,14],[25,26,16,15],
+         [26,17,16],[26,29,18,17],[29,19,18],[29,20,10,19]],
+        [[20,30,33,23],[23,33,34,24],[24,34,35,25],
+         [25,35,36,26],[26,36,39,29],[29,39,30,20]],
+        [[40,41,30],[30,41,42,33],[33,42,43],
+         [33,43,44,34],[34,44,45,35],[35,45,46,36],
+         [36,46,47],[36,47,48,39],[39,48,49],[39,49,40,30]],
+        nquads(10,40),
+        [[51,61,62,52],[52,62,63,53],[53,63,64,54],
+         [54,64,65,55],[55,65,66,56],[56,66,67,57],
+         [57,67,68,58],[58,68,61,51],[51,50,59,58]],
+        [[68,67,66,65,64,63,62,61]]
+    ), convexity=4);
+}
 
+module amp_lip(bot=6.5, top=12, height=46.2) {
     th = 3;
     cp = 2;
     
@@ -324,10 +372,10 @@ module amp_lip(bot=6.5, top=12, height=46.2) {
          [54,64,65,55],[55,65,66,56],[56,66,67,57],
          [57,67,68,58],[58,68,61,51],[51,50,59,58]],
         [[68,67,66,65,64,63,62,61]]
-    ));
+    ), convexity=4);
 }
 
-function u_shape(z=0, ov=3, it=1.5, th=2.5, st=2, tl=0.2) = [
+function u_shape(z=0, it=1.5, ov=3, th=2.5, st=2, tl=0.2) = [
     [tl,0,z],
     [tl,ov,z],
     [th,ov,z],
@@ -449,7 +497,7 @@ module dome(rad, off, thick, stp=20, rs=96) {
             [for (j=[0:rs-1]) each
                 [[mi+rs+((j+1)%rs),mi+rs+j,((j+1)%rs)],
                  [((j+1)%rs),mi+rs+j,j]]]
-        ));
+        ), convexity=4);
         for (i=[1:hsst-1], j=[360/(i*6)-0.1:360/(i*6):360])
             translate([sin(j)*i*rad/hsst, cos(j)*i*rad/hsst,0]) cylinder(off-ho, hs, hs,$fn=24);
     }
@@ -500,7 +548,7 @@ module dome_h(rad, off, thick, stp=12, rs=36) {
                  [i+rs+((j+1)%rs),i+((j+1)%rs),mi-i+((j+1)%rs)],
                  [mi-i+((j+1)%rs),i+((j+1)%rs),mi+rs-i+((j+1)%rs)],
             ]]
-        ));
+        ), convexity=4);
 }
 
 module conv_3v() {
@@ -535,7 +583,7 @@ module amp_tda() {
 
 module esp_ttgo() {
     wid = 31.1;
-    hei = 39.3;
+    hei = 39.2;
     thi = 1.1;
     
     hei2 = 40.5;
@@ -544,8 +592,45 @@ module esp_ttgo() {
     wid3 = 16;
     hei3 = 24;
     
+    ctt = 2.5;
+    ctw = 8;
+    cth = 25.2;
+    
+    et = 4.5;
+    
     translate([-wid/2,0,0]) cube([wid,hei,thi]);
     translate([-wid3/2,6.6,0]) cube([wid3, hei3, thi3]);
+    translate([-wid3/2,6.6,0]) cube([wid3, hei-6.6, 2]);
+
+    
+    translate([-wid/2+ctt,7.7,-ctw]) cube([ctt,cth,ctw]);
+    translate([wid/2-ctt,7.7,-ctw]) cube([ctt,cth,ctw]);
+    
+    translate([-wid/2+0.1,0.1,0]) cube([wid-0.2,5,et]);
+}
+
+module powercon() {
+    tol = 0.2;
+    midh = 60;
+    toph = 54.5;
+    topt = 60;
+    midt = 0;
+    holeoff = 20;
+    holedia = 10;
+    pindia = 3.2;
+    fdia = 12.5;
+    midsidesl = ((midh-toph)/2)/(topt-midt);
+    midsidean = atan(midsidesl);
+    nutdia = 14 / sqrt(3);
+    
+    translate([0,-midh/2-tol+holeoff*midsidesl+0.1,holeoff])
+    rotate([-midsidean+90,0,0]) union() {
+        cylinder(2, fdia/2, fdia/2, $fn=60);
+        translate([0,0,-14.4]) cylinder(16.4, holedia/2-tol, holedia/2-tol, $fn=60);
+        translate([0,0,-21]) cylinder(23, pindia/2, pindia/2, $fn=60);
+        translate([0,0,-5]) cylinder(2, nutdia, nutdia, $fn=6);
+        translate([0,0,-3]) cylinder(1, 7, 7, $fn=60);
+    }
 }
 
 module speaker() {
