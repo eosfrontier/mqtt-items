@@ -16,13 +16,20 @@ ampoff=3.37;
 translate([0,0,0]) hexbox(true);
 
 #if ($preview) {
+    midh = 60;
+    toph = 54.5;
+    midt = 0;
+    topt = 60;
+    midsidesl = ((midh-toph)/2)/(topt-midt);
+    midsidean = atan(midsidesl);
+
     translate([0,0,0]) powercon();
 
     translate([-15,0,18.5]) rotate([90,0,-90]) esp_ttgo();
 
     translate([15,ampoff,9.5]) rotate([90,0,-90]) amp_tda();
 
-    translate([0,-20,30]) rotate([90,0,0]) conv_3v();
+    translate([0,-21.8,34]) rotate([90-midsidean,0,0]) conv_3v();
 }
 
 *botcover();
@@ -207,6 +214,13 @@ module hexbox(middle = false, right = false) {
             esp_lip();
         translate([-15,15.7,topt-1.5])
             mirror([0,1,0]) esp_lip();
+            
+        // Supports for 3v3 converter
+        translate([0,-21.8,34]) rotate([90-midsidean,0,0])
+            lip_3v();
+        translate([0,-21.8,34]) rotate([90-midsidean,0,0])
+            mirror([1,0,0]) lip_3v();
+
     } else if (right) {
         translate([ 65,0,40]) rotate([0, 60,0]) 
             speaker_grille();
@@ -293,6 +307,41 @@ module hexbox(middle = false, right = false) {
             #translate([6,0,3.2]) cylinder(0.2,2.1,2.1, $fn=60);
         }
     }
+}
+
+module lip_3v() {
+    tol=0.2;
+    wid=17.1;
+    hi=5;
+    thi = 1.5;
+    h1 = 4;
+    h0 = 2;
+    
+    w = wid/2+tol;
+    w1 = w-h0;
+    w2 = wid/2+tol+thi;
+    t = -tol;
+    t2 = -tol-thi;
+    h2 = h1+hi;
+    of = 11;
+
+    n1 = of-h2;
+    n2 = of-h1;
+    n3 = of-(h1-h0);
+    n4 = of+(h1-h0);
+    n5 = of+h1;
+    n6 = of+h2;
+    polyhedron(points = concat(
+        [[w,n1,hi],[w,n2,t],[w1,n3,t],
+         [w1,n4,t],[w,n5,t],[w,n6,hi]],
+        [[w2,n1,hi],[w2,n2+thi,t2],[w1,of,t2],
+         [w2,n5-thi,t2],[w2,n6,hi]]
+    ), faces = concat(
+        [[0,1,4,5],[1,2,3,4],[0,5,10,6]],
+        [[10,9,7,6],[1,0,6,7],[5,4,9,10]],
+        [[2,1,8],[4,3,8],[3,2,8],
+         [8,1,7],[4,8,9],[9,8,7]]
+    ), convexity = 4);
 }
 
 module lip_mid(thick) {
