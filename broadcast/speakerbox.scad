@@ -3,13 +3,19 @@ gap=0;
 
 ampoff=3.37;
 
+holeoff = 20;
+
 *rotate([0,0,0]) translate([-gap,0,0]) {
-    *color("grey") translate([-65,0,40]) rotate([0,-60,0])    speaker();
+    #if ($preview) {
+        color("grey") translate([-65,0,40]) rotate([0,-60,0])    speaker();
+    }
     hexbox();
 }
 
 *rotate([0,0,180]) translate([-gap,0,0]) {
-    *color("grey") translate([-65,0,40]) rotate([0,-60,0])    speaker();
+    #if ($preview) {
+        color("grey") translate([-65,0,40]) rotate([0,-60,0])    speaker();
+    }
     hexbox();
 }
 
@@ -29,7 +35,7 @@ translate([0,0,0]) hexbox(true);
 
     translate([15,ampoff,9.5]) rotate([90,0,-90]) amp_tda();
 
-    translate([0,-21.8,34]) rotate([90-midsidean,0,0]) conv_3v();
+    translate([0,21.8,57]) rotate([-90+midsidean,0,0]) conv_3v();
 }
 
 *botcover();
@@ -64,7 +70,6 @@ module hexbox(middle = false, right = false) {
     both = 80;
     bott = 0;
     
-    holeoff = 20;
     holedia = 10;
     midsidesl = ((midh-toph)/2)/(topt-midt);
     midsidean = atan(midsidesl);
@@ -214,13 +219,24 @@ module hexbox(middle = false, right = false) {
             esp_lip();
         translate([-15,15.7,topt-1.5])
             mirror([0,1,0]) esp_lip();
-            
+           
         // Supports for 3v3 converter
-        translate([0,-21.8,34]) rotate([90-midsidean,0,0])
+        translate([0,21.8,57]) rotate([-90+midsidean,0,0])
             lip_3v();
-        translate([0,-21.8,34]) rotate([90-midsidean,0,0])
+        translate([0,21.8,57]) rotate([-90+midsidean,0,0])
             mirror([1,0,0]) lip_3v();
 
+        // Reinforcement for powercon hole
+        translate([0,-midh/2+thick+holeoff*midsidesl+0.1,holeoff])
+        rotate([-midsidean+90,0,0]) difference() {
+            union() {
+                translate([0,0,-1.5]) cylinder(1.5, 15, 15, $fn=60);
+                translate([0,0,0]) linear_extrude(height=1)
+                polygon([[0,-17.8],[-11.7,15],[11.7,15]]);
+            }
+            translate([0,0,-1.6]) cylinder(3, holedia/2, holedia/2, $fn=60);
+            #translate([0,15,-1.6]) rotate([45,0,0]) cube([30,4,4], true);
+        }
     } else if (right) {
         translate([ 65,0,40]) rotate([0, 60,0]) 
             speaker_grille();
@@ -664,7 +680,6 @@ module powercon() {
     toph = 54.5;
     topt = 60;
     midt = 0;
-    holeoff = 20;
     holedia = 10;
     pindia = 3.2;
     fdia = 12.5;
@@ -677,8 +692,8 @@ module powercon() {
         cylinder(2, fdia/2, fdia/2, $fn=60);
         translate([0,0,-14.4]) cylinder(16.4, holedia/2-tol, holedia/2-tol, $fn=60);
         translate([0,0,-21]) cylinder(23, pindia/2, pindia/2, $fn=60);
-        translate([0,0,-5]) cylinder(2, nutdia, nutdia, $fn=6);
-        translate([0,0,-3]) cylinder(1, 7, 7, $fn=60);
+        translate([0,0,-7.5]) cylinder(2, nutdia, nutdia, $fn=6);
+        translate([0,0,-5.5]) cylinder(1, 7, 7, $fn=60);
     }
 }
 
