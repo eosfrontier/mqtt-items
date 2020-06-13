@@ -1,7 +1,7 @@
 
 gap=0;
 
-ampoff=3.37;
+ampoff=4.27;
 
 holeoff = 20;
 
@@ -35,7 +35,7 @@ translate([0,0,0]) hexbox(true);
 
     translate([15,ampoff,9.5]) rotate([90,0,-90]) amp_tda();
 
-    translate([0,21.8,57]) rotate([-90+midsidean,0,0]) conv_3v();
+    translate([0,20.8,57]) rotate([-90+midsidean,0,0]) conv_3v();
 }
 
 *botcover();
@@ -159,12 +159,12 @@ module hexbox(middle = false, right = false) {
             cylinder(thick+0.101,5,5, $fn=60);
         }
         if (right || middle) {
-            translate([9.5,-3.37+ampoff,topt-thick])
+            translate([9.5,-4.3+ampoff,topt-thick])
             rotate([90,0,90])
             linear_extrude(height=3)
             polygon([[-8,-0.1],[-6,2.1],[6,2.1],[8,-0.1]]);
             
-            translate([9.5,-3.37+ampoff,topt-thick])
+            translate([9.5,-4.3+ampoff,topt-thick])
             rotate([90,0,90])
             linear_extrude(height=4)
             polygon([[-8,-0.1],[-7,1],[7,1],[8,-0.1]]);
@@ -179,27 +179,27 @@ module hexbox(middle = false, right = false) {
         }
     }
     
-    g=3.4/thick;
+    g=3.5/thick;
     if (middle) {
         // Connector to side
-        translate([-topw/2,-toph/2+thick,topt]) rotate([-90,0,0])
-        linear_extrude(height=toph-thick*2) polygon(thick*[
-            [-1-g,0],[-0.6-g,1.4],[-g,2],[0.36,2],[1.3,1],[-g+0.3,1],[-g,0]
+        translate([-topw/2,-toph/2+thick+0.1,topt]) rotate([-90,0,0])
+        linear_extrude(height=toph-thick*2-0.2) polygon(thick*[
+            [-1-g,0],[-0.5-g,1.7],[-g+0.3,2.2],[0.43,2.2],[1.3,1],[0,1],[0.18,1.1],[-g+0.3,1.1],[-g,0]
         ]);
         // Gap filler
-        translate([-topw/2,-toph/2+thick-0.1,topt]) rotate([-90,0,0])
-        linear_extrude(height=toph-thick*2+0.2) polygon(thick*[
-            [0.36,2],[1.3,1],[0.02,1]
+        translate([-topw/2,-toph/2+thick-0.12,topt]) rotate([-90,0,0])
+        linear_extrude(height=toph-thick*2+0.24) polygon(thick*[
+            [0.43,2.2],[1.3,1],[0.02,1]
         ]);
         // Connector to other side
-        translate([topw/2,toph/2-thick,topt]) rotate([-90,0,180])
-        linear_extrude(height=toph-thick*2) polygon(thick*[
-            [-1-g,0],[-0.6-g,1.4],[-g,2],[0.36,2],[1.3,1],[-g+0.3,1],[-g,0]
+        translate([topw/2,toph/2-thick-0.1,topt]) rotate([-90,0,180])
+        linear_extrude(height=toph-thick*2-0.2) polygon(thick*[
+            [-1-g,0],[-0.5-g,1.7],[-g+0.3,2.2],[0.43,2.2],[1.3,1],[0,1],[0.18,1.1],[-g+0.3,1.1],[-g,0]
         ]);
         // Gap filler
-        translate([topw/2,toph/2-thick+0.1,topt]) rotate([-90,0,180])
-        linear_extrude(height=toph-thick*2+0.2) polygon(thick*[
-            [0.36,2],[1.3,1],[0.02,1]
+        translate([topw/2,toph/2-thick+0.12,topt]) rotate([-90,0,180])
+        linear_extrude(height=toph-thick*2+0.24) polygon(thick*[
+            [0.43,2.2],[1.3,1],[0.02,1]
         ]);
         
         // Lips for bottom cover
@@ -209,9 +209,9 @@ module hexbox(middle = false, right = false) {
             lip_mid(thick);
             
         // Supports for amp
-        translate([15,ampoff-17,topt-0.5])
+        translate([15,ampoff-16.7,topt-0.5])
             amp_lip();
-        translate([15,ampoff+17,topt-0.5])
+        translate([15,ampoff+16.7,topt-0.5])
             mirror([0,1,0]) amp_lip();
             
         // Supports for esp32
@@ -221,9 +221,9 @@ module hexbox(middle = false, right = false) {
             mirror([0,1,0]) esp_lip();
            
         // Supports for 3v3 converter
-        translate([0,21.8,57]) rotate([-90+midsidean,0,0])
+        translate([0,20.8,57]) rotate([-90+midsidean,0,0])
             lip_3v();
-        translate([0,21.8,57]) rotate([-90+midsidean,0,0])
+        translate([0,20.8,57]) rotate([-90+midsidean,0,0])
             mirror([1,0,0]) lip_3v();
 
         // Reinforcement for powercon hole
@@ -235,7 +235,7 @@ module hexbox(middle = false, right = false) {
                 polygon([[0,-17.8],[-11.7,15],[11.7,15]]);
             }
             translate([0,0,-1.6]) cylinder(3, holedia/2, holedia/2, $fn=60);
-            #translate([0,15,-1.6]) rotate([45,0,0]) cube([30,4,4], true);
+            translate([0,15,-1.6]) rotate([45,0,0]) cube([30,4,4], true);
         }
     } else if (right) {
         translate([ 65,0,40]) rotate([0, 60,0]) 
@@ -326,8 +326,8 @@ module hexbox(middle = false, right = false) {
 }
 
 module lip_3v() {
-    tol=0.2;
-    wid=17.1;
+    tol=0.1;
+    wid=17;
     hi=5;
     thi = 1.5;
     h1 = 4;
@@ -627,8 +627,8 @@ module conv_3v() {
 }
 
 module amp_tda() {
-    wid = 33.3;
-    hei = 45.1;
+    wid = 33.2;
+    hei = 45;
     thi = 1.5;
     
     bw = 23;
@@ -637,7 +637,7 @@ module amp_tda() {
     
     vd = 15.8/2;
     vt = 2;
-    vx = 3.4;
+    vx = 4.3;
     vy = 40.4;
     vz = 3;
     
