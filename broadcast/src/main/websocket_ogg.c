@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "freertos/ringbuf.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "nvs_flash.h"
@@ -29,36 +30,34 @@ static const esp_websocket_client_config_t ws_cfg = {
 };
 
 static const char *playfile_prefix = "https://beacon.eosfrontier.space/sounds";
-static char playfile[512];
-static audio_pipeline_handle_t pipeline;
-static audio_element_handle_t http_stream_reader, i2s_stream_writer, decoder_stream;
-static audio_event_iface_handle_t evt = NULL;
+RingbufHandle_t playbuffer;
+// static char playfile[512];
 
 static inline bool startswith(const char *str, const char *prefix)
 {
   return (!strncmp(str, prefix, strlen(prefix)));
 }
 
-static void init_audio(esp_periph_set_handle_t set)
+static void play_audio(audio_event_iface_handle_t evt, const char *uri)
 {
     ESP_LOGI(TAG, "[2.0] Create audio pipeline for playback");
     audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
-    pipeline = audio_pipeline_init(&pipeline_cfg);
+    audio_pipeline_handle_t pipeline = audio_pipeline_init(&pipeline_cfg);
     mem_assert(pipeline);
 
     ESP_LOGI(TAG, "[2.1] Create http stream to read data");
     http_stream_cfg_t http_cfg = HTTP_STREAM_CFG_DEFAULT();
-    http_stream_reader = http_stream_init(&http_cfg);
+    audio_element_handle_t http_stream_reader = http_stream_init(&http_cfg);
 
     ESP_LOGI(TAG, "[2.2] Create decoder");
 
     opus_decoder_cfg_t opus_cfg = DEFAULT_OPUS_DECODER_CONFIG();
-    decoder_stream = decoder_opus_init(&opus_cfg);
+    audio_element_handle_t decoder_stream = decoder_opus_init(&opus_cfg);
 
     ESP_LOGI(TAG, "[2.3] Create i2s stream to write data to internal DAC");
     i2s_stream_cfg_t i2s_cfg = I2S_STREAM_INTERNAL_DAC_CFG_DEFAULT();
     i2s_cfg.type = AUDIO_STREAM_WRITER;
-    i2s_stream_writer = i2s_stream_init(&i2s_cfg);
+    audio_element_handle_t i2s_stream_writer = i2s_stream_init(&i2s_cfg);
 
     ESP_LOGI(TAG, "[2.4] Register all elements to audio pipeline");
     audio_pipeline_register(pipeline, http_stream_reader, "http");
@@ -67,106 +66,11 @@ static void init_audio(esp_periph_set_handle_t set)
 
     ESP_LOGI(TAG, "[2.5] Link it together http_stream-->opus_decoder-->i2s_stream-->[codec_chip]");
     audio_pipeline_link(pipeline, (const char *[]) {"http", "opus", "i2s"}, 3);
-
-    ESP_LOGI(TAG, "[ 4 ] Set up  event listener");
-    audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
-    evt = audio_event_iface_init(&evt_cfg);
-
     ESP_LOGI(TAG, "[4.1] Listening event from all elements of pipeline");
     audio_pipeline_set_listener(pipeline, evt);
 
-    ESP_LOGI(TAG, "[4.2] Listening event from peripherals");
-    audio_event_iface_set_listener(esp_periph_set_get_event_iface(set), evt);
-}
-
-static void ws_handler(void *args, esp_event_base_t base, int32_t id, void *event_data)
-{
-    esp_websocket_event_data_t *data = (esp_websocket_event_data_t *)event_data;
-    const char *msg;
-    switch(id) {
-        case WEBSOCKET_EVENT_CONNECTED:
-            ESP_LOGI(TAG, "Websocket Connected");
-            break;
-        case WEBSOCKET_EVENT_DISCONNECTED:
-            ESP_LOGI(TAG, "Websocket Disonnected");
-            break;
-        case WEBSOCKET_EVENT_DATA:
-            msg = data->data_ptr;
-            ESP_LOGI(TAG, "Websocket Data");
-            ESP_LOGI(TAG, "Received opcode=%d", data->op_code);
-            ESP_LOGW(TAG, "Received=%.*s", data->data_len, msg);
-            ESP_LOGW(TAG, "Total payload length=%d, data_len=%d, current payload offset=%d\r\n", data->payload_len, data->data_len, data->payload_offset);
-            if (data->op_code == 1 && data->data_len > 2 && msg[0] == '4') {
-                if (msg[1] == '0') {
-
-                } else if (msg[1] == '2') {
-                    if (startswith(msg+2, "[\"playAudioFile\"")) {
-                        const char *fn = msg+20;
-                        const char *fne = strchr(fn, '"');
-                        if (fne-fn > 255) {
-                            ESP_LOGW(TAG, "Audio filename too long: %s", fn);
-                        } else {
-                            memcpy(playfile, playfile_prefix, strlen(playfile_prefix));
-                            memcpy(playfile+strlen(playfile_prefix), fn, fne-fn);
-                            playfile[strlen(playfile_prefix)+fne-fn] = 0;
-                            ESP_LOGI(TAG, "Playing broadcast: <%s>", playfile);
-                            audio_pipeline_stop(pipeline);
-                            audio_pipeline_wait_for_stop(pipeline);
-                            audio_element_reset_state(http_stream_reader);
-                            audio_element_reset_state(decoder_stream);
-                            audio_element_reset_state(i2s_stream_writer);
-                            audio_pipeline_reset_ringbuffer(pipeline);
-                            audio_pipeline_reset_items_state(pipeline);
-                            audio_element_set_uri(http_stream_reader, playfile);
-                            audio_pipeline_run(pipeline);
-                        }
-                    }
-                }
-            }
-            break;
-        case WEBSOCKET_EVENT_ERROR:
-            ESP_LOGI(TAG, "Websocket ERROR");
-            break;
-    }
-}
-
-void app_main(void)
-{
-    esp_err_t err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES) {
-        // NVS partition was truncated and needs to be erased
-        // Retry nvs_flash_init
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        err = nvs_flash_init();
-    }
-    tcpip_adapter_init();
-
-    esp_log_level_set("*", ESP_LOG_WARN);
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
-
-    /*
-    ESP_LOGI(TAG, "[ 1 ] Start audio codec chip");
-    audio_board_handle_t board_handle = audio_board_init();
-    audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
-    */
-
-    ESP_LOGI(TAG, "[ 3 ] Start and wait for Wi-Fi network");
-    esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
-    esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
-    periph_wifi_cfg_t wifi_cfg = {
-        .ssid = "Airy",
-        .password = "Landryssa",
-    };
-
-    esp_periph_handle_t wifi_handle = periph_wifi_init(&wifi_cfg);
-    esp_periph_start(set, wifi_handle);
-    periph_wifi_wait_for_connected(wifi_handle, portMAX_DELAY);
-
-    init_audio(set);
-    ESP_LOGI(TAG, "Connecting to %s...", ws_cfg.uri);
-    esp_websocket_client_handle_t ws = esp_websocket_client_init(&ws_cfg);
-    esp_websocket_register_events(ws, WEBSOCKET_EVENT_ANY, ws_handler, (void *)ws);
-    esp_websocket_client_start(ws);
+    audio_element_set_uri(http_stream_reader, uri);
+    audio_pipeline_run(pipeline);
 
     while (1) {
         audio_event_iface_msg_t msg;
@@ -230,6 +134,7 @@ void app_main(void)
             && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
             && (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED))) {
             ESP_LOGW(TAG, "[ * ] Stop event received");
+            break;
         }
     }
 
@@ -242,17 +147,125 @@ void app_main(void)
     /* Terminate the pipeline before removing the listener */
     audio_pipeline_remove_listener(pipeline);
 
-    /* Stop all peripherals before removing the listener */
-    esp_periph_set_stop_all(set);
-    audio_event_iface_remove_listener(esp_periph_set_get_event_iface(set), evt);
-
-    /* Make sure audio_pipeline_remove_listener & audio_event_iface_remove_listener are called before destroying event_iface */
-    audio_event_iface_destroy(evt);
-
-    /* Release all resources */
     audio_pipeline_deinit(pipeline);
     audio_element_deinit(http_stream_reader);
     audio_element_deinit(i2s_stream_writer);
     audio_element_deinit(decoder_stream);
-    esp_periph_set_destroy(set);
+}
+
+static void ws_handler(void *args, esp_event_base_t base, int32_t id, void *event_data)
+{
+    esp_websocket_event_data_t *data = (esp_websocket_event_data_t *)event_data;
+    const char *msg;
+    switch(id) {
+        case WEBSOCKET_EVENT_CONNECTED:
+            ESP_LOGI(TAG, "Websocket Connected");
+            break;
+        case WEBSOCKET_EVENT_DISCONNECTED:
+            ESP_LOGI(TAG, "Websocket Disonnected");
+            break;
+        case WEBSOCKET_EVENT_DATA:
+            msg = data->data_ptr;
+            ESP_LOGI(TAG, "Websocket Data");
+            ESP_LOGI(TAG, "Received opcode=%d", data->op_code);
+            ESP_LOGW(TAG, "Received=%.*s", data->data_len, msg);
+            ESP_LOGW(TAG, "Total payload length=%d, data_len=%d, current payload offset=%d\r\n", data->payload_len, data->data_len, data->payload_offset);
+            if (data->op_code == 1 && data->data_len > 2 && msg[0] == '4') {
+                if (msg[1] == '0') {
+
+                } else if (msg[1] == '2') {
+                    if (startswith(msg+2, "[\"playAudioFile\"")) {
+                        const char *fn = msg+20;
+                        const char *fne = strchr(fn, '"');
+                        if (fne-fn > 255) {
+                            ESP_LOGW(TAG, "Audio filename too long: %s", fn);
+                        } else {
+                            size_t sz = strlen(playfile_prefix)+(fne-fn);
+                            char playfile[sz+1];
+                            memcpy(playfile, playfile_prefix, strlen(playfile_prefix));
+                            memcpy(playfile+strlen(playfile_prefix), fn, fne-fn);
+                            playfile[sz] = 0;
+                            ESP_LOGI(TAG, "Playing broadcast: <%s>", playfile);
+                            BaseType_t res = xRingbufferSend(playbuffer, (void *)playfile, sz, pdMS_TO_TICKS(0));
+                            if (res != pdTRUE) {
+                                ESP_LOGW(TAG, "Queue full when playing broadcast");
+                            }
+                        }
+                    }
+                }
+            }
+            break;
+        case WEBSOCKET_EVENT_ERROR:
+            ESP_LOGI(TAG, "Websocket ERROR");
+            break;
+    }
+}
+
+void app_main(void)
+{
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES) {
+        // NVS partition was truncated and needs to be erased
+        // Retry nvs_flash_init
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    tcpip_adapter_init();
+
+    esp_log_level_set("*", ESP_LOG_WARN);
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+
+    playbuffer = xRingbufferCreate(512, RINGBUF_TYPE_NOSPLIT);
+    mem_assert(playbuffer);
+
+    /*
+    ESP_LOGI(TAG, "[ 1 ] Start audio codec chip");
+    audio_board_handle_t board_handle = audio_board_init();
+    audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
+    */
+
+    ESP_LOGI(TAG, "[ 3 ] Start and wait for Wi-Fi network");
+    esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
+    esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
+    periph_wifi_cfg_t wifi_cfg = {
+        .ssid = "Airy",
+        .password = "Landryssa",
+    };
+
+    esp_periph_handle_t wifi_handle = periph_wifi_init(&wifi_cfg);
+    esp_periph_start(set, wifi_handle);
+    periph_wifi_wait_for_connected(wifi_handle, portMAX_DELAY);
+
+    ESP_LOGI(TAG, "Connecting to %s...", ws_cfg.uri);
+    esp_websocket_client_handle_t ws = esp_websocket_client_init(&ws_cfg);
+    esp_websocket_register_events(ws, WEBSOCKET_EVENT_ANY, ws_handler, (void *)ws);
+    esp_websocket_client_start(ws);
+
+    ESP_LOGI(TAG, "[ 4 ] Set up  event listener");
+    audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
+    audio_event_iface_handle_t evt = audio_event_iface_init(&evt_cfg);
+
+    ESP_LOGI(TAG, "[4.2] Listening event from peripherals");
+    audio_event_iface_set_listener(esp_periph_set_get_event_iface(set), evt);
+
+    while (1) {
+        size_t urisize;
+        const char *uri = (const char *)xRingbufferReceive(playbuffer, &urisize, pdMS_TO_TICKS(1000));
+        if (uri) {
+            play_audio(evt, uri);
+            vRingbufferReturnItem(playbuffer, (void *)uri);
+        }
+    }
+
+    /* Stop all peripherals before removing the listener */
+    /*
+    esp_periph_set_stop_all(set);
+    audio_event_iface_remove_listener(esp_periph_set_get_event_iface(set), evt);
+    */
+
+    /* Make sure audio_pipeline_remove_listener & audio_event_iface_remove_listener are called before destroying event_iface */
+    // audio_event_iface_destroy(evt);
+
+    /* Release all resources */
+    // esp_periph_set_destroy(set);
 }
