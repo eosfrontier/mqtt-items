@@ -157,12 +157,12 @@ void app_main(void)
         .ssid = "Airy",
         .password = "Landryssa",
     };
-    init_audio(set);
 
     esp_periph_handle_t wifi_handle = periph_wifi_init(&wifi_cfg);
     esp_periph_start(set, wifi_handle);
     periph_wifi_wait_for_connected(wifi_handle, portMAX_DELAY);
 
+    init_audio(set);
     ESP_LOGI(TAG, "Connecting to %s...", ws_cfg.uri);
     esp_websocket_client_handle_t ws = esp_websocket_client_init(&ws_cfg);
     esp_websocket_register_events(ws, WEBSOCKET_EVENT_ANY, ws_handler, (void *)ws);
