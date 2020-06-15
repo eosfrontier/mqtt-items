@@ -30,6 +30,7 @@ static const esp_websocket_client_config_t ws_cfg = {
 };
 
 static const char *playfile_prefix = "https://beacon.eosfrontier.space/sounds";
+static const char *init_playfile = "https://beacon.eosfrontier.space/sounds/example.opus";
 RingbufHandle_t playbuffer;
 // static char playfile[512];
 
@@ -38,8 +39,9 @@ static inline bool startswith(const char *str, const char *prefix)
   return (!strncmp(str, prefix, strlen(prefix)));
 }
 
-static void play_audio(audio_event_iface_handle_t evt, const char *uri)
+static void play_audio(esp_periph_set_handle_t set, const char *uri)
 {
+    ESP_LOGI(TAG, "[1.0] Free memory before play: %d bytes", xPortGetFreeHeapSize());
     ESP_LOGI(TAG, "[2.0] Create audio pipeline for playback");
     audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
     audio_pipeline_handle_t pipeline = audio_pipeline_init(&pipeline_cfg);
@@ -66,10 +68,19 @@ static void play_audio(audio_event_iface_handle_t evt, const char *uri)
 
     ESP_LOGI(TAG, "[2.5] Link it together http_stream-->opus_decoder-->i2s_stream-->[codec_chip]");
     audio_pipeline_link(pipeline, (const char *[]) {"http", "opus", "i2s"}, 3);
+
+    ESP_LOGI(TAG, "[ 4 ] Set up  event listener");
+    audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
+    audio_event_iface_handle_t evt = audio_event_iface_init(&evt_cfg);
+
+    ESP_LOGI(TAG, "[4.2] Listening event from peripherals");
+    audio_event_iface_set_listener(esp_periph_set_get_event_iface(set), evt);
+
     ESP_LOGI(TAG, "[4.1] Listening event from all elements of pipeline");
     audio_pipeline_set_listener(pipeline, evt);
 
     audio_element_set_uri(http_stream_reader, uri);
+    vRingbufferReturnItem(playbuffer, (void *)uri);
     audio_pipeline_run(pipeline);
 
     while (1) {
@@ -139,6 +150,7 @@ static void play_audio(audio_event_iface_handle_t evt, const char *uri)
     }
 
     ESP_LOGI(TAG, "[ 6 ] Stop audio_pipeline and release all resources");
+    ESP_LOGI(TAG, "[6.1] Free memory: %d bytes", xPortGetFreeHeapSize());
     audio_pipeline_terminate(pipeline);
     audio_pipeline_unregister(pipeline, http_stream_reader);
     audio_pipeline_unregister(pipeline, i2s_stream_writer);
@@ -147,10 +159,11 @@ static void play_audio(audio_event_iface_handle_t evt, const char *uri)
     /* Terminate the pipeline before removing the listener */
     audio_pipeline_remove_listener(pipeline);
 
-    audio_pipeline_deinit(pipeline);
-    audio_element_deinit(http_stream_reader);
-    audio_element_deinit(i2s_stream_writer);
-    audio_element_deinit(decoder_stream);
+    audio_event_iface_remove_listener(esp_periph_set_get_event_iface(set), evt);
+    /* Make sure audio_pipeline_remove_listener & audio_event_iface_remove_listener are called before destroying event_iface */
+    audio_event_iface_destroy(evt);
+    ESP_LOGI(TAG, "[6.2] Free memory after deinit: %d bytes", xPortGetFreeHeapSize());
+    ESP_LOGI(TAG, "[6.2] Lowest free memory: %d bytes", xPortGetMinimumEverFreeHeapSize());
 }
 
 static void ws_handler(void *args, esp_event_base_t base, int32_t id, void *event_data)
@@ -186,7 +199,7 @@ static void ws_handler(void *args, esp_event_base_t base, int32_t id, void *even
                             memcpy(playfile+strlen(playfile_prefix), fn, fne-fn);
                             playfile[sz] = 0;
                             ESP_LOGI(TAG, "Playing broadcast: <%s>", playfile);
-                            BaseType_t res = xRingbufferSend(playbuffer, (void *)playfile, sz, pdMS_TO_TICKS(0));
+                            BaseType_t res = xRingbufferSend(playbuffer, (void *)playfile, sz+1, pdMS_TO_TICKS(0));
                             if (res != pdTRUE) {
                                 ESP_LOGW(TAG, "Queue full when playing broadcast");
                             }
@@ -218,6 +231,8 @@ void app_main(void)
     playbuffer = xRingbufferCreate(512, RINGBUF_TYPE_NOSPLIT);
     mem_assert(playbuffer);
 
+    xRingbufferSend(playbuffer, (void *)init_playfile, strlen(init_playfile)+1, pdMS_TO_TICKS(0));
+
     /*
     ESP_LOGI(TAG, "[ 1 ] Start audio codec chip");
     audio_board_handle_t board_handle = audio_board_init();
@@ -241,30 +256,18 @@ void app_main(void)
     esp_websocket_register_events(ws, WEBSOCKET_EVENT_ANY, ws_handler, (void *)ws);
     esp_websocket_client_start(ws);
 
-    ESP_LOGI(TAG, "[ 4 ] Set up  event listener");
-    audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
-    audio_event_iface_handle_t evt = audio_event_iface_init(&evt_cfg);
-
-    ESP_LOGI(TAG, "[4.2] Listening event from peripherals");
-    audio_event_iface_set_listener(esp_periph_set_get_event_iface(set), evt);
-
     while (1) {
         size_t urisize;
         const char *uri = (const char *)xRingbufferReceive(playbuffer, &urisize, pdMS_TO_TICKS(1000));
         if (uri) {
-            play_audio(evt, uri);
-            vRingbufferReturnItem(playbuffer, (void *)uri);
+            play_audio(set, uri);
         }
     }
 
     /* Stop all peripherals before removing the listener */
     /*
     esp_periph_set_stop_all(set);
-    audio_event_iface_remove_listener(esp_periph_set_get_event_iface(set), evt);
     */
-
-    /* Make sure audio_pipeline_remove_listener & audio_event_iface_remove_listener are called before destroying event_iface */
-    // audio_event_iface_destroy(evt);
 
     /* Release all resources */
     // esp_periph_set_destroy(set);
