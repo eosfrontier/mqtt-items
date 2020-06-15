@@ -49,6 +49,9 @@ static void play_audio(esp_periph_set_handle_t set, const char *uri)
 
     ESP_LOGI(TAG, "[2.1] Create http stream to read data");
     http_stream_cfg_t http_cfg = HTTP_STREAM_CFG_DEFAULT();
+    ESP_LOGI(TAG, "[2.1] HTTP out rb size was 0x%x", http_cfg.out_rb_size);
+    http_cfg.out_rb_size = 0x20000;
+    ESP_LOGI(TAG, "[2.1] HTTP out rb size set to 0x%x", http_cfg.out_rb_size);
     audio_element_handle_t http_stream_reader = http_stream_init(&http_cfg);
 
     ESP_LOGI(TAG, "[2.2] Create decoder");

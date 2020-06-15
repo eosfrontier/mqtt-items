@@ -2,6 +2,7 @@
 gap=0;
 
 ampoff=4.27;
+espoff=-2.0;
 
 holeoff = 20;
 
@@ -31,7 +32,7 @@ translate([0,0,0]) hexbox(true);
 
     translate([0,0,0]) powercon();
 
-    translate([-15,0,18.5]) rotate([90,0,-90]) esp_ttgo();
+    translate([-15,espoff,18.5]) rotate([90,0,-90]) esp_ttgo();
 
     translate([15,ampoff,9.5]) rotate([90,0,-90]) amp_tda();
 
@@ -215,9 +216,9 @@ module hexbox(middle = false, right = false) {
             mirror([0,1,0]) amp_lip();
             
         // Supports for esp32
-        translate([-15,-15.7,topt-1.5])
+        translate([-15,espoff-15.7,topt-1.5])
             esp_lip();
-        translate([-15,15.7,topt-1.5])
+        translate([-15,espoff+15.7,topt-1.5])
             mirror([0,1,0]) esp_lip();
            
         // Supports for 3v3 converter
@@ -293,7 +294,7 @@ module hexbox(middle = false, right = false) {
                   [-0.1,3.6],[10,3.6],[21,-7.1-1.07],[-0.1,-9.1]
                 ]);
               }
-              translate([6,0.1,2.1]) cube([7.2,7.4,2.2], true);
+              translate([6,0,2.1]) cube([7.4,7.6,2.2], true);
               translate([6,0,-2.1]) cylinder(8,2,2, $fn=60);
             }
             // Cutaway layer for support
@@ -313,7 +314,7 @@ module hexbox(middle = false, right = false) {
                   [-0.1,-3.6],[10,-3.6],[21,7.1+1.07],[-0.1,9.1]
                 ]);
               }
-              translate([6,-0.1,2.1]) cube([7.2,7.4,2.2], true);
+              translate([6,0,2.1]) cube([7.4,7.6,2.2], true);
               translate([6,0,-2.1]) cylinder(8,2,2, $fn=60);
             }
             // Cutaway layer for support
