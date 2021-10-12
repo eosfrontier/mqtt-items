@@ -12,6 +12,9 @@ struct {
 
 void msg_setup()
 {
+#ifndef MQTT_SOFTAP
+  WiFi.softAPdisconnect(true);
+#endif
   msg_udp.begin(mqtt_port);
   SPIFFS.begin();
 }
@@ -44,6 +47,7 @@ void msg_send_sub(const char *topic, const char *msg, int idx)
 {
   if (subscribers[idx].topic[0]) {
     if (strmatch(subscribers[idx].topic, topic)) {
+      Serial.print("Sending to "); Serial.print(subscribers[idx].ip); Serial.print(" : <"); Serial.print(MSG_NAME "/"); Serial.print(topic); Serial.print("> -> <"); Serial.print(msg); Serial.println(">");
       msg_udp.beginPacket(subscribers[idx].ip, mqtt_port);
       msg_udp.write(MSG_NAME "/", strlen(MSG_NAME)+1);
       msg_udp.write(topic, strlen(topic));

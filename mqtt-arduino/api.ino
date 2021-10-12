@@ -392,4 +392,5 @@ void api_check()
 void api_got_cardid(uint32_t cardid) {}
 void api_setup() {}
 void api_check() {}
+char api_queue_size() { return 0; }
 #endif

@@ -83,4 +83,5 @@ void ntp_check()
 #else
 void ntp_setup() {}
 void ntp_check() {}
+uint32_t ntp_now() { return 0; }
 #endif

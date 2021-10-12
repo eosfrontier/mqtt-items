@@ -1,10 +1,10 @@
 #include <ESP8266WiFi.h>
 
 //#define MQTT_BUTTONS_OUT
-//#define MQTT_BUTTONS_IN
+#define MQTT_BUTTONS_IN
 //#define MQTT_LIGHTS
 //#define MQTT_SONOFF "B"
-#define MQTT_RFID "armory"
+//#define MQTT_RFID "armory"
 #include "settings.h"
 
 const char *state = "nosubs";
@@ -17,7 +17,7 @@ int avl_num_entries[2] = {0,0};
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(115200);
+  Serial.begin(74880);
 
   lasttick = millis();
   ntp_setup();

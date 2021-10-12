@@ -20,8 +20,7 @@ for (i = [0:numstuds-1]) {
     translate([(i-(numstuds-1)/2)*(studwidth+studspace),0,0])
     lightstud();
 }
-color("DimGray")
-lightbox();
+color("DimGray") lightbox();
 *color("Gray") translate([0,0,-boxheight-sideheight]) lightbottom();
 
 *color("Teal") translate([0,1,-boxheight-sideheight+boxthick+1]) rotate([180,0,-90]) batteryholder();
@@ -71,7 +70,7 @@ module lightbox() {
     gw = 9/2;
     
     difference() {
-        polyhedron(
+        polyhedron(convexity=10,
             points = concat(
                 hexbox(xs1,xs2,ys,0),
                 hexbox(xb1,xb2,yb,-h),
