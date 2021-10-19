@@ -55,6 +55,14 @@ void msg_send_sub(const char *topic, const char *msg, int idx)
       msg_udp.write(msg, strlen(msg));
       msg_udp.endPacket();
     }
+    if (!strcmp(topic, "SUB")) {
+      Serial.print("Sending to "); Serial.print(subscribers[idx].ip); Serial.print(" : <"); Serial.print(topic); Serial.print("> -> <"); Serial.print(msg); Serial.println(">");
+      msg_udp.beginPacket(subscribers[idx].ip, mqtt_port);
+      msg_udp.write(topic, strlen(topic));
+      msg_udp.write('\n');
+      msg_udp.write(msg, strlen(msg));
+      msg_udp.endPacket();
+    }
   }
 }
 
@@ -66,6 +74,7 @@ void msg_send(const char *topic, const char *msg)
 }
 
 unsigned long lastsub = 0;
+unsigned long lastacksend = 0;
 char lastack[33];
 
 void msg_add_sub(const char *topic)
@@ -131,13 +140,11 @@ void send_ssid(void)
         Serial.println("Sending SSID to soft AP subscribers");
         for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
             if (subscribers[i].topic[0]) {
-              if (subscribers[i].ip[3] == 4) {
                 msg_udp.beginPacket(subscribers[i].ip, mqtt_port);
                 msg_udp.write("SSID", 4);
                 msg_udp.write('\n');
                 msg_udp.write(msg, strlen(msg));
                 msg_udp.endPacket();
-              }
             }
         }
     }
@@ -178,6 +185,7 @@ void msg_receive(const char *topic, const char *msg)
   if (!strcmp(topic, MSG_NAME "/set")) {
     leds_set(msg);
     msg_send("ack", msg);
+    if (!strcmp(msg, lastack)) return;  // Don't stop retrying if the set is the same as the previous one
     if (strlen(msg) < (sizeof(lastack)-1)) {
       strcpy(lastack, msg);
     } else {
@@ -214,6 +222,7 @@ void msg_receive(const char *topic, const char *msg)
 
 void msg_subscribe(const char *topic)
 {
+  msg_send("SUB", topic);
   IPAddress bcast = WiFi.localIP();
   if (bcast) {
     IPAddress smask = WiFi.subnetMask();
@@ -370,6 +379,11 @@ void msg_check()
     for (int i = 0; MSG_SUBSCRIPTIONS[i]; i++) {
       msg_subscribe(MSG_SUBSCRIPTIONS[i]);
     }
+  }
+  // Send our status every M seconds
+  if (lastack[0] && ((signed)(lasttick - lastacksend) >= 0)) { // ipv. lasttick >= lastacksend ivm overflow effecten
+    lastacksend = lasttick + MSG_ACK_INTERVAL;
+    msg_send("ack", lastack);
   }
   if (strcmp(state, "nowifi")) {
     if ((numsubs == 0) && (api_check_status < 0)) {

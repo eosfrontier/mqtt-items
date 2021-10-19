@@ -1,7 +1,7 @@
 #include <ESP8266WiFi.h>
 
-//#define MQTT_BUTTONS_OUT
-#define MQTT_BUTTONS_IN
+#define MQTT_BUTTONS_OUT
+//#define MQTT_BUTTONS_IN
 //#define MQTT_LIGHTS
 //#define MQTT_SONOFF "B"
 //#define MQTT_RFID "armory"

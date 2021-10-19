@@ -190,5 +190,6 @@ const int FPS = 40;
 
 const int MSG_TIMEOUT = 125 * 1000;      // Forget subscription (if not resubscribed) after 2 minutes
 const int MSG_SUB_INTERVAL = 20 * 1000;  // Resubscribe every 20 seconds
+const int MSG_ACK_INTERVAL = 2 * 1000;   // Send last status every 2 seconds
 
 const int ms_per_frame = 1000/FPS;
