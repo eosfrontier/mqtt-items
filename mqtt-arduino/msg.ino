@@ -204,12 +204,12 @@ void msg_receive(const char *topic, const char *msg)
       lastack[0] = 0;
     }
     buttons_ack();
-    return;
+    // return;  // Don't return: also allow chaining via mappings
   }
 #ifdef MQTT_GPIO
   if (strmatch(MSG_NAME "/gpio/*", topic)) {
     gpio_set(topic+strlen(MSG_NAME "/gpio/"), msg);
-    return;
+    // return;  // Don't return: also allow chaining via mappings
   }
 #endif
 #ifdef MQTT_WEBSOCKETS
@@ -226,7 +226,7 @@ void msg_receive(const char *topic, const char *msg)
         // Als blanco, dan geven we het originele bericht mee
         if (!smsg) smsg = msg;
         msg_receive(MSG_MAPPING[m+2],smsg);
-        return;
+        return;  // Later actions can be generic fallbacks
       }
     }
   }

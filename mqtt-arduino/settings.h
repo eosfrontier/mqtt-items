@@ -139,6 +139,8 @@ const char * MSG_MAPPING[] = {
   "eos/portal/light/ack","red",MSG_NAME "/gpio/led","H",
   "eos/portal/light/ack","out",MSG_NAME "/gpio/led","H",
   "eos/portal/light/ack","*",MSG_NAME "/gpio/led","L",
+  // Chaining led to relais
+  MSG_NAME "/gpio/led", "*", MSG_NAME "/gpio/relais", NULL,
   NULL
 };
 const char * MSG_SUBSCRIPTIONS[] = {
