@@ -14,7 +14,18 @@ void msg_setup()
 {
 #ifndef MQTT_SOFTAP
   WiFi.softAPdisconnect(true);
+  WiFi.mode(WIFI_STA);
+#else
+  WiFi.mode(WIFI_AP_STA);
 #endif
+  int nap = WiFi.scanNetworks(false, true);
+  if (nap == 0) {
+      Serial.println("WiFi scan found zero networks!");
+  }
+  for (int i = 0; i < nap; i++) {
+      Serial.print("Found network "); Serial.print(WiFi.SSID(i)); Serial.print(" on Channel "); Serial.print(WiFi.channel(i)); Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.println(")");
+  }
+  WiFi.scanDelete();
   msg_udp.begin(mqtt_port);
   SPIFFS.begin();
 }
@@ -46,18 +57,17 @@ bool strmatch(const char *patt, const char *match, bool partial = false)
 void msg_send_sub(const char *topic, const char *msg, int idx)
 {
   if (subscribers[idx].topic[0]) {
-    if (strmatch(subscribers[idx].topic, topic)) {
-      Serial.print("Sending to "); Serial.print(subscribers[idx].ip); Serial.print(" : <"); Serial.print(MSG_NAME "/"); Serial.print(topic); Serial.print("> -> <"); Serial.print(msg); Serial.println(">");
+    if (!strcmp(topic, "SUB")) {
+      Serial.print("Sending to "); Serial.print(subscribers[idx].ip); Serial.print(" : <"); Serial.print(topic); Serial.print("> -> <"); Serial.print(msg); Serial.println(">");
       msg_udp.beginPacket(subscribers[idx].ip, mqtt_port);
-      msg_udp.write(MSG_NAME "/", strlen(MSG_NAME)+1);
       msg_udp.write(topic, strlen(topic));
       msg_udp.write('\n');
       msg_udp.write(msg, strlen(msg));
       msg_udp.endPacket();
-    }
-    if (!strcmp(topic, "SUB")) {
-      Serial.print("Sending to "); Serial.print(subscribers[idx].ip); Serial.print(" : <"); Serial.print(topic); Serial.print("> -> <"); Serial.print(msg); Serial.println(">");
+    } else if (strmatch(subscribers[idx].topic, topic)) {
+      Serial.print("Sending to "); Serial.print(subscribers[idx].ip); Serial.print(" : <"); Serial.print(MSG_NAME "/"); Serial.print(topic); Serial.print("> -> <"); Serial.print(msg); Serial.println(">");
       msg_udp.beginPacket(subscribers[idx].ip, mqtt_port);
+      msg_udp.write(MSG_NAME "/", strlen(MSG_NAME)+1);
       msg_udp.write(topic, strlen(topic));
       msg_udp.write('\n');
       msg_udp.write(msg, strlen(msg));
@@ -127,6 +137,7 @@ void msg_add_sub(const char *topic)
 unsigned long lastscan = 0;
 char wifiidx = 3;
 char gotssid = 0;
+char gotrssi = 0;
 
 #ifdef MQTT_SOFTAP
 void send_ssid(void)
@@ -140,6 +151,7 @@ void send_ssid(void)
         Serial.println("Sending SSID to soft AP subscribers");
         for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
             if (subscribers[i].topic[0]) {
+                Serial.print("Sending SSID to soft AP subscriber "); Serial.println(subscribers[i].ip);
                 msg_udp.beginPacket(subscribers[i].ip, mqtt_port);
                 msg_udp.write("SSID", 4);
                 msg_udp.write('\n');
@@ -222,7 +234,6 @@ void msg_receive(const char *topic, const char *msg)
 
 void msg_subscribe(const char *topic)
 {
-  msg_send("SUB", topic);
   IPAddress bcast = WiFi.localIP();
   if (bcast) {
     IPAddress smask = WiFi.subnetMask();
@@ -266,7 +277,7 @@ void msg_subscribe(const char *topic)
 #endif
 }
 
-void msg_check()
+void msg_connect_wifi()
 {
   if (WiFi.status() != WL_CONNECTED) {
       if (!strcmp(state, "nosubs")) { // Als we van nosubs anders naar nowifi gaan (NB: initieel is nosubs omdat ESP automatisch connecten bij powerup)
@@ -275,7 +286,20 @@ void msg_check()
           lastscan = lasttick + 5 * 1000; // 5 seconden wachten tot active reconnect
       }
       if (lasttick > lastscan) {
-          lastscan = lasttick + 5 * 1000; // Elke 5 seconden een ssid proberen
+          Serial.print("WiFi Status "); Serial.print(WiFi.status()); Serial.print(" ("); Serial.print(WiFi.SSID()); Serial.print(":"); Serial.print(WiFi.psk()); Serial.println(")");
+          Serial.print("WiFi IP / mac: "); Serial.print(WiFi.localIP()); Serial.print(" / "); Serial.println(WiFi.macAddress());
+          Serial.print("WiFi mode: "); Serial.println(WiFi.getMode());
+          int8_t rssi = WiFi.RSSI();
+          Serial.print("WiFi bssid/rssi: "); Serial.print(WiFi.BSSIDstr()); Serial.print(" / "); Serial.println(rssi);
+          if (!gotrssi) {
+            if (rssi < 0) {  // Lager is beter
+              gotrssi = 1;
+              lastscan = lasttick + 60 * 1000; // 60 seconden wachten als er signaal is
+              Serial.print("RSSI = "); Serial.print(rssi); Serial.println(", waiting for connection to resolve");
+              return;
+            }
+          }
+          lastscan = lasttick + 15 * 1000; // Elke 15 seconden een ssid proberen
           char wififn[11] = "/wifiA.txt";
           if (wifiidx <= 0) {
             wifiidx = 0;
@@ -284,7 +308,6 @@ void msg_check()
               wififn[5] = 'A' + wifiidx;
             }
             Serial.print("Scanned wifi down from "); Serial.print(wififn); Serial.println(" redo from start");
-            /*
             int nap = WiFi.scanNetworks(false, true);
             if (nap == 0) {
                 Serial.println("WiFi scan found zero networks!");
@@ -293,7 +316,6 @@ void msg_check()
                 Serial.print("Found network "); Serial.print(WiFi.SSID(i)); Serial.print(" on Channel "); Serial.print(WiFi.channel(i)); Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.println(")");
             }
             WiFi.scanDelete();
-            */
             lastscan = lasttick + 60 * 1000; // Na de hele lijst 60 seconden wachten
           } else {
             wifiidx--;
@@ -331,8 +353,9 @@ void msg_check()
             } else
 #endif
             {
-              WiFi.begin(wssid, wpwd);
               Serial.print("Wifi trying to connect to '"); Serial.print(wssid); Serial.print("' pwd '"); Serial.print(wpwd); Serial.println("'...");
+              WiFi.begin(wssid, wpwd);
+              gotrssi = 0;
             }
           }
       }
@@ -341,6 +364,11 @@ void msg_check()
       leds_set("idle");
       lastsub = lasttick + 500; // Halve seconde afwachten
   }
+}
+
+void msg_check()
+{
+  msg_connect_wifi();
   char buf[1025];
   // Kijken of er packets zijn
   int pak;
@@ -376,6 +404,9 @@ void msg_check()
   // Resubscribe every N seconds
   if ((signed)(lasttick - lastsub) >= 0) { // ipv. lasttick >= lastsub ivm overflow effecten
     lastsub = lasttick + MSG_SUB_INTERVAL;
+    for (int i = 0; MSG_SUBSCRIPTIONS[i]; i++) {
+      msg_send("SUB", MSG_SUBSCRIPTIONS[i]);
+    }
     for (int i = 0; MSG_SUBSCRIPTIONS[i]; i++) {
       msg_subscribe(MSG_SUBSCRIPTIONS[i]);
     }

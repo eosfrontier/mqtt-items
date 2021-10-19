@@ -48,7 +48,7 @@ void ws_setup()
     wsstate = noconn;
     wsclient.setInsecure();
     wsclient.setBufferSizes(512, 512);
-    wsclient.setSession(&api_session);
+    wsclient.setSession(&ws_session);
 }
 
 void ws_send(const char *msg)
@@ -91,10 +91,12 @@ int ws_message_retry = 0;
 
 void ws_receive_broadcast(const char *bc)
 {
+  Serial.print("Received broadcast: '"); Serial.print(bc); Serial.println("'");
   for (int i = 0; WS_BROADCAST_RECEIVE[i]; i += 3) {
     if (!strcmp(bc, WS_BROADCAST_RECEIVE[i])) {
       ws_message_last = i;
       ws_message_retry = WS_MESSAGE_RETRIES * WS_MESSAGE_RETRY_DELAY + 1;
+      Serial.print("Send message: <"); Serial.print(WS_BROADCAST_RECEIVE[i+1]); Serial.print("> -> <"); Serial.print(WS_BROADCAST_RECEIVE[i+2]); Serial.println(">");
       msg_send(WS_BROADCAST_RECEIVE[i+1], WS_BROADCAST_RECEIVE[i+2]);
       return;
     }
