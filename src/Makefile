@@ -5,6 +5,12 @@
 all:
 	pio -f -c vim run
 
+lights:
+	pio -f -c vim run -e lights
+
+buttons_in:
+	pio -f -c vim run -e buttons_in
+
 upload:
 	pio -f -c vim run --target upload
 

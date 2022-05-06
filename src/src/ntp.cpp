@@ -1,3 +1,5 @@
+#include <stdint.h>
+#include "ntp.h"
 #ifdef MQTT_RFID
 #include <WiFiUdp.h>
 

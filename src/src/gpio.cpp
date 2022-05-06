@@ -1,3 +1,4 @@
+#include "gpio.h"
 #ifdef MQTT_GPIO
 
 void gpio_setup()

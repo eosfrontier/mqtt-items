@@ -1,5 +1,11 @@
 #include <WiFiUdp.h>
 #include <FS.h>
+#include "settings.h"
+#include "msg.h"
+#include "main.h"
+#include "leds.h"
+#include "buttons.h"
+#include <ESP8266WiFi.h>
 
 unsigned int mqtt_port = 1883;
 WiFiUDP msg_udp;
@@ -37,14 +43,12 @@ bool strmatch(const char *patt, const char *match, bool partial = false)
   // Serial.print("strmatch("); Serial.print(patt); Serial.print(", "); Serial.print(match); Serial.print(", "); Serial.print(partial); Serial.println(")");
   
   const char *p = patt, *m = match;
-  int slashidx = 0;
   while (*p && *m) {
     if (*p == '*') {
       p++;
       while (*m && *m != '/') m++;
     } else {
       if (*p != *m) {
-        // Serial.print("strmatch: mismatch at <"); Serial.print(p); Serial.print("> || <"); Serial.print(m); Serial.print(">, num = "); Serial.println(slashidx);
         return false;
       }
       p++;
@@ -140,7 +144,7 @@ char gotssid = 0;
 char gotrssi = 0;
 
 #ifdef MQTT_SOFTAP
-void send_ssid(void)
+static void send_ssid(void)
 {
     if (SPIFFS.exists("/wifiD.txt")) {
         gotssid = 1;
@@ -163,7 +167,7 @@ void send_ssid(void)
 }
 #endif
 
-void add_ssid(const char *msg)
+static void add_ssid(const char *msg)
 {
     File wifitxt = SPIFFS.open("/wifiD.txt", "w");
     wifitxt.print(msg);
@@ -181,7 +185,7 @@ void add_ssid(const char *msg)
     }
 }
 
-void msg_receive(const char *topic, const char *msg)
+static void msg_receive(const char *topic, const char *msg)
 {
   Serial.print("receive <"); Serial.print(topic); Serial.print("> = <"); Serial.print(msg); Serial.println(">");
   // SUB topic is een meta-topic waar anderen op onze messages subscriben
@@ -232,7 +236,7 @@ void msg_receive(const char *topic, const char *msg)
   }
 }
 
-void msg_subscribe(const char *topic)
+static void msg_subscribe(const char *topic)
 {
   IPAddress bcast = WiFi.localIP();
   if (bcast) {
@@ -277,7 +281,7 @@ void msg_subscribe(const char *topic)
 #endif
 }
 
-void msg_connect_wifi()
+static void msg_connect_wifi()
 {
   if (WiFi.status() != WL_CONNECTED) {
       if (!strcmp(state, "nosubs")) { // Als we van nosubs anders naar nowifi gaan (NB: initieel is nosubs omdat ESP automatisch connecten bij powerup)

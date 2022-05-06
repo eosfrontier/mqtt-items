@@ -1,6 +1,12 @@
+#include <stdint.h>
+#include "settings.h"
+#include "api.h"
 #ifdef MQTT_RFID
 #include <FS.h>
 #include <WiFiClientSecure.h>
+#include "leds.h"
+#include "avl.h"
+#include "main.h"
 
 WiFiClientSecure apiclient;
 

@@ -1,6 +1,8 @@
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
+#include "settings.h"
+#include "ota.h"
 
 void ota_setup()
 {

@@ -1,4 +1,7 @@
+#include "settings.h"
 #include <Adafruit_NeoPixel.h>
+#include "leds.h"
+#include "main.h"
 
 typedef struct {
   unsigned long tm;
@@ -9,6 +12,8 @@ Adafruit_NeoPixel ledstrip(LEDS_NUM, LEDS_PIN, NEO_GRB + NEO_KHZ800);
 bool anim_rpt = false;
 int anim_len = 0;
 LedAnimation anim[MAX_ANIM];
+
+unsigned long anim_tick = 0;
 
 uint32_t curcolor[LEDS_NUM];
 
@@ -54,7 +59,7 @@ void send_led_byte(uint8_t bt)
 }
 */
 
-uint32_t set_interpolate(uint32_t cola, uint32_t colb, unsigned long frac, unsigned long denom, int idx)
+static void set_interpolate(uint32_t cola, uint32_t colb, unsigned long frac, unsigned long denom, int idx)
 {
   uint32_t ga = (cola >> 8) & 0xff;
   uint32_t gb = (colb >> 8) & 0xff;
@@ -75,7 +80,7 @@ uint32_t set_interpolate(uint32_t cola, uint32_t colb, unsigned long frac, unsig
   ledstrip.setPixelColor(idx, curcolor[idx]);
 }
 
-void leds_show()
+static void leds_show()
 {
   /*
   uint32_t intr_state;

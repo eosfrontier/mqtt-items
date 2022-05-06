@@ -1,3 +1,4 @@
+#include "rfid.h"
 #ifdef MQTT_RFID
 #include <Wire.h>
 

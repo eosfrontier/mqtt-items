@@ -1,4 +1,5 @@
 // Async-ish websockets
+#include "ws.h"
 #ifdef MQTT_WEBSOCKETS
 #include <WiFiClientSecure.h>
 

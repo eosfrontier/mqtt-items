@@ -1,9 +1,12 @@
+#include "avl.h"
+int avl_num_entries[2] = {0,0};
 #ifdef MQTT_RFID
+#include <Arduino.h>
 
 //#define AVL_DEBUG
 
 #ifdef AVL_DEBUG
-void avl_debug(char *fmt, ...)
+static void avl_debug(char *fmt, ...)
 {
   char dbgbuf[256];
   va_list args;
@@ -27,13 +30,13 @@ void avl_debug(char *fmt, ...)
 #define AVL_ACCESS_SET_BAL(node,val)       BITFIELD_SET((node)->bitfield,24,2,(val))
 #define AVL_ACCESS_SET_CHILD(node,idx,val) BITFIELD_SET((node)->bitfield,((idx)*12),12,(val))
 
-avl_access_t avl_access_tree[AVL_MAX_ENTRIES];
+static avl_access_t avl_access_tree[AVL_MAX_ENTRIES];
 
 #define AVL_ENTRY(idx) (&avl_access_tree[(idx)-1])
 
-int avl_root[2] = {0,0};
+static int avl_root[2] = {0,0};
 
-int avl_new_entry(avl_access_t *entry) {
+static int avl_new_entry(avl_access_t *entry) {
     if ((avl_num_entries[0] + avl_num_entries[1]) >= AVL_MAX_ENTRIES) {
         avl_debug("AVL tree full, did not add entry with key %08x and data %08x", entry->key.v, entry->data.v);
         Serial.print("AVL tree full!  Cannot add key '"); Serial.print(entry->key.v); Serial.print("' with data '"); Serial.print(entry->data.v); Serial.println("'");
@@ -50,7 +53,7 @@ int avl_new_entry(avl_access_t *entry) {
     return node;
 }
 
-int avl_rotate(int node, char l_r)
+static int avl_rotate(int node, char l_r)
 {
     avl_access_t *treenode = AVL_ENTRY(node);
     int newnode = AVL_ACCESS_GET_CHILD(treenode, l_r);
@@ -191,7 +194,7 @@ avl_access_t *avl_find(uint32_t key, int ridx)
     return NULL;
 }
 
-void avl_degrade_tree(int node)
+static void avl_degrade_tree(int node)
 {
   avl_access_t *treenode = AVL_ENTRY(node);
   int child = AVL_ACCESS_GET_CHILD(treenode, 0);
@@ -212,7 +215,7 @@ void avl_degrade_access()
   avl_degrade_tree(avl_root[1]);
 }
 
-void avl_print_tree(int node, int depth)
+static void avl_print_tree(int node, int depth)
 {
 #ifdef AVL_DEBUG
   if (node) {

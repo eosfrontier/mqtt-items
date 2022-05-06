@@ -1,19 +1,28 @@
-#include <ESP8266WiFi.h>
-
 //#define MQTT_BUTTONS_OUT    // LOLIN(WEMIS) D1 R2 & mini + 4MB (FS 2MB)
 //#define MQTT_BUTTONS_IN     // LOLIN(WEMIS) D1 R2 & mini + 4MB (FS 2MB)
 //#define MQTT_LIGHTS         // LOLIN(WEMIS) D1 R2 & mini + 4MB (FS 2MB)
 //#define MQTT_SONOFF "B"       // Generic ESP8266 module    + 1MB (FS 64KB)
 //#define MQTT_RFID "armory"  // LOLIN(WEMIS) D1 R2 & mini + 4MB (FS 2MB)
+
+#include <Arduino.h>
+#include "main.h"
 #include "settings.h"
+#include "ntp.h"
+#include "msg.h"
+#include "leds.h"
+#include "rfid.h"
+#include "buttons.h"
+#include "gpio.h"
+#include "ota.h"
+#include "ws.h"
+#include "api.h"
+#include "status.h"
 
 const char *state = "nosubs";
 
 unsigned long loadavg = 0;
 unsigned long lasttick = 0;
-unsigned long anim_tick = 0;
 int api_check_status = -1;
-int avl_num_entries[2] = {0,0};
 
 void setup() {
   // put your setup code here, to run once:

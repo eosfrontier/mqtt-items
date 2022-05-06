@@ -1,3 +1,8 @@
+#include "settings.h"
+#include <stdint.h>
+#include <Arduino.h>
+#include "msg.h"
+#include "main.h"
 
 void buttons_setup()
 {
@@ -6,9 +11,9 @@ void buttons_setup()
   }
 }
 
-int buttons_last = 0;
-int buttons_retry = 0;
-int buttons_send = 0;
+static int buttons_last = 0;
+static int buttons_retry = 0;
+static int buttons_send = 0;
 
 void buttons_check()
 {
