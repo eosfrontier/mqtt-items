@@ -1,0 +1,45 @@
+Inter-module communication, tcp variant:
+
+Central module wifi setup
+- Central tcp server, which is also softap access-point
+- Has list of SSID/pwd to connect to (on SPIFFS)
+- Can also accept an extra SSID/pwd via server connection (web interface? telnet?)
+
+Module wifi setup:
+- Modules connect to softap
+- Connect to server
+- Get wifi details from server (i.e. the SSID/pwd the server is connected to)
+- If wifi details available, Connect to wifi
+- If unable to connect to wifi, go back to softap
+- Loop with incremental backoff
+
+Central module server
+- Maintain message states per topic
+- Act as tcp server
+- Module clients connect to the server (connection is maintained)
+- Clients subscribe to topics
+- Server sends current states to clients when subscribing
+- Client sends topic updates
+- Server passes topic updates to subscribed clients
+
+Module client
+- Connect to server
+- Subscribe to topic
+- Act on messages received from server
+- Send topic update on button presses, state changes, etc.
+
+
+TODO: Test softap in combination with wifi connection
+- If really good, maybe skip modules connecting to wifi?
+- If really bad, figure out some way to drop softap when all modules are connected
+
+
+TODO: Where to maintain mapping of topic messages to actions?
+- On each module: Current implementation.  Is it more robust?
+- On the server: More centralized easier to follow event flow, client simplification
+
+
+TODO: Which module acs as server?  The lights without buttons?
+
+Server topic mapping:
+- Use config file?
