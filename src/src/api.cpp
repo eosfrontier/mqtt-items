@@ -2,7 +2,7 @@
 #include "settings.h"
 #include "api.h"
 #ifdef MQTT_RFID
-#include <FS.h>
+#include <LittleFS.h>
 #include <WiFiClientSecure.h>
 #include "leds.h"
 #include "avl.h"
@@ -322,15 +322,15 @@ void api_setup()
   api_next_load[API_CHARACTERS] = lasttick + 3000;
   api_next_load[API_META] = lasttick + 5000;
   api_next_load[API_SEND] = lasttick + 1000;
-  if (SPIFFS.exists("/ApiToken.txt")) {
-    File tokentxt = SPIFFS.open("/ApiToken.txt", "r");
+  if (LittleFS.exists("/ApiToken.txt")) {
+    File tokentxt = LittleFS.open("/ApiToken.txt", "r");
     api_token = tokentxt.readStringUntil('\n');
     tokentxt.close();
   } else {
     api_token = "xxxx";
   }
-  if (SPIFFS.exists("/EosPubKey.txt")) {
-    File pubkeytxt = SPIFFS.open("/EosPubKey.txt", "r");
+  if (LittleFS.exists("/EosPubKey.txt")) {
+    File pubkeytxt = LittleFS.open("/EosPubKey.txt", "r");
     String eos_pubkey = pubkeytxt.readString();
     pubkeytxt.close();
     BearSSL::PublicKey *eos_key = new BearSSL::PublicKey(eos_pubkey.c_str());

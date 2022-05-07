@@ -77,7 +77,8 @@ const char * const BUTTONS_NAMES[] = {};
 
 #define MSG_NAME_NUM_PARTS 3
 
-const int MAX_SUBSCRIBERS = 10;
+const int MAX_CLIENTS = 8;
+const int MAX_SUBSCRIBERS = 16;
 
 const int BUTTONS_NUM = sizeof(BUTTONS_PINS)/sizeof(*BUTTONS_PINS);
 

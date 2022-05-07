@@ -1,44 +1,15 @@
-#include <WiFiUdp.h>
-#include <FS.h>
 #include "settings.h"
 #include "msg.h"
 #include "main.h"
 #include "leds.h"
 #include "buttons.h"
+#include <LittleFS.h>
 #include <ESP8266WiFi.h>
-
-unsigned int mqtt_port = 1883;
-WiFiUDP msg_udp;
-
-struct {
-    IPAddress ip;
-    unsigned long lastseen;
-    char topic[24];
-} subscribers[MAX_SUBSCRIBERS];
-
-void msg_setup()
-{
-#ifndef MQTT_SOFTAP
-  WiFi.softAPdisconnect(true);
-  WiFi.mode(WIFI_STA);
-#else
-  WiFi.mode(WIFI_AP_STA);
-#endif
-  int nap = WiFi.scanNetworks(false, true);
-  if (nap == 0) {
-      Serial.println("WiFi scan found zero networks!");
-  }
-  for (int i = 0; i < nap; i++) {
-      Serial.print("Found network "); Serial.print(WiFi.SSID(i)); Serial.print(" on Channel "); Serial.print(WiFi.channel(i)); Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.println(")");
-  }
-  WiFi.scanDelete();
-  msg_udp.begin(mqtt_port);
-  SPIFFS.begin();
-}
+#include <WiFiUdp.h>
 
 // Strings vergelijken met een beperkte wildcard optie
 // * matcht alles tot aan de volgende slash (werkt dus alleen met */)
-bool strmatch(const char *patt, const char *match, bool partial = false)
+static bool strmatch(const char *patt, const char *match, bool partial = false)
 {
   // Serial.print("strmatch("); Serial.print(patt); Serial.print(", "); Serial.print(match); Serial.print(", "); Serial.print(partial); Serial.println(")");
   
@@ -58,84 +29,182 @@ bool strmatch(const char *patt, const char *match, bool partial = false)
   return (partial || (*p == *m));
 }
 
-void msg_send_sub(const char *topic, const char *msg, int idx)
+#ifdef MQTT_SOFTAP
+
+static WiFiServer server(mqtt_port);
+
+static WiFiClient clients[MAX_CLIENTS];
+
+static struct {
+    int16_t clientidx;
+    char topic[62];
+} subscribers[MAX_SUBSCRIBERS];
+
+static void cprintf(WiFiClient client, const char *fmt, ...)
 {
-  if (subscribers[idx].topic[0]) {
-    if (!strcmp(topic, "SUB")) {
-      Serial.print("Sending to "); Serial.print(subscribers[idx].ip); Serial.print(" : <"); Serial.print(topic); Serial.print("> -> <"); Serial.print(msg); Serial.println(">");
-      msg_udp.beginPacket(subscribers[idx].ip, mqtt_port);
-      msg_udp.write(topic, strlen(topic));
-      msg_udp.write('\n');
-      msg_udp.write(msg, strlen(msg));
-      msg_udp.endPacket();
-    } else if (strmatch(subscribers[idx].topic, topic)) {
-      Serial.print("Sending to "); Serial.print(subscribers[idx].ip); Serial.print(" : <"); Serial.print(MSG_NAME "/"); Serial.print(topic); Serial.print("> -> <"); Serial.print(msg); Serial.println(">");
-      msg_udp.beginPacket(subscribers[idx].ip, mqtt_port);
-      msg_udp.write(MSG_NAME "/", strlen(MSG_NAME)+1);
-      msg_udp.write(topic, strlen(topic));
-      msg_udp.write('\n');
-      msg_udp.write(msg, strlen(msg));
-      msg_udp.endPacket();
-    }
-  }
+    va_list args;
+    va_start(args, fmt);
+    char s[256];
+
+    vsnprintf(s, sizeof(s), fmt, args);
+    client.print(s);
+    va_end(args);
 }
 
-void msg_send(const char *topic, const char *msg)
+static void send_topics(WiFiClient client)
 {
-  for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
-    msg_send_sub(topic, msg, i);
-  }
 }
+
+static void new_client(WiFiClient client)
+{
+    for (int idx = 0; idx < MAX_CLIENTS; idx++) {
+        if (!clients[idx]) {
+            clients[idx] = client;
+            cprintf(client, "HELLO\r\n");
+            send_topics(client);
+            return;
+        }
+    }
+    // No free space
+    cprintf(client, "All connections full, disconnecting\r\n");
+    client.stop();
+}
+
+static void server_send_message(const char *topic, const char *msg)
+{
+    for (int idx = 0; idx < MAX_SUBSCRIBERS; idx++) {
+        if (subscribers[idx].clientidx >= 0) {
+            if (strmatch(subscribers[idx].topic, topic)) {
+                WiFiClient client = clients[subscribers[idx].clientidx];
+                if (client && client.connected()) {
+                    cprintf(client, "%s %s\r\n", topic, msg);
+                }
+            }
+        }
+    }
+}
+
+static void handle_message(int clientidx, const char *topic, const char *msg)
+{
+    if (!strcmp(topic, "SUB")) {
+        if (strlen(msg) >= (sizeof(subscribers[0].topic)-1)) {
+            cprintf(clients[clientidx], "ERROR Subscribe topic too long\r\n");
+            return;
+        }
+        for (int si = 0; si < MAX_SUBSCRIBERS; si++) {
+            if (subscribers[si].clientidx < 0) {
+                subscribers[si].clientidx = clientidx;
+                strcpy(subscribers[si].topic, msg);
+                return;
+            }
+        }
+        cprintf(clients[clientidx], "ERROR No room for subscriptions\r\n");
+    } else {
+        server_send_message(topic, msg);
+        msg_receive(topic, msg);
+    }
+}
+
+static void check_client(int clientidx)
+{
+    WiFiClient client = clients[clientidx];
+    char buf[256];
+    size_t av = client.available();
+    if (!av) return;
+    if (av > 255) av = 255;
+    if (client.peekBytes(buf, av) < av) return;
+    char *nl = (char *)memchr(buf, '\n', av);
+    if (nl) {
+        int n = nl - buf + 1;
+        if (client.read(buf, n) != n) return;
+        while (buf[n-1] == '\r' || buf[n-1] == '\n' || buf[n-1] == ' ')
+            n--;
+        buf[n] = 0;
+        char *msg = strchr(buf, ' ');
+        if (msg) {
+            *msg++ = 0;
+            handle_message(clientidx, buf, msg);
+        }
+        return check_client(client);
+    } else {
+        client.read(buf, av);
+        return check_client(client);
+    }
+}
+
+static void server_check()
+{
+    // Connect new clients
+    while (server.hasClient()) {
+        new_client(server.available());
+    }
+    // Handle existing clients
+    for (int idx = 0; idx < MAX_CLIENTS; idx++) {
+        if (clients[idx]) {
+            if (clients[idx].connected()) {
+                check_client(clients[idx]);
+            } else {
+                for (int si = 0; si < MAX_SUBSCRIBERS; si++) {
+                    if (subscribers[si].clientidx == idx) {
+                        subscribers[si].clientidx = -1;
+                    }
+                }
+                clients[idx].stop();
+            }
+        }
+    }
+}
+
+static void server_setup()
+{
+    for (int si = 0; si < MAX_SUBSCRIBERS; si++) {
+        subscribers[si].clientidx = -1;
+    }
+    server.begin();
+}
+
+#else // MQTT_SOFTAP
+static void server_check() { }
+static void server_setup() { }
+static void server_send_message(const char *topic, const char *msg)
+{
+    // TODO: client connect to server and send
+}
+#endif // MQTT_SOFTAP
 
 unsigned long lastsub = 0;
 unsigned long lastacksend = 0;
 char lastack[33];
 
-void msg_add_sub(const char *topic)
+void msg_setup()
 {
-  // Serial.print("Add sub <"); Serial.print(topic); Serial.println(">");
-  if (strmatch(topic, MSG_NAME "/", true)) {
-    const char *postfix = topic;
-    for (int i = 0; i < MSG_NAME_NUM_PARTS; i++) {
-      postfix = strchr(postfix, '/');
-      if (!postfix) {
-        Serial.print("ERROR: Subscribe topic too few parts: <"); Serial.print(topic); Serial.println(">");
-        return; // Sanity
-      }
-      postfix++;
-    }
-    if (strlen(postfix) >= sizeof(subscribers[0].topic)) {
-      Serial.print("ERROR: Subscribe topic too long: <"); Serial.print(postfix); Serial.println(">");
-      return; 
-    }
-    IPAddress ip = msg_udp.remoteIP();
-    int idx = -1;
-    bool resub = false;
-    for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
-      if (subscribers[i].ip == ip && !strcmp(subscribers[i].topic, postfix)) {
-        idx = i;
-        resub = true;
-        break;
-      }
-      if (idx < 0 && (!subscribers[i].topic[0])) {
-        idx = i;
-      }
-    }
-    if (idx >= 0) {
-      if (!resub) {
-        Serial.print("Subscribed "); Serial.print(ip); Serial.print(" on <"); Serial.print(postfix); Serial.println(">");
-        strcpy(subscribers[idx].topic, postfix);
-        subscribers[idx].ip = ip;
-        lastsub = lasttick;
-      }
-      subscribers[idx].lastseen = lasttick;
-      if (lastack[0]) {
-        msg_send_sub("ack", lastack, idx);
-      }
-    } else {
-      Serial.print("ERROR: More than "); Serial.print(MAX_SUBSCRIBERS); Serial.print(" subscribers, cannot subscribe "); Serial.print(ip); Serial.print(" <"); Serial.print(topic); Serial.println(">");
-    }
+#ifndef MQTT_SOFTAP
+  WiFi.softAPdisconnect(true);
+  WiFi.mode(WIFI_STA);
+#else
+  WiFi.mode(WIFI_AP_STA);
+#endif
+  int nap = WiFi.scanNetworks(false, true);
+  if (nap == 0) {
+      Serial.println("WiFi scan found zero networks!");
   }
+  for (int i = 0; i < nap; i++) {
+      Serial.print("Found network "); Serial.print(WiFi.SSID(i)); Serial.print(" on Channel "); Serial.print(WiFi.channel(i)); Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.println(")");
+  }
+  WiFi.scanDelete();
+  LittleFS.begin();
+  server_setup();
+}
+
+void msg_send(const char *topic, const char *msg)
+{
+#ifdef MQTT_SOFTAP
+    if (!strcmp(topic, "SUB")) {
+        server_send_message(topic, msg);
+    }
+#else // MQTT_SOFTAP
+    // TODO: Client send message
+#endif // MQTT_SOFTAP
 }
 
 unsigned long lastscan = 0;
@@ -146,13 +215,14 @@ char gotrssi = 0;
 #ifdef MQTT_SOFTAP
 static void send_ssid(void)
 {
-    if (SPIFFS.exists("/wifiD.txt")) {
+    if (LittleFS.exists("/wifiD.txt")) {
         gotssid = 1;
-        File wifitxt = SPIFFS.open("/wifiD.txt", "r");
+        File wifitxt = LittleFS.open("/wifiD.txt", "r");
         String ssidtxt = wifitxt.readString();
         wifitxt.close();
-        const char *msg = ssidtxt.c_str();
+        // const char *msg = ssidtxt.c_str();
         Serial.println("Sending SSID to soft AP subscribers");
+                /*
         for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
             if (subscribers[i].topic[0]) {
                 Serial.print("Sending SSID to soft AP subscriber "); Serial.println(subscribers[i].ip);
@@ -163,13 +233,14 @@ static void send_ssid(void)
                 msg_udp.endPacket();
             }
         }
+                */
     }
 }
 #endif
 
 static void add_ssid(const char *msg)
 {
-    File wifitxt = SPIFFS.open("/wifiD.txt", "w");
+    File wifitxt = LittleFS.open("/wifiD.txt", "w");
     wifitxt.print(msg);
     wifitxt.close();
     Serial.println("Got SSID");
@@ -185,14 +256,10 @@ static void add_ssid(const char *msg)
     }
 }
 
-static void msg_receive(const char *topic, const char *msg)
+void msg_receive(const char *topic, const char *msg)
 {
   Serial.print("receive <"); Serial.print(topic); Serial.print("> = <"); Serial.print(msg); Serial.println(">");
-  // SUB topic is een meta-topic waar anderen op onze messages subscriben
-  if (!strcmp(topic, "SUB")) {
-    msg_add_sub(msg);
-    return;
-  }
+  // SSID topic is een meta-topic om de ssid om te zetten
   if (!strcmp(topic, "SSID")) {
     add_ssid(msg);
     return;
@@ -238,46 +305,8 @@ static void msg_receive(const char *topic, const char *msg)
 
 static void msg_subscribe(const char *topic)
 {
-  IPAddress bcast = WiFi.localIP();
-  if (bcast) {
-    IPAddress smask = WiFi.subnetMask();
-    Serial.print("Sending sub from ip "); Serial.print(bcast); Serial.print(" mask "); Serial.println(smask);
-    for (int i = 0; i < 4; i++) bcast[i] |= ~smask[i];
-    Serial.print("Broadcast to "); Serial.println(bcast);
-    msg_udp.beginPacket(bcast, mqtt_port);
-    msg_udp.write("SUB\n", 4);
-    msg_udp.write(topic, strlen(topic));
-    msg_udp.endPacket();
-  }
-  
-  bcast = WiFi.softAPIP();
-  if (bcast) {
-    Serial.print("Sending sub from SoftAP ip "); Serial.println(bcast);
-    bcast[3] = 255;
-    Serial.print("Broadcast to "); Serial.println(bcast);
-    msg_udp.beginPacket(bcast, mqtt_port);
-    msg_udp.write("SUB\n", 4);
-    msg_udp.write(topic, strlen(topic));
-    msg_udp.endPacket();
-  }
-
-#ifdef MQTT_SOFTAP
-    if (WiFi.softAPIP()) {
-        if (WiFi.softAPgetStationNum() > 0) {
-            if (gotssid) {
-                send_ssid();
-            }
-        } else {
-            gotssid = 0;
-            if (WiFi.status() != WL_CONNECTED) {
-                leds_set("nowifi");
-                lastscan = lasttick + 100;
-            } else {
-                Serial.println("Connected to real WiFI, no subscribers, disconnecting soft AP");
-                WiFi.softAPdisconnect(true);
-            }
-        }
-    }
+#ifndef MQTT_SOFTAP
+    // TODO: Client send subscription
 #endif
 }
 
@@ -307,7 +336,7 @@ static void msg_connect_wifi()
           char wififn[11] = "/wifiA.txt";
           if (wifiidx <= 0) {
             wifiidx = 0;
-            while (SPIFFS.exists(wififn)) {
+            while (LittleFS.exists(wififn)) {
               wifiidx++;
               wififn[5] = 'A' + wifiidx;
             }
@@ -324,7 +353,7 @@ static void msg_connect_wifi()
           } else {
             wifiidx--;
             wififn[5] = 'A' + wifiidx;
-            File wifitxt = SPIFFS.open(wififn, "r");
+            File wifitxt = LittleFS.open(wififn, "r");
             String wssid = wifitxt.readStringUntil('\n');
             String wpwd = wifitxt.readStringUntil('\n');
             wifitxt.close();
@@ -373,38 +402,6 @@ static void msg_connect_wifi()
 void msg_check()
 {
   msg_connect_wifi();
-  char buf[1025];
-  // Kijken of er packets zijn
-  int pak;
-  while ((pak = msg_udp.parsePacket()) > 0) {
-    int rd = msg_udp.read(buf, sizeof(buf)-1);
-    if (rd < pak) {
-      Serial.print("Short read, got "); Serial.print(rd); Serial.print(", expected "); Serial.println(pak);
-      msg_udp.flush();
-    }
-    if (rd > 0) {
-      // String termineren en zoeken naar newline voor topic + message
-      buf[rd] = 0;
-      char *topic = buf;
-      char *msg = (char *)memchr(buf, '\n', rd);
-      if (msg) {
-        *msg++ = 0;
-      }
-      // Serial.print("Topic: "); Serial.println(topic);
-      // if (msg) Serial.print("Msg: "); Serial.println(msg);
-      msg_receive(topic, msg);
-    }
-  }
-  int numsubs = 0;
-  for (int i = 0; i < MAX_SUBSCRIBERS; i++) {
-    if (subscribers[i].topic[0]) {
-      if ((lasttick - subscribers[i].lastseen) > MSG_TIMEOUT) {
-        subscribers[i].topic[0] = 0;
-      } else {
-        numsubs++;
-      }
-    }
-  }
   // Resubscribe every N seconds
   if ((signed)(lasttick - lastsub) >= 0) { // ipv. lasttick >= lastsub ivm overflow effecten
     lastsub = lasttick + MSG_SUB_INTERVAL;
@@ -421,24 +418,13 @@ void msg_check()
     msg_send("ack", lastack);
   }
   if (strcmp(state, "nowifi")) {
-    if ((numsubs == 0) && (api_check_status < 0)) {
-      if (strcmp(state, "nosubs")) {
-        Serial.println("No subs, not live, waiting a while and then disconnecting from WiFi");
-        lastscan = lasttick + random(60 * 1000, 90 * 1000); // 60-90 seconden wachten op subs
-        leds_set("nosubs");
-      } else if (lasttick > lastscan) {
-        leds_set("nowifi");
-        Serial.println("No subs for a while, disconnecting from wifi");
-        WiFi.disconnect();
-      }
-    } else {
-      if (!gotssid) {
-          lastscan = lasttick + 10 * 1000;
-      }
-      if (!strcmp(state, "nosubs")) {
-        Serial.println("We have subscribers, we are live!");
-        leds_set("idle");
-      }
+    if (!gotssid) {
+        lastscan = lasttick + 10 * 1000;
+    }
+    if (!strcmp(state, "nosubs")) {
+      Serial.println("We have subscribers, we are live!");
+      leds_set("idle");
     }
   }
+  server_check();
 }
