@@ -256,7 +256,7 @@ void msg_send(const char *topic, const char *msg)
 #ifdef MQTT_SERVER
     char fulltopic[128];
     strcpy(fulltopic, MSG_NAME "/");
-    strcpy(fulltopic + strlen(MSG_NAME), topic);
+    strcpy(fulltopic + strlen(MSG_NAME) + 1, topic);
     server_send_message(fulltopic, msg);
 #else // MQTT_SERVER
     cprintf(client, "%s%s %s\r\n", MSG_NAME "/", topic, msg);
