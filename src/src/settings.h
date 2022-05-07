@@ -77,8 +77,12 @@ const char * const BUTTONS_NAMES[] = {};
 
 #define MSG_NAME_NUM_PARTS 3
 
+#ifdef MQTT_SERVER
 const int MAX_CLIENTS = 8;
 const int MAX_SUBSCRIBERS = 16;
+#else
+const int MAX_CLIENTS = 1;
+#endif
 
 const int BUTTONS_NUM = sizeof(BUTTONS_PINS)/sizeof(*BUTTONS_PINS);
 

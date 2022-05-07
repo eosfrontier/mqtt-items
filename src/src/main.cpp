@@ -29,13 +29,18 @@ int api_check_status = -1;
 void serprintf(const char *fmt, ...)
 {
 #ifdef SERIALOUT
+    static bool reenter = false;
+    if (reenter) return;
+    reenter = true;
     va_list args;
     va_start(args, fmt);
     char s[256];
 
     vsnprintf(s, sizeof(s), fmt, args);
     Serial.println(s);
+    msg_debug(s);
     va_end(args);
+    reenter = false;
 #endif // SERIALOUT
 }
 

@@ -7,6 +7,8 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 
+static void handle_lines(int idx);
+
 // Strings vergelijken met een beperkte wildcard optie
 // * matcht alles tot aan de volgende slash (werkt dus alleen met */)
 static bool strmatch(const char *patt, const char *match, bool partial = false)
@@ -42,10 +44,6 @@ static void cprintf(WiFiClient client, const char *fmt, ...)
     }
 }
 
-#ifdef MQTT_SERVER
-
-static WiFiServer server(mqtt_port);
-
 static struct {
     WiFiClient client;
     char buffer[128];
@@ -53,6 +51,10 @@ static struct {
     bool connected;
     bool overflow;
 } clients[MAX_CLIENTS];
+
+#ifdef MQTT_SERVER
+
+static WiFiServer server(mqtt_port);
 
 static struct {
     int16_t clientidx;
@@ -125,6 +127,49 @@ static void handle_message(int clientidx, const char *topic, const char *msg)
     }
 }
 
+static void server_check()
+{
+    // Connect new clients
+    while (server.hasClient()) {
+        new_client(server.available());
+    }
+    // Handle existing clients
+    for (int idx = 0; idx < MAX_CLIENTS; idx++) {
+        if (clients[idx].connected) {
+            handle_lines(idx);
+            if (!clients[idx].client.connected()) {
+                serprintf("Connection lost on %d", idx);
+                for (int si = 0; si < MAX_SUBSCRIBERS; si++) {
+                    if (subscribers[si].clientidx == idx) {
+                        serprintf("Unsubscribing %d from %d = %s", idx, si, subscribers[si].topic);
+                        subscribers[si].clientidx = -1;
+                    }
+                }
+                clients[idx].client.stop();
+                clients[idx].connected = false;
+            }
+        }
+    }
+}
+
+static void server_setup()
+{
+    for (int si = 0; si < MAX_SUBSCRIBERS; si++) {
+        subscribers[si].clientidx = -1;
+    }
+    server.begin();
+}
+
+#else // MQTT_SERVER
+static void server_check() { }
+
+static void handle_message(int clientidx, const char *topic, const char *msg)
+{
+    msg_receive(topic, msg);
+}
+
+#endif // MQTT_SERVER
+
 // Scan client for lines (ending with newline)
 // Split on first space, and send to callback function
 // Repeat until buffer empty
@@ -187,48 +232,11 @@ static void handle_lines(int idx)
     clients[idx].bufidx = bufidx;
 }
 
-static void server_check()
-{
-    // Connect new clients
-    while (server.hasClient()) {
-        new_client(server.available());
-    }
-    // Handle existing clients
-    for (int idx = 0; idx < MAX_CLIENTS; idx++) {
-        if (clients[idx].connected) {
-            handle_lines(idx);
-            if (!clients[idx].client.connected()) {
-                serprintf("Connection lost on %d", idx);
-                for (int si = 0; si < MAX_SUBSCRIBERS; si++) {
-                    if (subscribers[si].clientidx == idx) {
-                        serprintf("Unsubscribing %d from %d = %s", idx, si, subscribers[si].topic);
-                        subscribers[si].clientidx = -1;
-                    }
-                }
-                clients[idx].client.stop();
-                clients[idx].connected = false;
-            }
-        }
-    }
-}
-
-static void server_setup()
-{
-    for (int si = 0; si < MAX_SUBSCRIBERS; si++) {
-        subscribers[si].clientidx = -1;
-    }
-    server.begin();
-}
-
-#else // MQTT_SERVER
-static void server_check() { }
-
-static WiFiClient client;
-#endif // MQTT_SERVER
-
 unsigned long lastsub = 0;
 unsigned long lastacksend = 0;
 char lastack[33];
+
+static bool msgdebug = false;
 
 void msg_setup()
 {
@@ -259,7 +267,7 @@ void msg_send(const char *topic, const char *msg)
     strcpy(fulltopic + strlen(MSG_NAME) + 1, topic);
     server_send_message(fulltopic, msg);
 #else // MQTT_SERVER
-    cprintf(client, "%s%s %s\r\n", MSG_NAME "/", topic, msg);
+    cprintf(clients[0].client, "%s/%s %s\r\n", MSG_NAME, topic, msg);
 #endif // MQTT_SERVER
 }
 
@@ -333,6 +341,15 @@ void msg_receive(const char *topic, const char *msg)
     buttons_ack();
     // return;  // Don't return: also allow chaining via mappings
   }
+  if (!strcmp(topic, MSG_NAME "/setdebug")) {
+      if (!strcmp(msg, "on") || !strcmp(msg, "true") || !strcmp(msg, "debug")) {
+          msg_send("debug", "start debugging");
+          msgdebug = true;
+      } else {
+          msg_send("debug", "stop debugging");
+          msgdebug = false;
+      }
+  }
 #ifdef MQTT_GPIO
   if (strmatch(MSG_NAME "/gpio/*", topic)) {
     gpio_set(topic+strlen(MSG_NAME "/gpio/"), msg);
@@ -357,6 +374,13 @@ void msg_receive(const char *topic, const char *msg)
       }
     }
   }
+}
+
+void msg_debug(char *msg)
+{
+    if (msgdebug) {
+        msg_send("debug", msg);
+    }
 }
 
 static void msg_connect_wifi()
@@ -450,42 +474,55 @@ static void msg_connect_wifi()
 
 
 #ifndef MQTT_SERVER
-static int subscribed = 0;
+static unsigned long lastconnect = 0;
+
+// #define SERVER_HOST "eos-portal-light"
+#define SERVER_HOST "192.168.178.235"
 
 static void connect_client()
 {
-    client.connect("eos-portal-light", mqtt_port);
-    client.setNoDelay(true);
-    subscribed = 0;
+    if (WiFi.status() != WL_CONNECTED) return;
+    if (lastconnect < lasttick) {
+        serprintf("Trying to connect to %s:%d", SERVER_HOST, mqtt_port);
+        clients[0].client.connect(SERVER_HOST, mqtt_port);
+        clients[0].client.setNoDelay(true);
+        lastconnect = lasttick + 30000;
+    }
 }
 #endif
 
 void msg_check()
 {
-  msg_connect_wifi();
+    msg_connect_wifi();
 #ifndef MQTT_SERVER
-  if (!client.connected) {
-      connect_client();
-  } else if (!subscribed) {
-    for (int i = 0; MSG_SUBSCRIPTIONS[i]; i++) {
-      cprintf(client, "SUB %s\r\n", MSG_SUBSCRIPTIONS[i]);
+    if (!clients[0].client.connected()) {
+        clients[0].connected = false;
+        connect_client();
+    } else if (!clients[0].connected) {
+        clients[0].connected = true;
+        serprintf("Connected, subscribing");
+        for (int i = 0; MSG_SUBSCRIPTIONS[i]; i++) {
+            serprintf("Send SUB %s", MSG_SUBSCRIPTIONS[i]);
+            cprintf(clients[0].client, "SUB %s\r\n", MSG_SUBSCRIPTIONS[i]);
+        }
+        serprintf("Send SUB %s/*", MSG_NAME);
+        cprintf(clients[0].client, "SUB %s/*\r\n", MSG_NAME);
     }
-    suibscribed = 1;
-  }
+    handle_lines(0);
 #endif
-  // Send our status every M seconds
-  if (lastack[0] && ((signed)(lasttick - lastacksend) >= 0)) { // ipv. lasttick >= lastacksend ivm overflow effecten
-    lastacksend = lasttick + MSG_ACK_INTERVAL;
-    msg_send("ack", lastack);
-  }
-  if (strcmp(state, "nowifi")) {
-    if (!gotssid) {
-        lastscan = lasttick + 10 * 1000;
+    // Send our status every M seconds
+    if (lastack[0] && ((signed)(lasttick - lastacksend) >= 0)) { // ipv. lasttick >= lastacksend ivm overflow effecten
+        lastacksend = lasttick + MSG_ACK_INTERVAL;
+        msg_send("ack", lastack);
     }
-    if (!strcmp(state, "nosubs")) {
-      Serial.println("We have subscribers, we are live!");
-      leds_set("idle");
+    if (strcmp(state, "nowifi")) {
+        if (!gotssid) {
+            lastscan = lasttick + 10 * 1000;
+        }
+        if (!strcmp(state, "nosubs")) {
+            Serial.println("We have subscribers, we are live!");
+            leds_set("idle");
+        }
     }
-  }
-  server_check();
+    server_check();
 }
