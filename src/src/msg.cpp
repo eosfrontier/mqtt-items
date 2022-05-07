@@ -89,6 +89,8 @@ static void server_send_message(const char *topic, const char *msg)
     serprintf("Sending message %s %s", topic, msg);
     for (int idx = 0; idx < MAX_SUBSCRIBERS; idx++) {
         if (subscribers[idx].clientidx >= 0) {
+            serprintf("Matching subscriber %d client %d topic '%s' to '%s'",
+                idx, subscribers[idx].clientidx, subscribers[idx].topic, topic);
             if (strmatch(subscribers[idx].topic, topic)) {
                 if (clients[subscribers[idx].clientidx].connected) {
                     cprintf(clients[subscribers[idx].clientidx].client, "%s %s\r\n", topic, msg);
@@ -135,13 +137,13 @@ static void handle_lines(int idx)
     size_t bufidx = clients[idx].bufidx;
     const size_t bufend = sizeof(clients[idx].buffer);
     while ((av = client.available())) {
-        serprintf("Handling for 0x%x: available = %ld", client, av);
+        // serprintf("Handling for 0x%x: available = %ld, idx = %ld, room = %ld", client, av, bufidx, bufend);
         if (av > (bufend - bufidx - 1)) {
             av = (bufend - bufidx - 1);
         }
-        serprintf("Read %ld bytes", av);
+        // serprintf("Read %ld bytes", av);
         int n = client.read(buffer + bufidx, av);
-        serprintf("Got %d bytes", n);
+        // serprintf("Got %d bytes", n);
         if (n <= 0) {
             serprintf("ERROR Client short read (%d)", n);
             client.stop();
@@ -149,11 +151,11 @@ static void handle_lines(int idx)
             return;
         }
         buffer[bufidx + n] = 0;
-        serprintf("Got %ld data: '%s'", bufidx, buffer);
+        // serprintf("Got %ld data: '%s'", bufidx, buffer);
         char *nl = strchr(buffer + bufidx, '\n');
         bufidx += n;
         if (nl) {
-            serprintf("Newline at %d", nl - buffer);
+            // serprintf("Newline at %d", nl - buffer);
             char *nextline = nl+1;
             if (clients[idx].overflow) {
                 clients[idx].overflow = false;
@@ -171,7 +173,7 @@ static void handle_lines(int idx)
                 }
             }
             while (nextline < (buffer + bufidx) && isSpace(*nextline)) nextline++;
-            bufidx = (buffer + bufidx + 1 - nextline);
+            bufidx = (buffer + bufidx - nextline);
             // Inefficient, but won't often happen
             // Because messages will be sent line by line
             if (bufidx) memmove(buffer, nextline, bufidx);
@@ -250,12 +252,14 @@ void msg_setup()
 
 void msg_send(const char *topic, const char *msg)
 {
+    serprintf("Sending %s %s", topic, msg);
 #ifdef MQTT_SERVER
-    if (!strcmp(topic, "SUB")) {
-        server_send_message(topic, msg);
-    }
+    char fulltopic[128];
+    strcpy(fulltopic, MSG_NAME "/");
+    strcpy(fulltopic + strlen(MSG_NAME), topic);
+    server_send_message(fulltopic, msg);
 #else // MQTT_SERVER
-    cprintf(client, "%s %s\r\n", topic, msg);
+    cprintf(client, "%s%s %s\r\n", MSG_NAME "/", topic, msg);
 #endif // MQTT_SERVER
 }
 
