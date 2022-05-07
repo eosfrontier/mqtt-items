@@ -56,9 +56,9 @@ void api_add_queue(long character_id, bool access)
 
 void api_got_cardid(uint32_t cardid)
 {
-  Serial.print("Got card id "); Serial.println(cardid, HEX);
+  serprintf("Got card id 0x%08x", cardid);
   if (API_QUEUE_FULL) {
-      Serial.println("QUEUE FULL");
+      serprintf("QUEUE FULL");
       leds_set(RFID_LEDS_QUEUE_FULL);
   }
   char cardid_str[9];
@@ -71,7 +71,7 @@ void api_got_cardid(uint32_t cardid)
     uint32_t access = (accessentry ? accessentry->data.access : 0);
     char characterid_str[12];
     sprintf(characterid_str, "%d", characterid);
-    // Serial.print("Found character id "); Serial.print(characterid_str); Serial.print(" with access "); Serial.print(access); Serial.println(".");
+    // serprintf("Found character id %s with access 0x%08x.", characterid_str, access);
     if (access) {
       msg_send("granted", characterid_str);
       leds_set(RFID_LEDS_GRANTED);
@@ -92,7 +92,7 @@ void api_got_cardid(uint32_t cardid)
 int api_parse_headers()
 {
   if (!apiclient.connected()) {
-    Serial.println(F("Connection closed while reading headers"));
+    serprintf(F("Connection closed while reading headers"));
     return -1;
   }
   if (!apiclient.available()) {
@@ -102,11 +102,11 @@ int api_parse_headers()
   int stnum = apiclient.parseInt();
   String ststring = apiclient.readStringUntil('\n');
   
-  Serial.print(F("Orthanc returned ")); Serial.print(stnum); Serial.println(ststring);
+  serprintf(F("Orthanc returned %d %s"), stnum, ststring);
   
   while (apiclient.connected()) {
     String line = apiclient.readStringUntil('\n');
-    Serial.println(line);
+    serprintf(line);
     if (line == "\r") {
       break;
     }
@@ -125,14 +125,14 @@ int api_parse_headers()
 int api_post_json(String path, String json)
 {
   if (WiFi.status() != WL_CONNECTED) return false;
-  Serial.println(F(" Connecting to Orthanc"));
+  serprintf(F(" Connecting to Orthanc"));
   if (!apiclient.connect(API_ORTHANC_SERVER, API_ORTHANC_PORT)) {
-    Serial.println(F("Api Failed to connect to " API_ORTHANC_SERVER));
+    serprintf(F("Api Failed to connect to " API_ORTHANC_SERVER));
     return -1;
   }
 
-  Serial.println(F("  Sending request"));
-  Serial.println(
+  serprintf(F("  Sending request"));
+  serprintf(
     "POST https://" API_ORTHANC_SERVER + path + " HTTP/1.0\r\n"
     "Host: " API_ORTHANC_SERVER "\r\n"
     "Connection: close\r\n"
@@ -182,7 +182,7 @@ char api_parse_type;
 
 void json_object_value(int depth, String key, String val)
 {
-  // Serial.print("DBG: "); Serial.print(depth); Serial.print(","); Serial.print(key); Serial.print(","); Serial.println(val);
+  // serprintf("DBG: %d,%s,%s", depth, key, val);
   if (key == "characterID") {
     long cid = json_parse_int(val);
     if (cid > 0) {
@@ -194,7 +194,7 @@ void json_object_value(int depth, String key, String val)
     uint32_t cid = 0;
     // If it's longer, take the first 8 nibbles, otherwise pad left
     int len = val.length() < 8 ? val.length() : 8;
-    // Serial.print("DBG: card_id("); Serial.print(val.length()); Serial.print("="); Serial.print(len); Serial.print(") = '"); Serial.print(val); Serial.println("'");
+    // serprintf("DBG: card_id(%d=%d) = '%s'", val.length(), len, val);
     int s = 0;
     while (len--) {
       uint8_t c = val[len];
@@ -205,7 +205,7 @@ void json_object_value(int depth, String key, String val)
       } else if (c >= 'A' && c <= 'F') {
         c -= ('A'-10);
       } else {
-        Serial.print("Error parsing card ID '"); Serial.print(val); Serial.println("'");
+        serprintf("Error parsing card ID '%s'", val);
         return;
       }
       cid |= (c << s);
@@ -228,7 +228,7 @@ void json_end_object(int depth)
 {
   if (api_parse_type == API_CHARACTERS) {
     if ((json_current.bitfield & (API_FLAGS_CARDID|API_FLAGS_CHARID)) == (API_FLAGS_CARDID|API_FLAGS_CHARID)) {
-      // Serial.print("Got character id "); Serial.print(json_current.data.character_id); Serial.print(" with card "); Serial.println(json_current.key.card_id, HEX);
+      // serprintf("Got character id %d with card 0x%08x", json_current.data.character_id, json_current.key.card_id);
       avl_insert(&json_current, 0);
     }
   }
@@ -246,7 +246,7 @@ int json_parse_stream_step()
 {
   if (!apiclient.connected()) {
     apiclient.stop();
-    Serial.print(F("Parsed ")); Serial.print(api_parse_count); Serial.println(F(" bytes"));
+    serprintf(F("Parsed %d bytes", api_parse_count));
     avl_print_status();
     if (api_parse_type == API_CHARACTERS) {
       api_failcount[API_CHARACTERS] = 4;

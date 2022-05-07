@@ -24,6 +24,22 @@ unsigned long loadavg = 0;
 unsigned long lasttick = 0;
 int api_check_status = -1;
 
+#define SERIALOUT
+
+void serprintf(const char *fmt, ...)
+{
+#ifdef SERIALOUT
+    va_list args;
+    va_start(args, fmt);
+    char s[256];
+
+    vsnprintf(s, sizeof(s), fmt, args);
+    Serial.println(s);
+    va_end(args);
+#endif // SERIALOUT
+}
+
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(74880);

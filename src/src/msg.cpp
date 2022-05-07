@@ -29,27 +29,35 @@ static bool strmatch(const char *patt, const char *match, bool partial = false)
   return (partial || (*p == *m));
 }
 
-#ifdef MQTT_SOFTAP
+static void cprintf(WiFiClient client, const char *fmt, ...)
+{
+    if (client && client.connected()) {
+        va_list args;
+        va_start(args, fmt);
+        char s[256];
+
+        vsnprintf(s, sizeof(s), fmt, args);
+        client.print(s);
+        va_end(args);
+    }
+}
+
+#ifdef MQTT_SERVER
 
 static WiFiServer server(mqtt_port);
 
-static WiFiClient clients[MAX_CLIENTS];
+static struct {
+    WiFiClient client;
+    char buffer[128];
+    size_t bufidx;
+    bool connected;
+    bool overflow;
+} clients[MAX_CLIENTS];
 
 static struct {
     int16_t clientidx;
     char topic[62];
 } subscribers[MAX_SUBSCRIBERS];
-
-static void cprintf(WiFiClient client, const char *fmt, ...)
-{
-    va_list args;
-    va_start(args, fmt);
-    char s[256];
-
-    vsnprintf(s, sizeof(s), fmt, args);
-    client.print(s);
-    va_end(args);
-}
 
 static void send_topics(WiFiClient client)
 {
@@ -57,27 +65,33 @@ static void send_topics(WiFiClient client)
 
 static void new_client(WiFiClient client)
 {
+    serprintf("New client connection");
     for (int idx = 0; idx < MAX_CLIENTS; idx++) {
-        if (!clients[idx]) {
-            clients[idx] = client;
+        if (!clients[idx].connected) {
+            serprintf("Put client at index %d", idx);
+            clients[idx].client = client;
+            clients[idx].connected = true;
+            clients[idx].bufidx = 0;
+            clients[idx].overflow = false;
             cprintf(client, "HELLO\r\n");
             send_topics(client);
             return;
         }
     }
+    serprintf("ERROR all connections full");
     // No free space
-    cprintf(client, "All connections full, disconnecting\r\n");
+    client.print("ERROR All connections full, disconnecting\r\n");
     client.stop();
 }
 
 static void server_send_message(const char *topic, const char *msg)
 {
+    serprintf("Sending message %s %s", topic, msg);
     for (int idx = 0; idx < MAX_SUBSCRIBERS; idx++) {
         if (subscribers[idx].clientidx >= 0) {
             if (strmatch(subscribers[idx].topic, topic)) {
-                WiFiClient client = clients[subscribers[idx].clientidx];
-                if (client && client.connected()) {
-                    cprintf(client, "%s %s\r\n", topic, msg);
+                if (clients[subscribers[idx].clientidx].connected) {
+                    cprintf(clients[subscribers[idx].clientidx].client, "%s %s\r\n", topic, msg);
                 }
             }
         }
@@ -87,49 +101,88 @@ static void server_send_message(const char *topic, const char *msg)
 static void handle_message(int clientidx, const char *topic, const char *msg)
 {
     if (!strcmp(topic, "SUB")) {
+        serprintf("Subscribing client %d to topic %s", clientidx, msg);
         if (strlen(msg) >= (sizeof(subscribers[0].topic)-1)) {
-            cprintf(clients[clientidx], "ERROR Subscribe topic too long\r\n");
+            cprintf(clients[clientidx].client, "ERROR Subscribe topic too long\r\n");
             return;
         }
         for (int si = 0; si < MAX_SUBSCRIBERS; si++) {
             if (subscribers[si].clientidx < 0) {
                 subscribers[si].clientidx = clientidx;
                 strcpy(subscribers[si].topic, msg);
+                serprintf("Subscribed %d to %s at index %d", clientidx, msg, si);
                 return;
             }
         }
-        cprintf(clients[clientidx], "ERROR No room for subscriptions\r\n");
+        serprintf("ERROR No room in subscriber list");
+        cprintf(clients[clientidx].client, "ERROR No room for subscriptions\r\n");
     } else {
+        serprintf("Handling message from client %d: %s %s", clientidx, topic, msg);
         server_send_message(topic, msg);
         msg_receive(topic, msg);
     }
 }
 
-static void check_client(int clientidx)
+// Scan client for lines (ending with newline)
+// Split on first space, and send to callback function
+// Repeat until buffer empty
+static void handle_lines(int idx)
 {
-    WiFiClient client = clients[clientidx];
-    char buf[256];
-    size_t av = client.available();
-    if (!av) return;
-    if (av > 255) av = 255;
-    if (client.peekBytes(buf, av) < av) return;
-    char *nl = (char *)memchr(buf, '\n', av);
-    if (nl) {
-        int n = nl - buf + 1;
-        if (client.read(buf, n) != n) return;
-        while (buf[n-1] == '\r' || buf[n-1] == '\n' || buf[n-1] == ' ')
-            n--;
-        buf[n] = 0;
-        char *msg = strchr(buf, ' ');
-        if (msg) {
-            *msg++ = 0;
-            handle_message(clientidx, buf, msg);
+    size_t av;
+    if (!clients[idx].connected) return;
+    WiFiClient client = clients[idx].client;
+    char *buffer = clients[idx].buffer;
+    size_t bufidx = clients[idx].bufidx;
+    const size_t bufend = sizeof(clients[idx].buffer);
+    while ((av = client.available())) {
+        serprintf("Handling for 0x%x: available = %ld", client, av);
+        if (av > (bufend - bufidx - 1)) {
+            av = (bufend - bufidx - 1);
         }
-        return check_client(client);
-    } else {
-        client.read(buf, av);
-        return check_client(client);
+        serprintf("Read %ld bytes", av);
+        int n = client.read(buffer + bufidx, av);
+        serprintf("Got %d bytes", n);
+        if (n <= 0) {
+            serprintf("ERROR Client short read (%d)", n);
+            client.stop();
+            clients[idx].connected = false;
+            return;
+        }
+        buffer[bufidx + n] = 0;
+        serprintf("Got %ld data: '%s'", bufidx, buffer);
+        char *nl = strchr(buffer + bufidx, '\n');
+        bufidx += n;
+        if (nl) {
+            serprintf("Newline at %d", nl - buffer);
+            char *nextline = nl+1;
+            if (clients[idx].overflow) {
+                clients[idx].overflow = false;
+                serprintf("Eating long line (%d) '%s'", bufidx, buffer);
+                // Do nothing, just consume the line
+            } else {
+                // Handle a line
+                while (isSpace(*nl)) *nl-- = 0;
+                char *topic = buffer;
+                while (isSpace(*topic)) topic++;
+                char *msg = strchr(topic, ' ');
+                if (msg) {
+                    *msg++ = 0;
+                    handle_message(idx, topic, msg);
+                }
+            }
+            while (nextline < (buffer + bufidx) && isSpace(*nextline)) nextline++;
+            bufidx = (buffer + bufidx + 1 - nextline);
+            // Inefficient, but won't often happen
+            // Because messages will be sent line by line
+            if (bufidx) memmove(buffer, nextline, bufidx);
+        } else if (bufidx >= bufend-1) {
+            // Discard too long line
+            serprintf("Eating long line (%d) '%s'", bufidx, buffer);
+            clients[idx].overflow = true;
+            bufidx = 0;
+        }
     }
+    clients[idx].bufidx = bufidx;
 }
 
 static void server_check()
@@ -140,16 +193,18 @@ static void server_check()
     }
     // Handle existing clients
     for (int idx = 0; idx < MAX_CLIENTS; idx++) {
-        if (clients[idx]) {
-            if (clients[idx].connected()) {
-                check_client(clients[idx]);
-            } else {
+        if (clients[idx].connected) {
+            handle_lines(idx);
+            if (!clients[idx].client.connected()) {
+                serprintf("Connection lost on %d", idx);
                 for (int si = 0; si < MAX_SUBSCRIBERS; si++) {
                     if (subscribers[si].clientidx == idx) {
+                        serprintf("Unsubscribing %d from %d = %s", idx, si, subscribers[si].topic);
                         subscribers[si].clientidx = -1;
                     }
                 }
-                clients[idx].stop();
+                clients[idx].client.stop();
+                clients[idx].connected = false;
             }
         }
     }
@@ -163,14 +218,11 @@ static void server_setup()
     server.begin();
 }
 
-#else // MQTT_SOFTAP
+#else // MQTT_SERVER
 static void server_check() { }
-static void server_setup() { }
-static void server_send_message(const char *topic, const char *msg)
-{
-    // TODO: client connect to server and send
-}
-#endif // MQTT_SOFTAP
+
+static WiFiClient client;
+#endif // MQTT_SERVER
 
 unsigned long lastsub = 0;
 unsigned long lastacksend = 0;
@@ -178,10 +230,11 @@ char lastack[33];
 
 void msg_setup()
 {
-#ifndef MQTT_SOFTAP
+#ifndef MQTT_SERVER
   WiFi.softAPdisconnect(true);
   WiFi.mode(WIFI_STA);
 #else
+  server_setup();
   WiFi.mode(WIFI_AP_STA);
 #endif
   int nap = WiFi.scanNetworks(false, true);
@@ -193,18 +246,17 @@ void msg_setup()
   }
   WiFi.scanDelete();
   LittleFS.begin();
-  server_setup();
 }
 
 void msg_send(const char *topic, const char *msg)
 {
-#ifdef MQTT_SOFTAP
+#ifdef MQTT_SERVER
     if (!strcmp(topic, "SUB")) {
         server_send_message(topic, msg);
     }
-#else // MQTT_SOFTAP
-    // TODO: Client send message
-#endif // MQTT_SOFTAP
+#else // MQTT_SERVER
+    cprintf(client, "%s %s\r\n", topic, msg);
+#endif // MQTT_SERVER
 }
 
 unsigned long lastscan = 0;
@@ -212,7 +264,7 @@ char wifiidx = 3;
 char gotssid = 0;
 char gotrssi = 0;
 
-#ifdef MQTT_SOFTAP
+#ifdef MQTT_SERVER
 static void send_ssid(void)
 {
     if (LittleFS.exists("/wifiD.txt")) {
@@ -244,7 +296,7 @@ static void add_ssid(const char *msg)
     wifitxt.print(msg);
     wifitxt.close();
     Serial.println("Got SSID");
-#ifdef MQTT_SOFTAP
+#ifdef MQTT_SERVER
     send_ssid();
 #endif
     wifiidx = 4;
@@ -303,13 +355,6 @@ void msg_receive(const char *topic, const char *msg)
   }
 }
 
-static void msg_subscribe(const char *topic)
-{
-#ifndef MQTT_SOFTAP
-    // TODO: Client send subscription
-#endif
-}
-
 static void msg_connect_wifi()
 {
   if (WiFi.status() != WL_CONNECTED) {
@@ -357,7 +402,7 @@ static void msg_connect_wifi()
             String wssid = wifitxt.readStringUntil('\n');
             String wpwd = wifitxt.readStringUntil('\n');
             wifitxt.close();
-#ifdef MQTT_SOFTAP
+#ifdef MQTT_SERVER
             if (wifiidx == 0) {
               static int softapchannel = 1;
               if (!WiFi.softAPIP()) {
@@ -399,19 +444,31 @@ static void msg_connect_wifi()
   }
 }
 
+
+#ifndef MQTT_SERVER
+static int subscribed = 0;
+
+static void connect_client()
+{
+    client.connect("eos-portal-light", mqtt_port);
+    client.setNoDelay(true);
+    subscribed = 0;
+}
+#endif
+
 void msg_check()
 {
   msg_connect_wifi();
-  // Resubscribe every N seconds
-  if ((signed)(lasttick - lastsub) >= 0) { // ipv. lasttick >= lastsub ivm overflow effecten
-    lastsub = lasttick + MSG_SUB_INTERVAL;
+#ifndef MQTT_SERVER
+  if (!client.connected) {
+      connect_client();
+  } else if (!subscribed) {
     for (int i = 0; MSG_SUBSCRIPTIONS[i]; i++) {
-      msg_send("SUB", MSG_SUBSCRIPTIONS[i]);
+      cprintf(client, "SUB %s\r\n", MSG_SUBSCRIPTIONS[i]);
     }
-    for (int i = 0; MSG_SUBSCRIPTIONS[i]; i++) {
-      msg_subscribe(MSG_SUBSCRIPTIONS[i]);
-    }
+    suibscribed = 1;
   }
+#endif
   // Send our status every M seconds
   if (lastack[0] && ((signed)(lasttick - lastacksend) >= 0)) { // ipv. lasttick >= lastacksend ivm overflow effecten
     lastacksend = lasttick + MSG_ACK_INTERVAL;
