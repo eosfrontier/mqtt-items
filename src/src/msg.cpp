@@ -127,6 +127,8 @@ static void handle_message(int clientidx, const char *topic, const char *msg)
     }
 }
 
+static MDNSResponder mdns;
+
 static void server_check()
 {
     // Connect new clients
@@ -136,7 +138,6 @@ static void server_check()
     // Handle existing clients
     for (int idx = 0; idx < MAX_CLIENTS; idx++) {
         if (clients[idx].connected) {
-            numsubs++;
             handle_lines(idx);
             if (!clients[idx].client.connected()) {
                 serprintf("Connection lost on %d", idx);
@@ -158,11 +159,14 @@ static void server_check()
         }
     }
     if (numsubs == 0) {
-        leds_set("nosubs");
+        if (WiFi.status() == WL_CONNECTED) {
+            leds_set("nosubs");
+        }
     } else if (!strcmp(state, "nosubs")) {
         leds_set("idle");
         serprintf("We have %d subscribers, we are live!", numsubs);
     }
+    mdns.update();
 }
 
 static void server_setup()
@@ -171,8 +175,14 @@ static void server_setup()
         subscribers[si].clientidx = -1;
     }
     server.begin();
-    MDNS.begin(OTA_NAME);
-    MDNS.addService(OTA_NAME, "mqtt", mqtt_port);
+    serprintf("Setting up mdns responder on %s", OTA_NAME);
+    if (!mdns.begin(OTA_NAME)) {
+        serprintf("Error setting up mdns responder");
+    }
+    serprintf("Adding mdns service %s %s %d", "eos-portal", "tcp", mqtt_port);
+    if (!mdns.addService("eos-portal", "tcp", mqtt_port)) {
+        serprintf("Error adding mdns service");
+    }
 }
 
 #else // MQTT_SERVER
@@ -501,12 +511,12 @@ static unsigned long lastconnect = 0;
 static void connect_client()
 {
     if (lastconnect < lasttick) {
-        serprintf("Querying mdns for %s - %s", SERVER_HOST, "mqtt");
-        int n = MDNS.queryService(SERVER_HOST, "mqtt");
+        serprintf("Querying mdns for %s - %s", "eos-portal", "tcp");
+        int n = MDNS.queryService("eos-portal", "tcp");
         serprintf("Found %d services", n);
         if (n) {
-            serprintf("Trying to connect to %s:%d", MDNS.IP(0), MDNS.port(0));
-            clients[0].client.connect(MDNS.IP(0), MDNS.port(0));
+            serprintf("Trying to connect to %s:%d", MDNS.answerHostname(0), MDNS.answerPort(0));
+            clients[0].client.connect(MDNS.answerIP(0), MDNS.answerPort(0));
             clients[0].client.setNoDelay(true);
         }
         lastconnect = lasttick + 30000;
