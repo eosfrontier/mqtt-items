@@ -5,7 +5,7 @@
 #include "buttons.h"
 #include <LittleFS.h>
 #include <ESP8266WiFi.h>
-#include <WiFiUdp.h>
+#include <ESP8266mDNS.h>
 
 static void handle_lines(int idx);
 
@@ -46,7 +46,7 @@ static void cprintf(WiFiClient client, const char *fmt, ...)
 
 static struct {
     WiFiClient client;
-    char buffer[128];
+    char buffer[256];
     size_t bufidx;
     bool connected;
     bool overflow;
@@ -136,6 +136,7 @@ static void server_check()
     // Handle existing clients
     for (int idx = 0; idx < MAX_CLIENTS; idx++) {
         if (clients[idx].connected) {
+            numsubs++;
             handle_lines(idx);
             if (!clients[idx].client.connected()) {
                 serprintf("Connection lost on %d", idx);
@@ -150,6 +151,18 @@ static void server_check()
             }
         }
     }
+    int numsubs = 0;
+    for (int si = 0; si < MAX_SUBSCRIBERS; si++) {
+        if (subscribers[si].clientidx >= 0) {
+            numsubs++;
+        }
+    }
+    if (numsubs == 0) {
+        leds_set("nosubs");
+    } else if (!strcmp(state, "nosubs")) {
+        leds_set("idle");
+        serprintf("We have %d subscribers, we are live!", numsubs);
+    }
 }
 
 static void server_setup()
@@ -158,6 +171,8 @@ static void server_setup()
         subscribers[si].clientidx = -1;
     }
     server.begin();
+    MDNS.begin(OTA_NAME);
+    MDNS.addService(OTA_NAME, "mqtt", mqtt_port);
 }
 
 #else // MQTT_SERVER
@@ -195,16 +210,16 @@ static void handle_lines(int idx)
             clients[idx].connected = false;
             return;
         }
-        buffer[bufidx + n] = 0;
-        // serprintf("Got %ld data: '%s'", bufidx, buffer);
-        char *nl = strchr(buffer + bufidx, '\n');
         bufidx += n;
-        if (nl) {
+        buffer[bufidx] = 0;
+        // serprintf("Got %ld data: '%s'", bufidx, buffer);
+        char *nl;
+        while ((nl = strchr(buffer, '\n'))) {
             // serprintf("Newline at %d", nl - buffer);
             char *nextline = nl+1;
             if (clients[idx].overflow) {
                 clients[idx].overflow = false;
-                serprintf("Eating long line (%d) '%s'", bufidx, buffer);
+                serprintf("Eating long line (%d) '%.*s'", bufidx, bufidx, buffer);
                 // Do nothing, just consume the line
             } else {
                 // Handle a line
@@ -212,19 +227,26 @@ static void handle_lines(int idx)
                 char *topic = buffer;
                 while (isSpace(*topic)) topic++;
                 char *msg = strchr(topic, ' ');
+                // serprintf("Trimmed, space at %d: '%s'", (msg-topic), topic);
                 if (msg) {
                     *msg++ = 0;
                     handle_message(idx, topic, msg);
+                    *(msg-1) = ' ';
                 }
             }
+            // serprintf("Next line at %d of %d, buffer is '%.*s'", (nextline - buffer), bufidx, bufidx, buffer);
             while (nextline < (buffer + bufidx) && isSpace(*nextline)) nextline++;
             bufidx = (buffer + bufidx - nextline);
+            // serprintf("Moving %d bytes from %d to 0: '%.*s'", bufidx, (nextline-buffer), bufidx, nextline);
             // Inefficient, but won't often happen
             // Because messages will be sent line by line
             if (bufidx) memmove(buffer, nextline, bufidx);
-        } else if (bufidx >= bufend-1) {
+            buffer[bufidx] = 0;
+            // serprintf("Remaining %d bytes: '%.*s'", bufidx, bufidx, buffer);
+        }
+        if (bufidx >= bufend-1) {
             // Discard too long line
-            serprintf("Eating long line (%d) '%s'", bufidx, buffer);
+            serprintf("Eating long line (%d) '%.*s'", bufidx, bufidx, buffer);
             clients[idx].overflow = true;
             bufidx = 0;
         }
@@ -232,7 +254,6 @@ static void handle_lines(int idx)
     clients[idx].bufidx = bufidx;
 }
 
-unsigned long lastsub = 0;
 unsigned long lastacksend = 0;
 char lastack[33];
 
@@ -467,8 +488,7 @@ static void msg_connect_wifi()
       }
   } else if (!strcmp(state, "nowifi")) {
       Serial.print("Connected to WiFi, IP: "); Serial.println(WiFi.localIP());
-      leds_set("idle");
-      lastsub = lasttick + 500; // Halve seconde afwachten
+      leds_set("nosubs");
   }
 }
 
@@ -476,16 +496,19 @@ static void msg_connect_wifi()
 #ifndef MQTT_SERVER
 static unsigned long lastconnect = 0;
 
-// #define SERVER_HOST "eos-portal-light"
-#define SERVER_HOST "192.168.178.235"
+#define SERVER_HOST "eos-portal-light"
 
 static void connect_client()
 {
-    if (WiFi.status() != WL_CONNECTED) return;
     if (lastconnect < lasttick) {
-        serprintf("Trying to connect to %s:%d", SERVER_HOST, mqtt_port);
-        clients[0].client.connect(SERVER_HOST, mqtt_port);
-        clients[0].client.setNoDelay(true);
+        serprintf("Querying mdns for %s - %s", SERVER_HOST, "mqtt");
+        int n = MDNS.queryService(SERVER_HOST, "mqtt");
+        serprintf("Found %d services", n);
+        if (n) {
+            serprintf("Trying to connect to %s:%d", MDNS.IP(0), MDNS.port(0));
+            clients[0].client.connect(MDNS.IP(0), MDNS.port(0));
+            clients[0].client.setNoDelay(true);
+        }
         lastconnect = lasttick + 30000;
     }
 }
@@ -497,7 +520,12 @@ void msg_check()
 #ifndef MQTT_SERVER
     if (!clients[0].client.connected()) {
         clients[0].connected = false;
-        connect_client();
+        if (WiFi.status() == WL_CONNECTED) {
+            connect_client();
+            if (!strcmp(state, "nowifi")) {
+                leds_set("nosubs");
+            }
+        }
     } else if (!clients[0].connected) {
         clients[0].connected = true;
         serprintf("Connected, subscribing");
@@ -505,8 +533,14 @@ void msg_check()
             serprintf("Send SUB %s", MSG_SUBSCRIPTIONS[i]);
             cprintf(clients[0].client, "SUB %s\r\n", MSG_SUBSCRIPTIONS[i]);
         }
-        serprintf("Send SUB %s/*", MSG_NAME);
-        cprintf(clients[0].client, "SUB %s/*\r\n", MSG_NAME);
+        serprintf("Send SUB %s/set", MSG_NAME);
+        cprintf(clients[0].client, "SUB %s/set\r\n", MSG_NAME);
+        serprintf("Send SUB %s/setdebug", MSG_NAME);
+        cprintf(clients[0].client, "SUB %s/setdebug\r\n", MSG_NAME);
+        if (!strcmp(state, "nosubs")) {
+            leds_set("idle");
+            serprintf("We are connected, we are live!");
+        }
     }
     handle_lines(0);
 #endif
@@ -518,10 +552,6 @@ void msg_check()
     if (strcmp(state, "nowifi")) {
         if (!gotssid) {
             lastscan = lasttick + 10 * 1000;
-        }
-        if (!strcmp(state, "nosubs")) {
-            Serial.println("We have subscribers, we are live!");
-            leds_set("idle");
         }
     }
     server_check();
