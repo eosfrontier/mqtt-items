@@ -1,6 +1,6 @@
 #include "rfid.h"
 #ifdef MQTT_RFID
-#include <Wire.h>
+//#include <Wire.h>
 
 #define PN532 0x24
 #define I2C_SDA 2

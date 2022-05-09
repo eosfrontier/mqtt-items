@@ -3,6 +3,8 @@
 #include "main.h"
 #include "leds.h"
 #include "buttons.h"
+#include "gpio.h"
+#include "ws.h"
 #include <LittleFS.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
@@ -56,13 +58,26 @@ static struct {
 
 static WiFiServer server(mqtt_port);
 
+const int MAX_TOPICS = 16;
+
 static struct {
     int16_t clientidx;
     char topic[62];
 } subscribers[MAX_SUBSCRIBERS];
 
-static void send_topics(WiFiClient client)
+static struct {
+    unsigned long lastseen;
+    char topic[62];
+    char msg[62];
+} topic_cache[MAX_TOPICS];
+
+static void send_topic(WiFiClient client, const char *topic)
 {
+    for (int i = 0; i < MAX_TOPICS; i++) {
+        if (strmatch(topic, topic_cache[i].topic)) {
+            cprintf(client, "%s %s\r\n", topic_cache[i].topic, topic_cache[i].msg);
+        }
+    }
 }
 
 static void new_client(WiFiClient client)
@@ -76,7 +91,6 @@ static void new_client(WiFiClient client)
             clients[idx].bufidx = 0;
             clients[idx].overflow = false;
             cprintf(client, "HELLO\r\n");
-            send_topics(client);
             return;
         }
     }
@@ -89,10 +103,31 @@ static void new_client(WiFiClient client)
 static void server_send_message(const char *topic, const char *msg)
 {
     serprintf("Sending message %s %s", topic, msg);
+    if ((strlen(topic) < 62) && (strlen(msg) < 62)) {
+        unsigned long oldest = 0;
+        int cidx = -1;
+        for (int ti = 0; ti < MAX_TOPICS; ti++) {
+            if (!strcmp(topic_cache[ti].topic, topic)) {
+                // Same topic, overwrite
+                cidx = ti;
+                break;
+            }
+            unsigned long age = lasttick - topic_cache[ti].lastseen;
+            if (age > oldest) {
+                // Find topic that is oldest
+                oldest = age;
+                cidx = ti;
+            }
+        }
+        serprintf("Adding message %s %s to cache at index %d with age %ld", topic, msg, cidx, lasttick);
+        strcpy(topic_cache[cidx].topic, topic);
+        strcpy(topic_cache[cidx].msg, msg);
+        topic_cache[cidx].lastseen = lasttick;
+    }
     for (int idx = 0; idx < MAX_SUBSCRIBERS; idx++) {
         if (subscribers[idx].clientidx >= 0) {
-            serprintf("Matching subscriber %d client %d topic '%s' to '%s'",
-                idx, subscribers[idx].clientidx, subscribers[idx].topic, topic);
+            //serprintf("Matching subscriber %d client %d topic '%s' to '%s'",
+            //    idx, subscribers[idx].clientidx, subscribers[idx].topic, topic);
             if (strmatch(subscribers[idx].topic, topic)) {
                 if (clients[subscribers[idx].clientidx].connected) {
                     cprintf(clients[subscribers[idx].clientidx].client, "%s %s\r\n", topic, msg);
@@ -115,6 +150,7 @@ static void handle_message(int clientidx, const char *topic, const char *msg)
                 subscribers[si].clientidx = clientidx;
                 strcpy(subscribers[si].topic, msg);
                 serprintf("Subscribed %d to %s at index %d", clientidx, msg, si);
+                send_topic(clients[clientidx].client, msg);
                 return;
             }
         }
@@ -173,6 +209,11 @@ static void server_setup()
 {
     for (int si = 0; si < MAX_SUBSCRIBERS; si++) {
         subscribers[si].clientidx = -1;
+    }
+    for (int ti = 0; ti < MAX_TOPICS; ti++) {
+        topic_cache[ti].lastseen = 0;
+        topic_cache[ti].topic[0] = 0;
+        topic_cache[ti].msg[0] = 0;
     }
     server.begin();
     serprintf("Setting up mdns responder on %s", OTA_NAME);
@@ -353,7 +394,7 @@ static void add_ssid(const char *msg)
 
 void msg_receive(const char *topic, const char *msg)
 {
-  Serial.print("receive <"); Serial.print(topic); Serial.print("> = <"); Serial.print(msg); Serial.println(">");
+  serprintf("receive <%s> = <%s>", topic, msg);
   // SSID topic is een meta-topic om de ssid om te zetten
   if (!strcmp(topic, "SSID")) {
     add_ssid(msg);
@@ -383,12 +424,14 @@ void msg_receive(const char *topic, const char *msg)
   }
 #ifdef MQTT_GPIO
   if (strmatch(MSG_NAME "/gpio/*", topic)) {
+    serprintf("gpio_set(%s, %s)", topic+strlen(MSG_NAME "/gpio/"), msg);
     gpio_set(topic+strlen(MSG_NAME "/gpio/"), msg);
     // return;  // Don't return: also allow chaining via mappings
   }
 #endif
 #ifdef MQTT_WEBSOCKETS
   if (!strcmp(topic, WS_BROADCAST_ACK)) {
+    serprintf("ws_send_ack(%s)", msg);
     ws_send_ack(msg);
   }
 #endif
@@ -543,6 +586,10 @@ void msg_check()
             serprintf("Send SUB %s", MSG_SUBSCRIPTIONS[i]);
             cprintf(clients[0].client, "SUB %s\r\n", MSG_SUBSCRIPTIONS[i]);
         }
+#ifdef MQTT_GPIO
+        serprintf("Send SUB %s/gpio/*", MSG_NAME);
+        cprintf(clients[0].client, "SUB %s/gpio/*\r\n", MSG_NAME);
+#endif
         serprintf("Send SUB %s/set", MSG_NAME);
         cprintf(clients[0].client, "SUB %s/set\r\n", MSG_NAME);
         serprintf("Send SUB %s/setdebug", MSG_NAME);

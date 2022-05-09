@@ -1,5 +1,8 @@
 #include "gpio.h"
+#include "settings.h"
 #ifdef MQTT_GPIO
+#include <Arduino.h>
+#include "main.h"
 
 void gpio_setup()
 {
@@ -15,12 +18,12 @@ void gpio_check()
 
 void gpio_set(const char *topic, const char *msg)
 {
-  Serial.print("Setting GPIO "); Serial.print(topic); Serial.print(" to "); Serial.println(msg);
+  serprintf("Setting GPIO %s to %s", topic, msg);
   for (int i = 0; GPIO_PORTS[i]; i += 3) {
     if (!strcmp(topic, GPIO_PORTS[i])) {
       int hilo = GPIO_PORTS[i+2][0] == 'L';
       if (msg[0] == 'H') { hilo = !hilo; }
-      Serial.print("Setting GPIO PIN "); Serial.print((int)GPIO_PORTS[i+1]); Serial.print(" to digital "); Serial.println(hilo);
+      serprintf("Setting GPIO PIN %d to digital %d", (int)GPIO_PORTS[i+1], hilo);
       digitalWrite((int)GPIO_PORTS[i+1], hilo);
     }
   }

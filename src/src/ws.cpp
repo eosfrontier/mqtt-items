@@ -1,7 +1,11 @@
 // Async-ish websockets
+#include "settings.h"
 #include "ws.h"
 #ifdef MQTT_WEBSOCKETS
+#include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
+#include "main.h"
+#include "msg.h"
 
 WiFiClientSecure wsclient;
 
@@ -54,12 +58,13 @@ void ws_setup()
 
 void ws_send(const char *msg)
 {
+  serprintf("ws_send(%s)", msg);
   if (!wsclient.connected()) {
     return;
   }
   int size = strlen(msg);
   uint8_t buf[size+8];
-  Serial.print("WS Trying to send("); Serial.print(size); Serial.print("): "); Serial.println(msg);
+  serprintf("WS Trying to send(%d): %s", size, msg);
   uint8_t *bufptr = buf;
   *bufptr++ = WS_FIN | WS_OPCODE_TEXT;
   if (size > 125) {
@@ -78,7 +83,7 @@ void ws_send(const char *msg)
   for (int i = 0; i < size; i++) {
     *bufptr++ = msg[i] ^ mask[i%4];
   }
-  Serial.print("WS Writing "); Serial.print(bufptr-buf); Serial.println(" bytes");
+  serprintf("WS Writing %d bytes", bufptr-buf);
   wsclient.write((const uint8_t *)buf, (bufptr-buf));
 }
 
@@ -92,12 +97,12 @@ int ws_message_retry = 0;
 
 void ws_receive_broadcast(const char *bc)
 {
-  Serial.print("Received broadcast: '"); Serial.print(bc); Serial.println("'");
+  serprintf("Received broadcast: '%s'", bc);
   for (int i = 0; WS_BROADCAST_RECEIVE[i]; i += 3) {
     if (!strcmp(bc, WS_BROADCAST_RECEIVE[i])) {
       ws_message_last = i;
       ws_message_retry = WS_MESSAGE_RETRIES * WS_MESSAGE_RETRY_DELAY + 1;
-      Serial.print("Send message: <"); Serial.print(WS_BROADCAST_RECEIVE[i+1]); Serial.print("> -> <"); Serial.print(WS_BROADCAST_RECEIVE[i+2]); Serial.println(">");
+      serprintf("Send message: <%s> -> <%s>", WS_BROADCAST_RECEIVE[i+1], WS_BROADCAST_RECEIVE[i+2]);
       msg_send(WS_BROADCAST_RECEIVE[i+1], WS_BROADCAST_RECEIVE[i+2]);
       return;
     }
@@ -118,19 +123,16 @@ void ws_resend_message(void)
 
 void ws_receive(char *msg)
 {
-    Serial.print("Received WS message: <<<");
-    Serial.print(msg);
-    Serial.println(">>>");
+    serprintf("Received WS message: <<<%s>>>", msg);
     if (msg[0] == '0') {
-      Serial.print("TODO: Do something with connection info: ");
-      Serial.println(msg+1);
+      serprintf("TODO: Do something with connection info: ", msg+1);
     }
     if (msg[0] == '2') {
       ws_send("3");
     } else if (msg[0] == '4') {
       if (msg[1] == '0') {
         ws_ping_time = lasttick;
-        Serial.println("WS Connected");
+        serprintf("WS Connected");
       } else if (msg[1] == '2') {
         if (startswith(msg+2, "[\"broadcastReceive\"")) {
           char *bcfile = strstr(msg+24, "\"file\":\"");
@@ -143,9 +145,7 @@ void ws_receive(char *msg)
             }
           }
         } else {
-          Serial.print("TODO: Do something with <<<");
-          Serial.print(msg+2);
-          Serial.println(">>>");
+          serprintf("TODO: Do something with <<<%s>>>", msg+2);
         }
       }
     }
@@ -188,6 +188,7 @@ void ws_check()
         wsstate = noconn;
     }
     if (wsstate == noconn) {
+        serprintf("Trying to connect to %s:%d", WS_HOST, WS_PORT);
         if (!wsclient.connect(WS_HOST, WS_PORT)) {
             wsstate = errwait;
             ws_timeout = 100;
@@ -208,8 +209,7 @@ void ws_check()
             "Upgrade: websocket\r\n"
             "Sec-WebSocket-Version: 13\r\n"
             "Sec-WebSocket-Key: " + generateKey() + "=\r\n\r\n";
-        Serial.println("WS Send handshake");
-        Serial.println(hs);
+        serprintf("WS Send handshake %s", hs.c_str());
         wsclient.write(hs.c_str());
         ws_shakes = 0;
         wsstate = handshaking;
@@ -218,43 +218,40 @@ void ws_check()
     if (wsstate == handshaking) {
         while (wsclient.available()) {
             String s = wsclient.readStringUntil('\n');
-            Serial.print("WS received: ");
-            Serial.println(s);
             const char *ss = s.c_str();
+            serprintf("WS received: %s", ss);
             if (s == "\r") {
                 if (ws_shakes != WSH_COMPLETE) {
-                    Serial.print("WS End of handshake, status not ok: ");
-                    Serial.println(ws_shakes);
+                    serprintf("WS End of handshake, status not ok: %d", ws_shakes);
                     wsclient.stop();
                     return;
                 }
-                Serial.println("WS End of handshake");
+                serprintf("WS End of handshake");
                 break;
             } else if (s.indexOf("HTTP/") != -1) {
                 if (!memcmp(ss+9, "101", 3)) {
                     ws_shakes |= WSH_STATUS;
-                    Serial.println("WS Status is OK");
+                    serprintf("WS Status is OK");
                 } else {
-                    Serial.print("WS Wrong status received: ");
-                    Serial.println(s);
+                    serprintf("WS Wrong status received: %s", ss);
                     wsclient.stop();
                     return;
                 }
             } else if (!strncmp(ss, "Connection: ", 12)) {
                 if (!strncmp(ss+13, "pgrade", 6)) {
                     ws_shakes |= WSH_UPGRADE;
-                    Serial.println("WS Upgrade OK");
+                    serprintf("WS Upgrade OK");
                 }
             } else if (!strncmp(ss, "Sec-WebSocket-Accept:", 21)) {
                 ws_shakes |= WSH_KEY;
-                Serial.println("WS key OK");
+                serprintf("WS key OK");
             } else if (!strncmp(ss, "Upgrade: websocket", 18)) {
                 ws_shakes |= WSH_WEBSOCKET;
-                Serial.println("WS Websocket OK");
+                serprintf("WS Websocket OK");
             }
         }
         if (ws_shakes == WSH_COMPLETE) {
-            Serial.println("WS is connected successfully");
+            serprintf("WS is connected successfully");
             wsstate = connected;
         }
         return;
@@ -262,6 +259,7 @@ void ws_check()
     if (wsstate == connected) {
         if (wsclient.available()) {
             unsigned int msgtype = wsclient.read();
+            (void)msgtype;
             int length = wsclient.read();
             bool masked = false;
             if (length & WS_MASK) {
@@ -294,6 +292,7 @@ void ws_check()
 
 void ws_send_ack(const char *ack)
 {
+  serprintf("ws_send_ack(%s)", ack);
   if (ws_message_last >= 0) {
     if (!strcmp(WS_BROADCAST_RECEIVE[ws_message_last+2], ack)) {
       // Received mqtt-ack from a websocket message
