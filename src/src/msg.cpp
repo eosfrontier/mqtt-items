@@ -269,7 +269,7 @@ static void handle_data(void *arg, AsyncClient *client, void *data, size_t len)
         }
         if (!clients[idx].overflow) {
             size_t linelen = nl-ptr+1;
-            // serprintf("Found line of length %d: '*.*s'", linelen, ptr, ptr);
+            // serprintf("Found line of length %d: '%.*s'", linelen, linelen, ptr);
             if (linelen < (bufend-bufidx)) {
                 memcpy(buffer+bufidx, ptr, linelen);
                 char *bnl = buffer+bufidx+linelen-1;
@@ -295,7 +295,9 @@ static void handle_data(void *arg, AsyncClient *client, void *data, size_t len)
             ptr++;
             len--;
         }
-        // serprintf("Extra %d bytes after trim: '%.*s'", len, len, ptr);
+        if (len > 0) {
+            serprintf("Extra %d bytes after trim: '%.*s'", len, len, ptr);
+        }
     }
 }
 
@@ -571,10 +573,8 @@ void msg_check()
     if (!clients[0].client->connected()) {
         clients[0].connected = false;
         if (WiFi.status() == WL_CONNECTED) {
+            leds_set("nosubs");
             connect_client();
-            if (!strcmp(state, "nowifi")) {
-                leds_set("nosubs");
-            }
         }
     } else if (!clients[0].connected) {
         clients[0].connected = true;
