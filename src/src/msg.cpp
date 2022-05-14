@@ -250,7 +250,7 @@ static void handle_data(void *arg, AsyncClient *client, void *data, size_t len)
     size_t bufidx = clients[idx].bufidx;
     static const size_t bufend = sizeof(clients[idx].buffer);
     char *ptr = (char *)data;
-    serprintf("Client %d, received %d bytes: '%.*s'", idx, len, len, ptr);
+    // serprintf("Client %d, received %d bytes: '%.*s'", idx, len, len, ptr);
     while (len > 0) {
         char *nl = (char *)memchr(ptr, '\n', len);
         if (!nl) {
@@ -258,17 +258,18 @@ static void handle_data(void *arg, AsyncClient *client, void *data, size_t len)
             // Store in buffer
             if (len > (bufend-bufidx)) {
                 // Overflow
+                serprintf("Client %d line overflow, dropping %d bytes", idx, len);
                 clients[idx].overflow = true;
                 return;
             }
             memcpy(buffer + bufidx, ptr, len);
             clients[idx].bufidx = bufidx + len;
-            serprintf("Stored in buffer, total %d: '%.*s'", clients[idx].bufidx, clients[idx].bufidx, buffer);
+            // serprintf("Stored in buffer, total %d: '%.*s'", clients[idx].bufidx, clients[idx].bufidx, buffer);
             return;
         }
         if (!clients[idx].overflow) {
             size_t linelen = nl-ptr+1;
-            serprintf("Found line of length %d: '*.*s'", linelen, ptr, ptr);
+            // serprintf("Found line of length %d: '*.*s'", linelen, ptr, ptr);
             if (linelen < (bufend-bufidx)) {
                 memcpy(buffer+bufidx, ptr, linelen);
                 char *bnl = buffer+bufidx+linelen-1;
@@ -276,7 +277,7 @@ static void handle_data(void *arg, AsyncClient *client, void *data, size_t len)
                 char *topic = buffer;
                 while (isSpace(*topic)) topic++;
                 char *msg = strchr(topic, ' ');
-                serprintf("Trimmed, space at %d: '%s'", (msg-topic), topic);
+                // serprintf("Trimmed, space at %d: '%s'", (msg-topic), topic);
                 if (msg) {
                     *msg++ = 0;
                     handle_message(idx, topic, msg);
@@ -289,12 +290,12 @@ static void handle_data(void *arg, AsyncClient *client, void *data, size_t len)
         nl = nl+1;
         len = len - (nl-ptr);
         ptr = nl;
-        serprintf("Extra %d bytes: '%.*s'", len, len, ptr);
+        // serprintf("Extra %d bytes: '%.*s'", len, len, ptr);
         while ((len > 0) && isSpace(*(char *)ptr)) {
             ptr++;
             len--;
         }
-        serprintf("Extra %d bytes after trim: '%.*s'", len, len, ptr);
+        // serprintf("Extra %d bytes after trim: '%.*s'", len, len, ptr);
     }
 }
 
@@ -309,7 +310,7 @@ void msg_setup()
   WiFi.softAPdisconnect(true);
   WiFi.mode(WIFI_STA);
   clients[0].client = new AsyncClient;
-  client->onData(&handle_data, (void *)0);
+  clients[0].client->onData(&handle_data, (void *)0);
   //client->onDisconnect(&handle_disconnect, (void *)0);
 #else
   server_setup();
