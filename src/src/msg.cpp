@@ -8,8 +8,9 @@
 #include <LittleFS.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
+#include <ESPAsyncTCP.h>
 
-static void handle_lines(int idx);
+static void handle_data(void *arg, AsyncClient *client, void *data, size_t len);
 
 // Strings vergelijken met een beperkte wildcard optie
 // * matcht alles tot aan de volgende slash (werkt dus alleen met */)
@@ -33,30 +34,35 @@ static bool strmatch(const char *patt, const char *match, bool partial = false)
   return (partial || (*p == *m));
 }
 
-static void cprintf(WiFiClient client, const char *fmt, ...)
+static void cprintf(AsyncClient *client, const char *fmt, ...)
 {
-    if (client && client.connected()) {
+    if (client && client->canSend()) {
         va_list args;
         va_start(args, fmt);
         char s[256];
 
-        vsnprintf(s, sizeof(s), fmt, args);
-        client.print(s);
+        size_t n = vsnprintf(s, sizeof(s), fmt, args);
+        if (client->space() >= n) {
+            client->add(s, n);
+            client->send();
+        } else {
+            client->stop();
+        }
         va_end(args);
     }
 }
 
 static struct {
-    WiFiClient client;
+    AsyncClient *client;
     char buffer[256];
     size_t bufidx;
+    bool overflow; // Buffer was full without newline.  Discard data until newline found
     bool connected;
-    bool overflow;
 } clients[MAX_CLIENTS];
 
 #ifdef MQTT_SERVER
 
-static WiFiServer server(mqtt_port);
+static AsyncServer *server;
 
 const int MAX_TOPICS = 16;
 
@@ -71,7 +77,7 @@ static struct {
     char msg[62];
 } topic_cache[MAX_TOPICS];
 
-static void send_topic(WiFiClient client, const char *topic)
+static void send_topic(AsyncClient *client, const char *topic)
 {
     for (int i = 0; i < MAX_TOPICS; i++) {
         if (strmatch(topic, topic_cache[i].topic)) {
@@ -80,24 +86,27 @@ static void send_topic(WiFiClient client, const char *topic)
     }
 }
 
-static void new_client(WiFiClient client)
+static void new_client(void *arg, AsyncClient *client)
 {
     serprintf("New client connection");
     for (int idx = 0; idx < MAX_CLIENTS; idx++) {
-        if (!clients[idx].connected) {
+        if (!clients[idx].client) {
             serprintf("Put client at index %d", idx);
+            client->setNoDelay(true);
+            client->onData(&handle_data, (void *)idx);
+            //client->onDisconnect(&handle_disconnect, (void *)idx);
             clients[idx].client = client;
-            clients[idx].connected = true;
             clients[idx].bufidx = 0;
             clients[idx].overflow = false;
+            clients[idx].connected = true;
             cprintf(client, "HELLO\r\n");
             return;
         }
     }
     serprintf("ERROR all connections full");
     // No free space
-    client.print("ERROR All connections full, disconnecting\r\n");
-    client.stop();
+    cprintf(client, "ERROR All connections full, disconnecting\r\n");
+    client->stop();
 }
 
 static void server_send_message(const char *topic, const char *msg)
@@ -167,15 +176,10 @@ static MDNSResponder mdns;
 
 static void server_check()
 {
-    // Connect new clients
-    while (server.hasClient()) {
-        new_client(server.available());
-    }
     // Handle existing clients
     for (int idx = 0; idx < MAX_CLIENTS; idx++) {
         if (clients[idx].connected) {
-            handle_lines(idx);
-            if (!clients[idx].client.connected()) {
+            if (!clients[idx].client->connected()) {
                 serprintf("Connection lost on %d", idx);
                 for (int si = 0; si < MAX_SUBSCRIBERS; si++) {
                     if (subscribers[si].clientidx == idx) {
@@ -183,8 +187,9 @@ static void server_check()
                         subscribers[si].clientidx = -1;
                     }
                 }
-                clients[idx].client.stop();
+                clients[idx].client->stop();
                 clients[idx].connected = false;
+                clients[idx].client = nullptr;
             }
         }
     }
@@ -215,7 +220,9 @@ static void server_setup()
         topic_cache[ti].topic[0] = 0;
         topic_cache[ti].msg[0] = 0;
     }
-    server.begin();
+    server = new AsyncServer(mqtt_port);
+    server->onClient(new_client, (void *)0);
+    server->begin();
     serprintf("Setting up mdns responder on %s", OTA_NAME);
     if (!mdns.begin(OTA_NAME)) {
         serprintf("Error setting up mdns responder");
@@ -236,73 +243,59 @@ static void handle_message(int clientidx, const char *topic, const char *msg)
 
 #endif // MQTT_SERVER
 
-// Scan client for lines (ending with newline)
-// Split on first space, and send to callback function
-// Repeat until buffer empty
-static void handle_lines(int idx)
+static void handle_data(void *arg, AsyncClient *client, void *data, size_t len)
 {
-    size_t av;
-    if (!clients[idx].connected) return;
-    WiFiClient client = clients[idx].client;
+    int idx = (int)arg;
     char *buffer = clients[idx].buffer;
     size_t bufidx = clients[idx].bufidx;
-    const size_t bufend = sizeof(clients[idx].buffer);
-    while ((av = client.available())) {
-        // serprintf("Handling for 0x%x: available = %ld, idx = %ld, room = %ld", client, av, bufidx, bufend);
-        if (av > (bufend - bufidx - 1)) {
-            av = (bufend - bufidx - 1);
-        }
-        // serprintf("Read %ld bytes", av);
-        int n = client.read(buffer + bufidx, av);
-        // serprintf("Got %d bytes", n);
-        if (n <= 0) {
-            serprintf("ERROR Client short read (%d)", n);
-            client.stop();
-            clients[idx].connected = false;
+    static const size_t bufend = sizeof(clients[idx].buffer);
+    char *ptr = (char *)data;
+    serprintf("Client %d, received %d bytes: '%.*s'", idx, len, len, ptr);
+    while (len > 0) {
+        char *nl = (char *)memchr(ptr, '\n', len);
+        if (!nl) {
+            if (clients[idx].overflow) { return; }
+            // Store in buffer
+            if (len > (bufend-bufidx)) {
+                // Overflow
+                clients[idx].overflow = true;
+                return;
+            }
+            memcpy(buffer + bufidx, ptr, len);
+            clients[idx].bufidx = bufidx + len;
+            serprintf("Stored in buffer, total %d: '%.*s'", clients[idx].bufidx, clients[idx].bufidx, buffer);
             return;
         }
-        bufidx += n;
-        buffer[bufidx] = 0;
-        // serprintf("Got %ld data: '%s'", bufidx, buffer);
-        char *nl;
-        while ((nl = strchr(buffer, '\n'))) {
-            // serprintf("Newline at %d", nl - buffer);
-            char *nextline = nl+1;
-            if (clients[idx].overflow) {
-                clients[idx].overflow = false;
-                serprintf("Eating long line (%d) '%.*s'", bufidx, bufidx, buffer);
-                // Do nothing, just consume the line
-            } else {
-                // Handle a line
-                while (isSpace(*nl)) *nl-- = 0;
+        if (!clients[idx].overflow) {
+            size_t linelen = nl-ptr+1;
+            serprintf("Found line of length %d: '*.*s'", linelen, ptr, ptr);
+            if (linelen < (bufend-bufidx)) {
+                memcpy(buffer+bufidx, ptr, linelen);
+                char *bnl = buffer+bufidx+linelen-1;
+                while (isSpace(*bnl)) *bnl-- = 0;
                 char *topic = buffer;
                 while (isSpace(*topic)) topic++;
                 char *msg = strchr(topic, ' ');
-                // serprintf("Trimmed, space at %d: '%s'", (msg-topic), topic);
+                serprintf("Trimmed, space at %d: '%s'", (msg-topic), topic);
                 if (msg) {
                     *msg++ = 0;
                     handle_message(idx, topic, msg);
-                    *(msg-1) = ' ';
+                    // *(msg-1) = ' ';
                 }
             }
-            // serprintf("Next line at %d of %d, buffer is '%.*s'", (nextline - buffer), bufidx, bufidx, buffer);
-            while (nextline < (buffer + bufidx) && isSpace(*nextline)) nextline++;
-            bufidx = (buffer + bufidx - nextline);
-            // serprintf("Moving %d bytes from %d to 0: '%.*s'", bufidx, (nextline-buffer), bufidx, nextline);
-            // Inefficient, but won't often happen
-            // Because messages will be sent line by line
-            if (bufidx) memmove(buffer, nextline, bufidx);
-            buffer[bufidx] = 0;
-            // serprintf("Remaining %d bytes: '%.*s'", bufidx, bufidx, buffer);
         }
-        if (bufidx >= bufend-1) {
-            // Discard too long line
-            serprintf("Eating long line (%d) '%.*s'", bufidx, bufidx, buffer);
-            clients[idx].overflow = true;
-            bufidx = 0;
+        clients[idx].overflow = false;
+        clients[idx].bufidx = 0;
+        nl = nl+1;
+        len = len - (nl-ptr);
+        ptr = nl;
+        serprintf("Extra %d bytes: '%.*s'", len, len, ptr);
+        while ((len > 0) && isSpace(*(char *)ptr)) {
+            ptr++;
+            len--;
         }
+        serprintf("Extra %d bytes after trim: '%.*s'", len, len, ptr);
     }
-    clients[idx].bufidx = bufidx;
 }
 
 unsigned long lastacksend = 0;
@@ -315,6 +308,9 @@ void msg_setup()
 #ifndef MQTT_SERVER
   WiFi.softAPdisconnect(true);
   WiFi.mode(WIFI_STA);
+  clients[0].client = new AsyncClient;
+  client->onData(&handle_data, (void *)0);
+  //client->onDisconnect(&handle_disconnect, (void *)0);
 #else
   server_setup();
   WiFi.mode(WIFI_AP_STA);
@@ -559,8 +555,8 @@ static void connect_client()
         serprintf("Found %d services", n);
         if (n) {
             serprintf("Trying to connect to %s:%d", MDNS.answerHostname(0), MDNS.answerPort(0));
-            clients[0].client.connect(MDNS.answerIP(0), MDNS.answerPort(0));
-            clients[0].client.setNoDelay(true);
+            clients[0].client->connect(MDNS.answerIP(0), MDNS.answerPort(0));
+            clients[0].client->setNoDelay(true);
         }
         lastconnect = lasttick + 30000;
     }
@@ -571,7 +567,7 @@ void msg_check()
 {
     msg_connect_wifi();
 #ifndef MQTT_SERVER
-    if (!clients[0].client.connected()) {
+    if (!clients[0].client->connected()) {
         clients[0].connected = false;
         if (WiFi.status() == WL_CONNECTED) {
             connect_client();
@@ -599,7 +595,6 @@ void msg_check()
             serprintf("We are connected, we are live!");
         }
     }
-    handle_lines(0);
 #endif
     // Send our status every M seconds
     if (lastack[0] && ((signed)(lasttick - lastacksend) >= 0)) { // ipv. lasttick >= lastacksend ivm overflow effecten
