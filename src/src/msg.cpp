@@ -74,7 +74,7 @@ static void queue_check()
             // Drop if not connected or too old
             // Stop so it disconnects when too old
             client->close(true);
-            client_queue[idx].client = nullptr;
+            client_queue[idx].client = NULL;
             client_queue[idx].line[0] = 0;
             done = true;
         } else if (client->canSend()) {
@@ -95,7 +95,7 @@ static void queue_check()
         }
         if (done) {
             // Empty entry
-            client_queue[idx].client = nullptr;
+            client_queue[idx].client = NULL;
             client_queue[idx].line[0] = 0;
             if (idx != queueroot) {
                 uint8_t next = client_queue[idx].next;
@@ -123,7 +123,7 @@ static void queue_check()
 static void queue_setup()
 {
     for (uint8_t idx = 0; idx < MAX_QUEUE; idx++) {
-        client_queue[idx].client = nullptr;
+        client_queue[idx].client = NULL;
         client_queue[idx].line[0] = 0;
         client_queue[idx].next = (idx+1) % MAX_QUEUE;
     }
@@ -293,10 +293,10 @@ static void handle_message(int clientidx, const char *topic, const char *msg)
         serprintf("Sending SSID message to clients");
         for (int idx = 0; idx < MAX_CLIENTS; idx++) {
             if (clients[idx].connected) {
-                serprintf("Sending SSID to client ad idx %d (local %s / remote %s)",
+                serprintf("Sending SSID to client at idx %d (local %s / remote %s)",
                     idx, LOCAL_IP_STRING(clients[idx].client),
                     REMOTE_IP_STRING(clients[idx].client));
-                cprintf(clients[idx].client, "SSID %s", msg);
+                cprintf(clients[idx].client, "SSID %s\r\n", msg);
             }
         }
     } else {
@@ -322,7 +322,7 @@ static void server_check()
                     }
                 }
                 clients[idx].connected = false;
-                clients[idx].client = nullptr;
+                clients[idx].client = NULL;
             }
         }
     }
@@ -451,30 +451,46 @@ static void ap_setup()
 }
 #endif
 
+unsigned long lastscan = 0;
+char wifiidx = 0;
+char gotssid = 0;
+char gotrssi = 0;
+#ifdef MQTT_SERVER
+static const char wifiskip = 1;
+#else
+static const char wifiskip = 0;
+#endif
+
 void msg_setup()
 {
-  LittleFS.begin();
-  queue_setup();
+    LittleFS.begin();
+    char wififn[11] = "/wifiA.txt";
+    wifiidx = 0;
+    while (LittleFS.exists(wififn)) {
+        wifiidx++;
+        wififn[5] = 'A' + wifiidx;
+    }
+    queue_setup();
 #ifndef MQTT_SERVER
-  WiFi.softAPdisconnect(true);
-  WiFi.mode(WIFI_STA);
-  clients[0].client = new AsyncClient;
-  clients[0].client->onData(&handle_data, (void *)0);
-  //client->onDisconnect(&handle_disconnect, (void *)0);
+    WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_STA);
+    clients[0].client = new AsyncClient;
+    clients[0].client->onData(&handle_data, (void *)0);
+    //client->onDisconnect(&handle_disconnect, (void *)0);
 #else
-  ap_setup();
-  server_setup();
+    ap_setup();
+    server_setup();
 #endif
-  /*
-  int nap = WiFi.scanNetworks(false, true);
-  if (nap == 0) {
-      Serial.println("WiFi scan found zero networks!");
-  }
-  for (int i = 0; i < nap; i++) {
-      Serial.print("Found network "); Serial.print(WiFi.SSID(i)); Serial.print(" on Channel "); Serial.print(WiFi.channel(i)); Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.println(")");
-  }
-  WiFi.scanDelete();
-  */
+    /*
+       int nap = WiFi.scanNetworks(false, true);
+       if (nap == 0) {
+       Serial.println("WiFi scan found zero networks!");
+       }
+       for (int i = 0; i < nap; i++) {
+       Serial.print("Found network "); Serial.print(WiFi.SSID(i)); Serial.print(" on Channel "); Serial.print(WiFi.channel(i)); Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.println(")");
+       }
+       WiFi.scanDelete();
+     */
 }
 
 void msg_send(const char *topic, const char *msg)
@@ -489,11 +505,6 @@ void msg_send(const char *topic, const char *msg)
     cprintf(clients[0].client, "%s/%s %s\r\n", MSG_NAME, topic, msg);
 #endif // MQTT_SERVER
 }
-
-unsigned long lastscan = 0;
-char wifiidx = 3;
-char gotssid = 0;
-char gotrssi = 0;
 
 #if 0 // def MQTT_SERVER
 static void send_ssid(void)
@@ -625,73 +636,44 @@ static void msg_connect_wifi()
           int8_t rssi = WiFi.RSSI();
           Serial.print("WiFi bssid/rssi: "); Serial.print(WiFi.BSSIDstr()); Serial.print(" / "); Serial.println(rssi);
           if (!gotrssi) {
-            if (rssi < 0) {  // Lager is beter
-              gotrssi = 1;
-              lastscan = lasttick + 60 * 1000; // 60 seconden wachten als er signaal is
-              Serial.print("RSSI = "); Serial.print(rssi); Serial.println(", waiting for connection to resolve");
-              return;
-            }
+              if (rssi < 0) {  // Lager is beter
+                  gotrssi = 1;
+                  lastscan = lasttick + 60 * 1000; // 60 seconden wachten als er signaal is
+                  Serial.print("RSSI = "); Serial.print(rssi); Serial.println(", waiting for connection to resolve");
+                  return;
+              }
           }
           lastscan = lasttick + 15 * 1000; // Elke 15 seconden een ssid proberen
           char wififn[11] = "/wifiA.txt";
           if (wifiidx <= 0) {
-            wifiidx = 0;
-            while (LittleFS.exists(wififn)) {
-              wifiidx++;
-              wififn[5] = 'A' + wifiidx;
-            }
-            Serial.print("Scanned wifi down from "); Serial.print(wififn); Serial.println(" redo from start");
-            int nap = WiFi.scanNetworks(false, true);
-            if (nap == 0) {
-                Serial.println("WiFi scan found zero networks!");
-            }
-            for (int i = 0; i < nap; i++) {
-                Serial.print("Found network "); Serial.print(WiFi.SSID(i)); Serial.print(" on Channel "); Serial.print(WiFi.channel(i)); Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.println(")");
-            }
-            WiFi.scanDelete();
-            lastscan = lasttick + 60 * 1000; // Na de hele lijst 60 seconden wachten
-          } else {
-            wifiidx--;
-            wififn[5] = 'A' + wifiidx;
-            File wifitxt = LittleFS.open(wififn, "r");
-            String wssid = wifitxt.readStringUntil('\n');
-            String wpwd = wifitxt.readStringUntil('\n');
-            wifitxt.close();
-#ifdef MQTT_SERVER
-            if (wifiidx == 0) {
-#if 0
-              static int softapchannel = 1;
-              if (!WiFi.softAPIP()) {
-                  uint32_t seenchannels = 0;
-                  int nap = WiFi.scanNetworks(false, true);
-                  if (nap == 0) { Serial.println("WiFi scan found zero networks!"); }
-                  for (int i = 0; i < nap; i++) {
-                      int ch = WiFi.channel(i);
-                      Serial.print("Found network "); Serial.print(WiFi.SSID(i)); Serial.print(" on Channel "); Serial.print(ch); Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.println(")");
-                      seenchannels |= (1 << ch);
-                  }
-                  WiFi.scanDelete();
-                  for (int c = 1; c <= 11; c++) {
-                      if (!(seenchannels & (1 << c))) {
-                          softapchannel = c;
-                          break;
-                      }
-                  }
+              wifiidx = 0;
+              while (LittleFS.exists(wififn)) {
+                  wifiidx++;
+                  wififn[5] = 'A' + wifiidx;
               }
-              if (!WiFi.softAP(wssid, wpwd, softapchannel, false, 8)) {
-                Serial.println("Error listening to SoftAP!");
-              } else {
-                Serial.print("SoftAP Listening on '"); Serial.print(wssid); Serial.print("' pwd='"); Serial.print(wpwd); Serial.print("' IP="); Serial.print(WiFi.softAPIP()); Serial.print(", channel "); Serial.println(softapchannel);
-                Serial.print("Currently we have "); Serial.print(WiFi.softAPgetStationNum()); Serial.println(" clients connected to SoftAP");
+              Serial.print("Scanned wifi down from "); Serial.print(wififn); Serial.println(" redo from start");
+              int nap = WiFi.scanNetworks(false, true);
+              if (nap == 0) {
+                  Serial.println("WiFi scan found zero networks!");
               }
-#endif
-            } else
-#endif
-            {
+              for (int i = 0; i < nap; i++) {
+                  Serial.print("Found network "); Serial.print(WiFi.SSID(i)); Serial.print(" on Channel "); Serial.print(WiFi.channel(i)); Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.println(")");
+              }
+              WiFi.scanDelete();
+              // lastscan = lasttick + 60 * 1000; // Na de hele lijst 60 seconden wachten
+          }
+          wifiidx--;
+          wififn[5] = 'A' + wifiidx;
+          serprintf("Trying wifi creds from %s", wififn);
+          File wifitxt = LittleFS.open(wififn, "r");
+          String wssid = wifitxt.readStringUntil('\n');
+          String wpwd = wifitxt.readStringUntil('\n');
+          wifitxt.close();
+          if (wifiidx >= wifiskip) {
+              // skip = wifiA but only on server because that's our own softap
               Serial.print("Wifi trying to connect to '"); Serial.print(wssid); Serial.print("' pwd '"); Serial.print(wpwd); Serial.println("'...");
               WiFi.begin(wssid, wpwd);
               gotrssi = 0;
-            }
           }
       }
   } else if (!strcmp(state, "nowifi")) {
@@ -713,7 +695,7 @@ static void connect_client()
         int n = MDNS.queryService("eos-portal", "tcp");
         serprintf("Found %d services", n);
         if (n) {
-            serprintf("Trying to connect to %s:%d", MDNS.answerHostname(0), MDNS.answerPort(0));
+            serprintf("Trying to connect to %s at %s:%d", MDNS.answerHostname(0), MDNS.answerIP(0).toString().c_str(), MDNS.answerPort(0));
             clients[0].client->connect(MDNS.answerIP(0), MDNS.answerPort(0));
             clients[0].client->setNoDelay(true);
         }
@@ -743,10 +725,8 @@ void msg_check()
         serprintf("Send SUB %s/gpio/*", MSG_NAME);
         cprintf(clients[0].client, "SUB %s/gpio/*\r\n", MSG_NAME);
 #endif
-        serprintf("Send SUB %s/set", MSG_NAME);
+        serprintf("Send SUB %s/set*", MSG_NAME);
         cprintf(clients[0].client, "SUB %s/set\r\n", MSG_NAME);
-        serprintf("Send SUB %s/setdebug", MSG_NAME);
-        cprintf(clients[0].client, "SUB %s/setdebug\r\n", MSG_NAME);
         if (!strcmp(state, "nosubs")) {
             leds_set("idle");
             serprintf("We are connected, we are live!");

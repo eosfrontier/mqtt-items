@@ -81,7 +81,7 @@ const char * const BUTTONS_NAMES[] = {};
 
 #ifdef MQTT_SERVER
 const int MAX_CLIENTS = 8;
-const int MAX_SUBSCRIBERS = 16;
+const int MAX_SUBSCRIBERS = 32;
 #else
 const int MAX_CLIENTS = 1;
 #endif
