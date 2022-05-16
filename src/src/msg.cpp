@@ -37,13 +37,26 @@ static bool strmatch(const char *patt, const char *match, bool partial = false)
   return (partial || (*p == *m));
 }
 
-#define MAX_QUEUE 32
-#define MAX_LINE_SIZE 244
-#define MAX_QUEUE_AGE 2000
+#ifdef MQTT_SERVER
+static const int MAX_QUEUE = 64;
+#else
+static const int MAX_QUEUE = 32;
+#endif
+static const int MAX_LINE_SIZE = 244;
+static const size_t MAX_QUEUE_AGE = 5000;
+
+static struct {
+    AsyncClient *client;
+    char buffer[256];
+    size_t bufidx;
+    bool overflow; // Buffer was full without newline.  Discard data until newline found
+    bool connected;
+    bool tosend; // Client has data to send
+} clients[MAX_CLIENTS];
 
 // Linked list that's always a complete circular chain
 static struct {
-    AsyncClient *client;
+    int clientidx;
     unsigned long tick;
     char line[MAX_LINE_SIZE];
     uint8_t next;
@@ -51,30 +64,60 @@ static struct {
 
 static uint8_t queueroot;
 
+#if 0
+#ifdef MQTT_SERVER
+#define DEBUG_QUEUE
+#endif
+#ifdef MQTT_SONOFF
+#define DEBUG_QUEUE
+#endif
+#endif
+
+#ifdef DEBUG_QUEUE
+static bool queuechanged = false;
+#endif
+
 static void queue_check()
 {
     uint8_t q_end = queueroot;
     if (!client_queue[queueroot].line[0]) { return; }
+#ifdef DEBUG_QUEUE
+    if (queuechanged) {
+        uint8_t qidx = queueroot;
+        Serial.print("Queue: ");
+        while (client_queue[qidx].next != queueroot) {
+            Serial.print(qidx); Serial.print(":"); Serial.print(client_queue[qidx].line);
+            qidx = client_queue[qidx].next;
+        }
+        Serial.println("");
+        queuechanged = false;
+    }
+#endif
     // Serial.print("Queue: ");
     while (client_queue[q_end].next != queueroot) {
-        // Serial.print(q_end); Serial.print(" ");
+        // Serial.print(q_end); Serial.print(":"); Serial.print(client_queue[q_end].line);
         // Find end of queue (or previous of root)
         q_end = client_queue[q_end].next;
     }
     // Serial.println("");
     uint8_t idx = queueroot;
     uint8_t pidx = q_end;  // Needed for relinking
+
     while (client_queue[idx].line[0]) {
         // Try to send item on queue
-        AsyncClient *client = client_queue[idx].client;
+        int clientidx = client_queue[idx].clientidx;
+        AsyncClient *client = clients[clientidx].client;
         bool done = false;
         unsigned long age = (lasttick - client_queue[idx].tick);
-        if (!client->connected() || (age > MAX_QUEUE_AGE)) {
-            serprintf("Queue timeout on %s wanting to send %s", REMOTE_IP_STRING(client), client_queue[idx].line);
+        if (!client || !client->connected() || (age > MAX_QUEUE_AGE)) {
+            if (age > MAX_QUEUE_AGE) {
+                serprintf("Queue timeout (%ld - %ld = %ld) on %s wanting to send %s", lasttick, client_queue[idx].tick, age, REMOTE_IP_STRING(client), client_queue[idx].line);
+                // Stop so it disconnects when too old
+                if (client && client->connected()) { client->close(true); }
+            } else {
+                serprintf("Connection lost wanting to send %s", client_queue[idx].line);
+            }
             // Drop if not connected or too old
-            // Stop so it disconnects when too old
-            client->close(true);
-            client_queue[idx].client = NULL;
             client_queue[idx].line[0] = 0;
             done = true;
         } else if (client->canSend()) {
@@ -84,18 +127,20 @@ static void queue_check()
             if (n <= spc) {
                 // Serial.print("Queue send: "); Serial.println(line);
                 client->add(line, n);
-                client->send();
+                clients[clientidx].tosend = true;
                 done = true;
             } else {
                 // Serial.print("Queue send partial "); Serial.print(spc); Serial.print(": "); Serial.println(client_queue[idx].line);
-                client->add(line, spc);
-                client->send();
-                memmove(line, line+spc, n - spc + 1);
+                if (!clients[clientidx].tosend) {
+                    // Only send partial if we haven't sent a full line yet
+                    client->add(line, spc);
+                    memmove(line, line+spc, n - spc + 1);
+                    clients[clientidx].tosend = true;
+                }
             }
         }
         if (done) {
             // Empty entry
-            client_queue[idx].client = NULL;
             client_queue[idx].line[0] = 0;
             if (idx != queueroot) {
                 uint8_t next = client_queue[idx].next;
@@ -118,19 +163,28 @@ static void queue_check()
             idx = client_queue[idx].next;
         }
     }
+    // Only send at the end so it's one packet
+    for (int clientidx = 0; clientidx < MAX_CLIENTS; clientidx++) {
+        if (clients[clientidx].tosend) {
+            clients[clientidx].client->send();
+            clients[clientidx].tosend = false;
+#ifdef DEBUG_QUEUE
+            queuechanged = true;
+#endif
+        }
+    }
 }
 
 static void queue_setup()
 {
     for (uint8_t idx = 0; idx < MAX_QUEUE; idx++) {
-        client_queue[idx].client = NULL;
         client_queue[idx].line[0] = 0;
         client_queue[idx].next = (idx+1) % MAX_QUEUE;
     }
     queueroot = 0;
 }
 
-static bool queue_add(AsyncClient *client, const char *str)
+static bool queue_add(int clientidx, const char *str)
 {
     uint8_t idx = queueroot;
     while (client_queue[idx].line[0]) {
@@ -140,20 +194,25 @@ static bool queue_add(AsyncClient *client, const char *str)
         }
     }
     // Serial.print("Queued: "); Serial.println(str);
-    client_queue[idx].client = client;
+    client_queue[idx].clientidx = clientidx;
     strcpy(client_queue[idx].line, str);
     client_queue[idx].tick = lasttick;
+#ifdef DEBUG_QUEUE
+    queuechanged = true;
+#endif
     return true;
 }
 
-static void cprintf(AsyncClient *client, const char *fmt, ...)
+static void cprintf(int clientidx, const char *fmt, ...)
 {
-    if (client) {
+    if (clientidx >= 0 && clients[clientidx].connected && clients[clientidx].client) {
+        AsyncClient *client = clients[clientidx].client;
         va_list args;
         va_start(args, fmt);
         char s[MAX_LINE_SIZE];
 
         size_t n = vsnprintf(s, sizeof(s), fmt, args);
+#if 0
         if (!client->canSend()) {
             if (client->connected()) {
                 if (!queue_add(client, s)) {
@@ -161,26 +220,26 @@ static void cprintf(AsyncClient *client, const char *fmt, ...)
                     client->close(true);
                 }
             }
-            return;
+        } else {
+            if (client->space() < n) {
+                serprintf("ERROR Client can't accept %d bytes", n);
+                client->close(true);
+                return;
+            }
+            client->add(s, n);
+            client->send();
         }
-        if (client->space() < n) {
-            serprintf("ERROR Client can't accept %d bytes", n);
-            client->close(true);
-            return;
+#else // always queue
+        if (client->connected()) {
+            if (!queue_add(clientidx, s)) {
+                serprintf("ERROR Queue overflow sending %d bytes", n);
+                client->close(true);
+            }
         }
-        client->add(s, n);
-        client->send();
+#endif
         va_end(args);
     }
 }
-
-static struct {
-    AsyncClient *client;
-    char buffer[256];
-    size_t bufidx;
-    bool overflow; // Buffer was full without newline.  Discard data until newline found
-    bool connected;
-} clients[MAX_CLIENTS];
 
 #ifdef MQTT_SERVER
 
@@ -199,11 +258,11 @@ static struct {
     char msg[62];
 } topic_cache[MAX_TOPICS];
 
-static void send_topic(AsyncClient *client, const char *topic)
+static void send_topic(int clientidx, const char *topic)
 {
     for (int i = 0; i < MAX_TOPICS; i++) {
         if (strmatch(topic, topic_cache[i].topic)) {
-            cprintf(client, "%s %s\r\n", topic_cache[i].topic, topic_cache[i].msg);
+            cprintf(clientidx, "%s %s\r\n", topic_cache[i].topic, topic_cache[i].msg);
         }
     }
 }
@@ -221,14 +280,16 @@ static void new_client(void *arg, AsyncClient *client)
             clients[idx].bufidx = 0;
             clients[idx].overflow = false;
             clients[idx].connected = true;
-            cprintf(client, "HELLO\r\n");
+            clients[idx].tosend = false;
+            cprintf(idx, "HELLO\r\n");
             return;
         }
     }
     serprintf("ERROR all connections full (local %s remote %s)", 
         LOCAL_IP_STRING(client), REMOTE_IP_STRING(client));
     // No free space
-    cprintf(client, "ERROR All connections full, disconnecting\r\n");
+    client->write("ERROR All connections full, disconnecting\r\n");
+    client->send();
     client->stop();
 }
 
@@ -262,7 +323,7 @@ static void server_send_message(const char *topic, const char *msg)
             //    idx, subscribers[idx].clientidx, subscribers[idx].topic, topic);
             if (strmatch(subscribers[idx].topic, topic)) {
                 if (clients[subscribers[idx].clientidx].connected) {
-                    cprintf(clients[subscribers[idx].clientidx].client, "%s %s\r\n", topic, msg);
+                    cprintf(subscribers[idx].clientidx, "%s %s\r\n", topic, msg);
                 }
             }
         }
@@ -274,7 +335,7 @@ static void handle_message(int clientidx, const char *topic, const char *msg)
     if (!strcmp(topic, "SUB")) {
         serprintf("Subscribing client %d to topic %s", clientidx, msg);
         if (strlen(msg) >= (sizeof(subscribers[0].topic)-1)) {
-            cprintf(clients[clientidx].client, "ERROR Subscribe topic too long\r\n");
+            cprintf(clientidx, "ERROR Subscribe topic too long\r\n");
             return;
         }
         for (int si = 0; si < MAX_SUBSCRIBERS; si++) {
@@ -282,21 +343,45 @@ static void handle_message(int clientidx, const char *topic, const char *msg)
                 subscribers[si].clientidx = clientidx;
                 strcpy(subscribers[si].topic, msg);
                 serprintf("Subscribed %d to %s at index %d", clientidx, msg, si);
-                send_topic(clients[clientidx].client, msg);
+                send_topic(clientidx, msg);
                 return;
             }
         }
         serprintf("ERROR No room in subscriber list");
-        cprintf(clients[clientidx].client, "ERROR No room for subscriptions\r\n");
+        cprintf(clientidx, "ERROR No room for subscriptions\r\n");
     } else if (!strcmp(topic, "SENDSSID")) {
         // For debugging ssid sharing code
         serprintf("Sending SSID message to clients");
-        for (int idx = 0; idx < MAX_CLIENTS; idx++) {
-            if (clients[idx].connected) {
-                serprintf("Sending SSID to client at idx %d (local %s / remote %s)",
-                    idx, LOCAL_IP_STRING(clients[idx].client),
-                    REMOTE_IP_STRING(clients[idx].client));
-                cprintf(clients[idx].client, "SSID %s\r\n", msg);
+        IPAddress softapip = WiFi.softAPIP();
+        if (!strcmp(msg, "local")) {
+            const char *ssid = WiFi.softAPSSID().c_str();
+            const char *psk = WiFi.softAPPSK().c_str();
+            for (int idx = 0; idx < MAX_CLIENTS; idx++) {
+                if (clients[idx].connected) {
+                    if (clients[idx].client->localIP() != softapip) {
+                        serprintf("Sending local SSID to client at idx %d (local %s / remote %s)",
+                            idx, LOCAL_IP_STRING(clients[idx].client),
+                            REMOTE_IP_STRING(clients[idx].client));
+                        cprintf(idx, "SSID %s %s\r\n", ssid, psk);
+                    }
+                }
+            }
+        } else {
+            const char *ssid = WiFi.SSID().c_str();
+            const char *psk = WiFi.psk().c_str();
+            for (int idx = 0; idx < MAX_CLIENTS; idx++) {
+                if (clients[idx].connected) {
+                    if (clients[idx].client->localIP() == softapip) {
+                        serprintf("Sending SSID to client at idx %d (local %s / remote %s)",
+                            idx, LOCAL_IP_STRING(clients[idx].client),
+                            REMOTE_IP_STRING(clients[idx].client));
+                        if (!strcmp(msg, "remote")) {
+                            cprintf(idx, "SSID %s %s\r\n", ssid, psk);
+                        } else {
+                            cprintf(idx, "SSID %s\r\n", msg);
+                        }
+                    }
+                }
             }
         }
     } else {
@@ -429,7 +514,7 @@ static void handle_data(void *arg, AsyncClient *client, void *data, size_t len)
             len--;
         }
         if (len > 0) {
-            serprintf("Extra %d bytes after trim: '%.*s'", len, len, ptr);
+            // serprintf("Extra %d bytes after trim: '%.*s'", len, len, ptr);
         }
     }
 }
@@ -472,7 +557,6 @@ void msg_setup()
     }
     queue_setup();
 #ifndef MQTT_SERVER
-    WiFi.softAPdisconnect(true);
     WiFi.mode(WIFI_STA);
     clients[0].client = new AsyncClient;
     clients[0].client->onData(&handle_data, (void *)0);
@@ -502,7 +586,7 @@ void msg_send(const char *topic, const char *msg)
     strcpy(fulltopic + strlen(MSG_NAME) + 1, topic);
     server_send_message(fulltopic, msg);
 #else // MQTT_SERVER
-    cprintf(clients[0].client, "%s/%s %s\r\n", MSG_NAME, topic, msg);
+    cprintf(0, "%s/%s %s\r\n", MSG_NAME, topic, msg);
 #endif // MQTT_SERVER
 }
 
@@ -719,14 +803,14 @@ void msg_check()
         serprintf("Connected, subscribing");
         for (int i = 0; MSG_SUBSCRIPTIONS[i]; i++) {
             serprintf("Send SUB %s", MSG_SUBSCRIPTIONS[i]);
-            cprintf(clients[0].client, "SUB %s\r\n", MSG_SUBSCRIPTIONS[i]);
+            cprintf(0, "SUB %s\r\n", MSG_SUBSCRIPTIONS[i]);
         }
 #ifdef MQTT_GPIO
         serprintf("Send SUB %s/gpio/*", MSG_NAME);
-        cprintf(clients[0].client, "SUB %s/gpio/*\r\n", MSG_NAME);
+        cprintf(0, "SUB %s/gpio/*\r\n", MSG_NAME);
 #endif
         serprintf("Send SUB %s/set*", MSG_NAME);
-        cprintf(clients[0].client, "SUB %s/set\r\n", MSG_NAME);
+        cprintf(0, "SUB %s/set*\r\n", MSG_NAME);
         if (!strcmp(state, "nosubs")) {
             leds_set("idle");
             serprintf("We are connected, we are live!");

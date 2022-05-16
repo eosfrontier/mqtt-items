@@ -12,8 +12,24 @@ void gpio_setup()
   }
 }
 
+static unsigned long lastblink = 0;
+static char blinker[2] = "L";
+
 void gpio_check()
 {
+    if (lasttick > lastblink) {
+        if (!strcmp(state, "nowifi")) {
+            blinker[0] ^= ('H' ^ 'L');
+            gpio_set("led", blinker);
+            lastblink = lasttick + 2000;
+        } else if (!strcmp(state, "nosubs")) {
+            blinker[0] ^= ('H' ^ 'L');
+            gpio_set("led", blinker);
+            lastblink = lasttick + 500;
+        } else {
+            lastblink = lasttick + 5000;
+        }
+    }
 }
 
 void gpio_set(const char *topic, const char *msg)
