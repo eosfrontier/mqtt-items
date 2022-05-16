@@ -2,7 +2,7 @@
 #SHELL := /bin/bash
 #PATH := /usr/local/bin:$(PATH)
 
-env := lights
+env := light
 
 all:
 	pio -f -c vim run -e ${env}
