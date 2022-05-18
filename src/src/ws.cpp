@@ -3,11 +3,9 @@
 #include "ws.h"
 #ifdef MQTT_WEBSOCKETS
 #include <ESP8266WiFi.h>
-#include <WiFiClientSecure.h>
 #include "main.h"
 #include "msg.h"
 
-WiFiClientSecure wsclient;
 
 #define WS_FIN            0x80
 #define WS_OPCODE_TEXT    0x01
@@ -16,9 +14,25 @@ WiFiClientSecure wsclient;
 #define WS_MASK           0x80
 #define WS_SIZE16         126
 
+#define LOCAL_TEST
+
+#ifdef LOCAL_TEST
+
+#include <WiFiClient.h>
+WiFiClient wsclient;
+#define WS_HOST "192.168.178.199"
+#define WS_PATH "/socket.io/?EIO=4&transport=websocket"
+#define WS_PORT 5001
+
+#else
+
+#include <WiFiClientSecure.h>
+WiFiClientSecure wsclient;
 #define WS_HOST "beacon.eosfrontier.space"
 #define WS_PATH "/socket.io/?EIO=4&transport=websocket"
 #define WS_PORT 443
+
+#endif
 
 enum WSState { noconn, errwait, handshake, handshaking, connected } wsstate;
 int ws_timeout = 0;
@@ -32,28 +46,33 @@ int ws_shakes; // Check all handshake requirements
 #define WSH_KEY       (1 << 3)
 #define WSH_COMPLETE  (WSH_STATUS|WSH_UPGRADE|WSH_WEBSOCKET|WSH_KEY)
 
+static const char base64table[] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "abcdefghijklmnopqrstuvwxyz"
+    "0123456789+/";
+
+// Random base64 string (128 bits is 22 characters plus 2 padding)
 String generateKey() {
   String key = "";
-  for (int i = 0; i < 23; ++i) {
-    int r = random(0, 3);
-    if (r == 0)
-      key += (char) random(48, 58);
-    else if (r == 1)
-      key += (char) random(65, 91);
-    else if (r == 2)
-      key += (char) random(97, 128);
+  for (int i = 0; i < 22; ++i) {
+    key += base64table[random(0,64)];
   }
+  key += "==";
   return key;
 }
 
+#ifndef LOCAL_TEST
 BearSSL::Session ws_session;
+#endif
 
 void ws_setup()
 {
     wsstate = noconn;
+#ifndef LOCAL_TEST
     wsclient.setInsecure();
     wsclient.setBufferSizes(512, 512);
     wsclient.setSession(&ws_session);
+#endif
 }
 
 void ws_send(const char *msg)
@@ -190,6 +209,7 @@ void ws_check()
     if (wsstate == noconn) {
         debugI("Trying to connect to %s:%d", WS_HOST, WS_PORT);
         if (!wsclient.connect(WS_HOST, WS_PORT)) {
+            debugE("Connection to %s:%d failed", WS_HOST, WS_PORT);
             wsstate = errwait;
             ws_timeout = 100;
             return;
@@ -197,7 +217,8 @@ void ws_check()
         wsstate = handshake;
         return;
     }
-    if (!wsclient.connected()) {
+    if (!wsclient) {
+        debugE("Connection lost");
         wsstate = errwait;
         ws_timeout = 20;
         return;
@@ -208,7 +229,7 @@ void ws_check()
             "Connection: Upgrade\r\n"
             "Upgrade: websocket\r\n"
             "Sec-WebSocket-Version: 13\r\n"
-            "Sec-WebSocket-Key: " + generateKey() + "=\r\n\r\n";
+            "Sec-WebSocket-Key: " + generateKey() + "\r\n\r\n";
         debugD("WS Send handshake %s", hs.c_str());
         wsclient.write(hs.c_str());
         ws_shakes = 0;
@@ -223,6 +244,10 @@ void ws_check()
             if (s == "\r") {
                 if (ws_shakes != WSH_COMPLETE) {
                     debugE("WS End of handshake, status not ok: %d", ws_shakes);
+                    while (wsclient.available()) {
+                        String cs = wsclient.readStringUntil('\n');
+                        debugD("WS received: %s", cs.c_str());
+                    }
                     wsclient.stop();
                     return;
                 }

@@ -762,8 +762,8 @@ void msg_check()
         debugD("Send SUB %s/gpio/*", MSG_NAME);
         cprintf(0, "SUB %s/gpio/*\r\n", MSG_NAME);
 #endif
-        debugD("Send SUB %s/set*", MSG_NAME);
-        cprintf(0, "SUB %s/set*\r\n", MSG_NAME);
+        debugD("Send SUB %s/set", MSG_NAME);
+        cprintf(0, "SUB %s/set\r\n", MSG_NAME);
         if (!strcmp(state, "nosubs")) {
             leds_set("idle");
             debugI("We are connected, we are live!");

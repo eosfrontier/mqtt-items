@@ -28,7 +28,7 @@ int api_check_status = -1;
 RemoteDebug Debug;
 void debug_setup()
 {
-    Debug.begin(OTA_NAME);
+    Debug.begin(OTA_NAME, Debug.INFO);
     Debug.showColors(true);
 }
 void debug_check()
@@ -77,7 +77,6 @@ void setup() {
 }
 
 void loop() {
-  debug_check();
   ntp_check();
   ota_check();
   rfid_check();
@@ -88,6 +87,7 @@ void loop() {
   check_status();
   ws_check();
   api_check();
+  debug_check();
 
   unsigned long nexttick = millis();
   unsigned long elaps = nexttick - lasttick;

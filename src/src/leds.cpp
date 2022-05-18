@@ -1,8 +1,8 @@
 #include "settings.h"
+#include "main.h"
+#include "leds.h"
 #ifdef MQTT_LEDS
 #include <Adafruit_NeoPixel.h>
-#include "leds.h"
-#include "main.h"
 
 typedef struct {
   unsigned long tm;
@@ -224,7 +224,10 @@ void leds_set(const char *color)
 void leds_setup() {}
 void leds_animate() {}
 void leds_clear() {}
-void leds_set(const char *color) {}
+void leds_set(const char *color)
+{
+  state = color;
+}
 
 unsigned long anim_tick = 0;
 
