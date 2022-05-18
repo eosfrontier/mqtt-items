@@ -56,9 +56,9 @@ void api_add_queue(long character_id, bool access)
 
 void api_got_cardid(uint32_t cardid)
 {
-  serprintf("Got card id 0x%08x", cardid);
+  debugI("Got card id 0x%08x", cardid);
   if (API_QUEUE_FULL) {
-      serprintf("QUEUE FULL");
+      debugE("QUEUE FULL");
       leds_set(RFID_LEDS_QUEUE_FULL);
   }
   char cardid_str[9];
@@ -71,7 +71,7 @@ void api_got_cardid(uint32_t cardid)
     uint32_t access = (accessentry ? accessentry->data.access : 0);
     char characterid_str[12];
     sprintf(characterid_str, "%d", characterid);
-    // serprintf("Found character id %s with access 0x%08x.", characterid_str, access);
+    debugV("Found character id %s with access 0x%08x.", characterid_str, access);
     if (access) {
       msg_send("granted", characterid_str);
       leds_set(RFID_LEDS_GRANTED);
@@ -92,7 +92,7 @@ void api_got_cardid(uint32_t cardid)
 int api_parse_headers()
 {
   if (!apiclient.connected()) {
-    serprintf(F("Connection closed while reading headers"));
+    debugE(F("Connection closed while reading headers"));
     return -1;
   }
   if (!apiclient.available()) {
@@ -102,11 +102,11 @@ int api_parse_headers()
   int stnum = apiclient.parseInt();
   String ststring = apiclient.readStringUntil('\n');
   
-  serprintf(F("Orthanc returned %d %s"), stnum, ststring);
+  debugI(F("Orthanc returned %d %s"), stnum, ststring);
   
   while (apiclient.connected()) {
     String line = apiclient.readStringUntil('\n');
-    serprintf(line);
+    debugV(line);
     if (line == "\r") {
       break;
     }
@@ -125,14 +125,14 @@ int api_parse_headers()
 int api_post_json(String path, String json)
 {
   if (WiFi.status() != WL_CONNECTED) return false;
-  serprintf(F(" Connecting to Orthanc"));
+  debugI(F(" Connecting to Orthanc"));
   if (!apiclient.connect(API_ORTHANC_SERVER, API_ORTHANC_PORT)) {
-    serprintf(F("Api Failed to connect to " API_ORTHANC_SERVER));
+    debugE(F("Api Failed to connect to " API_ORTHANC_SERVER));
     return -1;
   }
 
-  serprintf(F("  Sending request"));
-  serprintf(
+  debugD(F("  Sending request"));
+  debugD(
     "POST https://" API_ORTHANC_SERVER + path + " HTTP/1.0\r\n"
     "Host: " API_ORTHANC_SERVER "\r\n"
     "Connection: close\r\n"
@@ -182,7 +182,7 @@ char api_parse_type;
 
 void json_object_value(int depth, String key, String val)
 {
-  // serprintf("DBG: %d,%s,%s", depth, key, val);
+  // debugV("DBG: %d,%s,%s", depth, key, val);
   if (key == "characterID") {
     long cid = json_parse_int(val);
     if (cid > 0) {
@@ -194,7 +194,7 @@ void json_object_value(int depth, String key, String val)
     uint32_t cid = 0;
     // If it's longer, take the first 8 nibbles, otherwise pad left
     int len = val.length() < 8 ? val.length() : 8;
-    // serprintf("DBG: card_id(%d=%d) = '%s'", val.length(), len, val);
+    // debugV("DBG: card_id(%d=%d) = '%s'", val.length(), len, val);
     int s = 0;
     while (len--) {
       uint8_t c = val[len];
@@ -205,7 +205,7 @@ void json_object_value(int depth, String key, String val)
       } else if (c >= 'A' && c <= 'F') {
         c -= ('A'-10);
       } else {
-        serprintf("Error parsing card ID '%s'", val);
+        debugE("Error parsing card ID '%s'", val);
         return;
       }
       cid |= (c << s);
@@ -228,13 +228,13 @@ void json_end_object(int depth)
 {
   if (api_parse_type == API_CHARACTERS) {
     if ((json_current.bitfield & (API_FLAGS_CARDID|API_FLAGS_CHARID)) == (API_FLAGS_CARDID|API_FLAGS_CHARID)) {
-      // serprintf("Got character id %d with card 0x%08x", json_current.data.character_id, json_current.key.card_id);
+      // debugV("Got character id %d with card 0x%08x", json_current.data.character_id, json_current.key.card_id);
       avl_insert(&json_current, 0);
     }
   }
   if (api_parse_type == API_META) {
     if ((json_current.bitfield & (API_FLAGS_ACCESS)) == (API_FLAGS_ACCESS)) {
-      // Serial.print("Got character id "); Serial.print(json_current.key.character_id); Serial.print(" with access "); Serial.println(json_current.data.access);
+      debugD("Got character id %d with access 0x%08x", json_current.key.character_id, json_current.data.access
       avl_insert(&json_current, 1);
     }
   }
@@ -246,7 +246,7 @@ int json_parse_stream_step()
 {
   if (!apiclient.connected()) {
     apiclient.stop();
-    serprintf(F("Parsed %d bytes", api_parse_count));
+    debugI(F("Parsed %d bytes", api_parse_count));
     avl_print_status();
     if (api_parse_type == API_CHARACTERS) {
       api_failcount[API_CHARACTERS] = 4;
@@ -296,7 +296,7 @@ int api_send_queue()
 {
     struct api_queue *ent = &api_queue[api_queue_start];
     api_parse_type = API_SEND;
-    Serial.print("Want to send access of "); Serial.print(ent->character_id); Serial.print(" at time "); Serial.print(ent->time); Serial.print(" Access: "); Serial.println(ent->access ? "Granted" : "DENIED");
+    debugD("Want to send access of %d at time %d Access: %s", ent->character_id, ent->time, ent->access);
     if (ent->time < 1500000000) {
       ent->time = ntp_time(ent->time);
       if (ent->time < 1500000000) {
@@ -335,7 +335,7 @@ void api_setup()
     pubkeytxt.close();
     BearSSL::PublicKey *eos_key = new BearSSL::PublicKey(eos_pubkey.c_str());
     apiclient.setKnownKey(eos_key);
-    //Serial.print("Public key:"); Serial.println(eos_key);
+    debugV("Public key: %s", eos_key.toString());
   } else {
     apiclient.setInsecure();
   }

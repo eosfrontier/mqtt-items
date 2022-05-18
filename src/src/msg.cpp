@@ -19,8 +19,6 @@ static void handle_data(void *arg, AsyncClient *client, void *data, size_t len);
 // * matcht alles tot aan de volgende slash (werkt dus alleen met */)
 static bool strmatch(const char *patt, const char *match, bool partial = false)
 {
-  // Serial.print("strmatch("); Serial.print(patt); Serial.print(", "); Serial.print(match); Serial.print(", "); Serial.print(partial); Serial.println(")");
-  
   const char *p = patt, *m = match;
   while (*p && *m) {
     if (*p == '*') {
@@ -93,13 +91,10 @@ static void queue_check()
         queuechanged = false;
     }
 #endif
-    // Serial.print("Queue: ");
     while (client_queue[q_end].next != queueroot) {
-        // Serial.print(q_end); Serial.print(":"); Serial.print(client_queue[q_end].line);
         // Find end of queue (or previous of root)
         q_end = client_queue[q_end].next;
     }
-    // Serial.println("");
     uint8_t idx = queueroot;
     uint8_t pidx = q_end;  // Needed for relinking
 
@@ -111,11 +106,11 @@ static void queue_check()
         unsigned long age = (lasttick - client_queue[idx].tick);
         if (!client || !client->connected() || (age > MAX_QUEUE_AGE)) {
             if (age > MAX_QUEUE_AGE) {
-                serprintf("Queue timeout (%ld - %ld = %ld) on %s wanting to send %s", lasttick, client_queue[idx].tick, age, REMOTE_IP_STRING(client), client_queue[idx].line);
+                debugE("Queue timeout (%ld - %ld = %ld) on %s wanting to send %s", lasttick, client_queue[idx].tick, age, REMOTE_IP_STRING(client), client_queue[idx].line);
                 // Stop so it disconnects when too old
                 if (client && client->connected()) { client->close(true); }
             } else {
-                serprintf("Connection lost wanting to send %s", client_queue[idx].line);
+                debugE("Connection lost wanting to send %s", client_queue[idx].line);
             }
             // Drop if not connected or too old
             client_queue[idx].line[0] = 0;
@@ -125,12 +120,12 @@ static void queue_check()
             size_t n = strlen(line);
             size_t spc = client->space();
             if (n <= spc) {
-                // Serial.print("Queue send: "); Serial.println(line);
+                debugV("Queue send: %s", line);
                 client->add(line, n);
                 clients[clientidx].tosend = true;
                 done = true;
             } else {
-                // Serial.print("Queue send partial "); Serial.print(spc); Serial.print(": "); Serial.println(client_queue[idx].line);
+                debugV("Queue send partial %d: %s", spc, client_queue[idx].line);
                 if (!clients[clientidx].tosend) {
                     // Only send partial if we haven't sent a full line yet
                     client->add(line, spc);
@@ -193,7 +188,7 @@ static bool queue_add(int clientidx, const char *str)
             return false;
         }
     }
-    // Serial.print("Queued: "); Serial.println(str);
+    debugV("Queued: %s", str);
     client_queue[idx].clientidx = clientidx;
     strcpy(client_queue[idx].line, str);
     client_queue[idx].tick = lasttick;
@@ -211,18 +206,18 @@ static void cprintf(int clientidx, const char *fmt, ...)
         va_start(args, fmt);
         char s[MAX_LINE_SIZE];
 
-        size_t n = vsnprintf(s, sizeof(s), fmt, args);
 #if 0
+        size_t n = vsnprintf(s, sizeof(s), fmt, args);
         if (!client->canSend()) {
             if (client->connected()) {
                 if (!queue_add(client, s)) {
-                    serprintf("ERROR Queue overflow sending %d bytes", n);
+                    debugE("ERROR Queue overflow sending %d bytes", n);
                     client->close(true);
                 }
             }
         } else {
             if (client->space() < n) {
-                serprintf("ERROR Client can't accept %d bytes", n);
+                debugE("ERROR Client can't accept %d bytes", n);
                 client->close(true);
                 return;
             }
@@ -231,8 +226,9 @@ static void cprintf(int clientidx, const char *fmt, ...)
         }
 #else // always queue
         if (client->connected()) {
+            vsnprintf(s, sizeof(s), fmt, args);
             if (!queue_add(clientidx, s)) {
-                serprintf("ERROR Queue overflow sending %d bytes", n);
+                debugE("ERROR Queue overflow sending message to client %d", clientidx);
                 client->close(true);
             }
         }
@@ -269,10 +265,10 @@ static void send_topic(int clientidx, const char *topic)
 
 static void new_client(void *arg, AsyncClient *client)
 {
-    // serprintf("New client connection");
+    // debugI("New client connection");
     for (int idx = 0; idx < MAX_CLIENTS; idx++) {
         if (!clients[idx].client) {
-            serprintf("Put client at index %d (local %s)->(remote %s)", idx, LOCAL_IP_STRING(client), REMOTE_IP_STRING(client));
+            debugI("Put client at index %d (local %s)->(remote %s)", idx, LOCAL_IP_STRING(client), REMOTE_IP_STRING(client));
             client->setNoDelay(true);
             client->onData(&handle_data, (void *)idx);
             //client->onDisconnect(&handle_disconnect, (void *)idx);
@@ -285,7 +281,7 @@ static void new_client(void *arg, AsyncClient *client)
             return;
         }
     }
-    serprintf("ERROR all connections full (local %s remote %s)", 
+    debugE("ERROR all connections full (local %s remote %s)", 
         LOCAL_IP_STRING(client), REMOTE_IP_STRING(client));
     // No free space
     client->write("ERROR All connections full, disconnecting\r\n");
@@ -295,7 +291,7 @@ static void new_client(void *arg, AsyncClient *client)
 
 static void server_send_message(const char *topic, const char *msg)
 {
-    serprintf("Sending message %s %s", topic, msg);
+    debugD("Sending message %s %s", topic, msg);
     if ((strlen(topic) < 62) && (strlen(msg) < 62)) {
         unsigned long oldest = 0;
         int cidx = -1;
@@ -312,14 +308,14 @@ static void server_send_message(const char *topic, const char *msg)
                 cidx = ti;
             }
         }
-        serprintf("Adding message %s %s to cache at index %d with age %ld", topic, msg, cidx, lasttick);
+        debugD("Adding message %s %s to cache at index %d with age %ld", topic, msg, cidx, lasttick);
         strcpy(topic_cache[cidx].topic, topic);
         strcpy(topic_cache[cidx].msg, msg);
         topic_cache[cidx].lastseen = lasttick;
     }
     for (int idx = 0; idx < MAX_SUBSCRIBERS; idx++) {
         if (subscribers[idx].clientidx >= 0) {
-            //serprintf("Matching subscriber %d client %d topic '%s' to '%s'",
+            //debugV("Matching subscriber %d client %d topic '%s' to '%s'",
             //    idx, subscribers[idx].clientidx, subscribers[idx].topic, topic);
             if (strmatch(subscribers[idx].topic, topic)) {
                 if (clients[subscribers[idx].clientidx].connected) {
@@ -333,7 +329,7 @@ static void server_send_message(const char *topic, const char *msg)
 static void handle_message(int clientidx, const char *topic, const char *msg)
 {
     if (!strcmp(topic, "SUB")) {
-        serprintf("Subscribing client %d to topic %s", clientidx, msg);
+        debugD("Subscribing client %d to topic %s", clientidx, msg);
         if (strlen(msg) >= (sizeof(subscribers[0].topic)-1)) {
             cprintf(clientidx, "ERROR Subscribe topic too long\r\n");
             return;
@@ -342,16 +338,16 @@ static void handle_message(int clientidx, const char *topic, const char *msg)
             if (subscribers[si].clientidx < 0) {
                 subscribers[si].clientidx = clientidx;
                 strcpy(subscribers[si].topic, msg);
-                serprintf("Subscribed %d to %s at index %d", clientidx, msg, si);
+                debugD("Subscribed %d to %s at index %d", clientidx, msg, si);
                 send_topic(clientidx, msg);
                 return;
             }
         }
-        serprintf("ERROR No room in subscriber list");
+        debugE("ERROR No room in subscriber list");
         cprintf(clientidx, "ERROR No room for subscriptions\r\n");
     } else if (!strcmp(topic, "SENDSSID")) {
         // For debugging ssid sharing code
-        serprintf("Sending SSID message to clients");
+        debugI("Sending SSID message to clients");
         IPAddress softapip = WiFi.softAPIP();
         if (!strcmp(msg, "local")) {
             const char *ssid = WiFi.softAPSSID().c_str();
@@ -359,7 +355,7 @@ static void handle_message(int clientidx, const char *topic, const char *msg)
             for (int idx = 0; idx < MAX_CLIENTS; idx++) {
                 if (clients[idx].connected) {
                     if (clients[idx].client->localIP() != softapip) {
-                        serprintf("Sending local SSID to client at idx %d (local %s / remote %s)",
+                        debugI("Sending local SSID to client at idx %d (local %s / remote %s)",
                             idx, LOCAL_IP_STRING(clients[idx].client),
                             REMOTE_IP_STRING(clients[idx].client));
                         cprintf(idx, "SSID %s %s\r\n", ssid, psk);
@@ -367,16 +363,14 @@ static void handle_message(int clientidx, const char *topic, const char *msg)
                 }
             }
         } else {
-            const char *ssid = WiFi.SSID().c_str();
-            const char *psk = WiFi.psk().c_str();
             for (int idx = 0; idx < MAX_CLIENTS; idx++) {
                 if (clients[idx].connected) {
                     if (clients[idx].client->localIP() == softapip) {
-                        serprintf("Sending SSID to client at idx %d (local %s / remote %s)",
+                        debugI("Sending SSID to client at idx %d (local %s / remote %s)",
                             idx, LOCAL_IP_STRING(clients[idx].client),
                             REMOTE_IP_STRING(clients[idx].client));
                         if (!strcmp(msg, "remote")) {
-                            cprintf(idx, "SSID %s %s\r\n", ssid, psk);
+                            cprintf(idx, "SSID %s %s\r\n", WiFi.SSID().c_str(), WiFi.psk().c_str());
                         } else {
                             cprintf(idx, "SSID %s\r\n", msg);
                         }
@@ -385,7 +379,7 @@ static void handle_message(int clientidx, const char *topic, const char *msg)
             }
         }
     } else {
-        serprintf("Handling message from client %d: %s %s", clientidx, topic, msg);
+        debugD("Handling message from client %d: %s %s", clientidx, topic, msg);
         server_send_message(topic, msg);
         msg_receive(topic, msg);
     }
@@ -399,10 +393,10 @@ static void server_check()
     for (int idx = 0; idx < MAX_CLIENTS; idx++) {
         if (clients[idx].connected) {
             if (!clients[idx].client->connected()) {
-                serprintf("Connection lost on %d", idx);
+                debugE("Connection lost on %d", idx);
                 for (int si = 0; si < MAX_SUBSCRIBERS; si++) {
                     if (subscribers[si].clientidx == idx) {
-                        serprintf("Unsubscribing %d from %d = %s", idx, si, subscribers[si].topic);
+                        debugI("Unsubscribing %d from %d = %s", idx, si, subscribers[si].topic);
                         subscribers[si].clientidx = -1;
                     }
                 }
@@ -423,7 +417,7 @@ static void server_check()
         }
     } else if (!strcmp(state, "nosubs")) {
         leds_set("idle");
-        serprintf("We have %d subscribers, we are live!", numsubs);
+        debugI("We have %d subscribers, we are live!", numsubs);
     }
     mdns.update();
 }
@@ -441,13 +435,13 @@ static void server_setup()
     server = new AsyncServer(mqtt_port);
     server->onClient(new_client, (void *)0);
     server->begin();
-    serprintf("Setting up mdns responder on %s", OTA_NAME);
+    debugI("Setting up mdns responder on %s", OTA_NAME);
     if (!mdns.begin(OTA_NAME)) {
-        serprintf("Error setting up mdns responder");
+        debugE("Error setting up mdns responder");
     }
-    serprintf("Adding mdns service %s %s %d", "eos-portal", "tcp", mqtt_port);
+    debugI("Adding mdns service %s %s %d", "eos-portal", "tcp", mqtt_port);
     if (!mdns.addService("eos-portal", "tcp", mqtt_port)) {
-        serprintf("Error adding mdns service");
+        debugE("Error adding mdns service");
     }
 }
 
@@ -468,7 +462,7 @@ static void handle_data(void *arg, AsyncClient *client, void *data, size_t len)
     size_t bufidx = clients[idx].bufidx;
     static const size_t bufend = sizeof(clients[idx].buffer);
     char *ptr = (char *)data;
-    // serprintf("Client %d, received %d bytes: '%.*s'", idx, len, len, ptr);
+    // debugV("Client %d, received %d bytes: '%.*s'", idx, len, len, ptr);
     while (len > 0) {
         char *nl = (char *)memchr(ptr, '\n', len);
         if (!nl) {
@@ -476,18 +470,18 @@ static void handle_data(void *arg, AsyncClient *client, void *data, size_t len)
             // Store in buffer
             if (len > (bufend-bufidx)) {
                 // Overflow
-                serprintf("Client %d line overflow, dropping %d bytes", idx, len);
+                debugE("Client %d line overflow, dropping %d bytes", idx, len);
                 clients[idx].overflow = true;
                 return;
             }
             memcpy(buffer + bufidx, ptr, len);
             clients[idx].bufidx = bufidx + len;
-            // serprintf("Stored in buffer, total %d: '%.*s'", clients[idx].bufidx, clients[idx].bufidx, buffer);
+            // debugV("Stored in buffer, total %d: '%.*s'", clients[idx].bufidx, clients[idx].bufidx, buffer);
             return;
         }
         if (!clients[idx].overflow) {
             size_t linelen = nl-ptr+1;
-            // serprintf("Found line of length %d: '%.*s'", linelen, linelen, ptr);
+            // debugV("Found line of length %d: '%.*s'", linelen, linelen, ptr);
             if (linelen < (bufend-bufidx)) {
                 memcpy(buffer+bufidx, ptr, linelen);
                 char *bnl = buffer+bufidx+linelen-1;
@@ -495,7 +489,7 @@ static void handle_data(void *arg, AsyncClient *client, void *data, size_t len)
                 char *topic = buffer;
                 while (isSpace(*topic)) topic++;
                 char *msg = strchr(topic, ' ');
-                // serprintf("Trimmed, space at %d: '%s'", (msg-topic), topic);
+                // debugV("Trimmed, space at %d: '%s'", (msg-topic), topic);
                 if (msg) {
                     *msg++ = 0;
                     handle_message(idx, topic, msg);
@@ -508,21 +502,19 @@ static void handle_data(void *arg, AsyncClient *client, void *data, size_t len)
         nl = nl+1;
         len = len - (nl-ptr);
         ptr = nl;
-        // serprintf("Extra %d bytes: '%.*s'", len, len, ptr);
+        // debugV("Extra %d bytes: '%.*s'", len, len, ptr);
         while ((len > 0) && isSpace(*(char *)ptr)) {
             ptr++;
             len--;
         }
         if (len > 0) {
-            // serprintf("Extra %d bytes after trim: '%.*s'", len, len, ptr);
+            // debugV("Extra %d bytes after trim: '%.*s'", len, len, ptr);
         }
     }
 }
 
 unsigned long lastacksend = 0;
 char lastack[33];
-
-static bool msgdebug = false;
 
 #ifdef MQTT_SERVER
 static void ap_setup()
@@ -568,7 +560,7 @@ void msg_setup()
     /*
        int nap = WiFi.scanNetworks(false, true);
        if (nap == 0) {
-       Serial.println("WiFi scan found zero networks!");
+       debugE("WiFi scan found zero networks!");
        }
        for (int i = 0; i < nap; i++) {
        Serial.print("Found network "); Serial.print(WiFi.SSID(i)); Serial.print(" on Channel "); Serial.print(WiFi.channel(i)); Serial.print(" ("); Serial.print(WiFi.RSSI(i)); Serial.println(")");
@@ -579,7 +571,7 @@ void msg_setup()
 
 void msg_send(const char *topic, const char *msg)
 {
-    serprintf("Sending %s %s", topic, msg);
+    debugD("Sending %s %s", topic, msg);
 #ifdef MQTT_SERVER
     char fulltopic[128];
     strcpy(fulltopic, MSG_NAME "/");
@@ -590,34 +582,11 @@ void msg_send(const char *topic, const char *msg)
 #endif // MQTT_SERVER
 }
 
-#if 0 // def MQTT_SERVER
-static void send_ssid(void)
-{
-    if (LittleFS.exists("/wifiD.txt")) {
-        gotssid = 1;
-        File wifitxt = LittleFS.open("/wifiD.txt", "r");
-        String wssid = wifitxt.readStringUntil('\n');
-        String wpwd = wifitxt.readStringUntil('\n');
-        wifitxt.close();
-        // const char *msg = ssidtxt.c_str();
-        serprintf("Sending SSID to soft AP clients");
-        for (int idx = 0; idx < MAX_CLIENTS; idx++) {
-            if (clients[idx].connected) {
-                serprintf("Wanting to send SSID to idx %d at remote %s / local %s",
-                    LOCAL_IP_STRING(clients[idx].client),
-                    REMOTE_IP_STRING(clients[idx].client)
-                    );
-            }
-        }
-    }
-}
-#endif
-
 static void add_ssid(const char *msg)
 {
     char *pwd = strchr(msg, ' ');
     if (!pwd || (!pwd[1])) {
-        serprintf("Ignoring ssid without space: '%s'", msg);
+        debugE("Ignoring ssid without space: '%s'", msg);
         return;
     }
     // Hardcoded index 4, maybe fix later
@@ -627,13 +596,13 @@ static void add_ssid(const char *msg)
     wifitxt.write(pwd+1, strlen(pwd)-1);
     wifitxt.write('\n');
     wifitxt.close();
-    Serial.println("Got SSID");
+    debugI("Got SSID");
 #if 0 // def MQTT_SERVER
     send_ssid();
 #endif
     wifiidx = 4;
     if (WiFi.status() == WL_CONNECTED) {
-      Serial.println("Forcing disconnect");
+      debugI("Forcing disconnect");
       WiFi.disconnect();
       leds_set("nowifi");
       lastscan = lasttick + 100;
@@ -642,7 +611,7 @@ static void add_ssid(const char *msg)
 
 void msg_receive(const char *topic, const char *msg)
 {
-  serprintf("receive <%s> = <%s>", topic, msg);
+  debugD("receive <%s> = <%s>", topic, msg);
   // SSID topic is een meta-topic om de ssid om te zetten
   if (!strcmp(topic, "SSID")) {
     add_ssid(msg);
@@ -661,25 +630,16 @@ void msg_receive(const char *topic, const char *msg)
     buttons_ack();
     // return;  // Don't return: also allow chaining via mappings
   }
-  if (!strcmp(topic, MSG_NAME "/setdebug")) {
-      if (!strcmp(msg, "on") || !strcmp(msg, "true") || !strcmp(msg, "debug")) {
-          msg_send("debug", "start debugging");
-          msgdebug = true;
-      } else {
-          msg_send("debug", "stop debugging");
-          msgdebug = false;
-      }
-  }
 #ifdef MQTT_GPIO
   if (strmatch(MSG_NAME "/gpio/*", topic)) {
-    serprintf("gpio_set(%s, %s)", topic+strlen(MSG_NAME "/gpio/"), msg);
+    debugI("gpio_set(%s, %s)", topic+strlen(MSG_NAME "/gpio/"), msg);
     gpio_set(topic+strlen(MSG_NAME "/gpio/"), msg);
     // return;  // Don't return: also allow chaining via mappings
   }
 #endif
 #ifdef MQTT_WEBSOCKETS
   if (!strcmp(topic, WS_BROADCAST_ACK)) {
-    serprintf("ws_send_ack(%s)", msg);
+    debugI("ws_send_ack(%s)", msg);
     ws_send_ack(msg);
   }
 #endif
@@ -696,13 +656,6 @@ void msg_receive(const char *topic, const char *msg)
       }
     }
   }
-}
-
-void msg_debug(char *msg)
-{
-    if (msgdebug) {
-        msg_send("debug", msg);
-    }
 }
 
 static void msg_connect_wifi()
@@ -748,7 +701,7 @@ static void msg_connect_wifi()
           }
           wifiidx--;
           wififn[5] = 'A' + wifiidx;
-          serprintf("Trying wifi creds from %s", wififn);
+          debugI("Trying wifi creds from %s", wififn);
           File wifitxt = LittleFS.open(wififn, "r");
           String wssid = wifitxt.readStringUntil('\n');
           String wpwd = wifitxt.readStringUntil('\n');
@@ -775,11 +728,11 @@ static unsigned long lastconnect = 0;
 static void connect_client()
 {
     if (lastconnect < lasttick) {
-        serprintf("Querying mdns for %s - %s", "eos-portal", "tcp");
+        debugI("Querying mdns for %s - %s", "eos-portal", "tcp");
         int n = MDNS.queryService("eos-portal", "tcp");
-        serprintf("Found %d services", n);
+        debugD("Found %d services", n);
         if (n) {
-            serprintf("Trying to connect to %s at %s:%d", MDNS.answerHostname(0), MDNS.answerIP(0).toString().c_str(), MDNS.answerPort(0));
+            debugI("Trying to connect to %s at %s:%d", MDNS.answerHostname(0), MDNS.answerIP(0).toString().c_str(), MDNS.answerPort(0));
             clients[0].client->connect(MDNS.answerIP(0), MDNS.answerPort(0));
             clients[0].client->setNoDelay(true);
         }
@@ -800,20 +753,20 @@ void msg_check()
         }
     } else if (!clients[0].connected) {
         clients[0].connected = true;
-        serprintf("Connected, subscribing");
+        debugI("Connected, subscribing");
         for (int i = 0; MSG_SUBSCRIPTIONS[i]; i++) {
-            serprintf("Send SUB %s", MSG_SUBSCRIPTIONS[i]);
+            debugD("Send SUB %s", MSG_SUBSCRIPTIONS[i]);
             cprintf(0, "SUB %s\r\n", MSG_SUBSCRIPTIONS[i]);
         }
 #ifdef MQTT_GPIO
-        serprintf("Send SUB %s/gpio/*", MSG_NAME);
+        debugD("Send SUB %s/gpio/*", MSG_NAME);
         cprintf(0, "SUB %s/gpio/*\r\n", MSG_NAME);
 #endif
-        serprintf("Send SUB %s/set*", MSG_NAME);
+        debugD("Send SUB %s/set*", MSG_NAME);
         cprintf(0, "SUB %s/set*\r\n", MSG_NAME);
         if (!strcmp(state, "nosubs")) {
             leds_set("idle");
-            serprintf("We are connected, we are live!");
+            debugI("We are connected, we are live!");
         }
     }
 #endif

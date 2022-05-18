@@ -24,11 +24,25 @@ unsigned long loadavg = 0;
 unsigned long lasttick = 0;
 int api_check_status = -1;
 
-#define SERIALOUT
+#ifdef TELNET_DEBUG
+RemoteDebug Debug;
+void debug_setup()
+{
+    Debug.begin(OTA_NAME);
+    Debug.showColors(true);
+}
+void debug_check()
+{
+    Debug.handle();
+}
+#else
+void debug_setup() { }
+void debug_check() { }
+#endif
 
 void serprintf(const char *fmt, ...)
 {
-#ifdef SERIALOUT
+#ifdef SERIAL_DEBUG
     static bool reenter = false;
     if (reenter) return;
     reenter = true;
@@ -38,10 +52,10 @@ void serprintf(const char *fmt, ...)
 
     vsnprintf(s, sizeof(s), fmt, args);
     Serial.println(s);
-    msg_debug(s);
+    debugV(s);
     va_end(args);
     reenter = false;
-#endif // SERIALOUT
+#endif // SERIAL_DEBUG
 }
 
 
@@ -50,6 +64,7 @@ void setup() {
   Serial.begin(74880);
 
   lasttick = millis();
+  debug_setup();
   ntp_setup();
   rfid_setup();
   msg_setup();
@@ -62,6 +77,7 @@ void setup() {
 }
 
 void loop() {
+  debug_check();
   ntp_check();
   ota_check();
   rfid_check();

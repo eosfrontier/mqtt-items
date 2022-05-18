@@ -1,4 +1,5 @@
 #include "settings.h"
+#ifdef MQTT_LEDS
 #include <Adafruit_NeoPixel.h>
 #include "leds.h"
 #include "main.h"
@@ -194,7 +195,7 @@ void leds_set(const char *color)
       if (ci < 0) {
         if (ci == -2) {
           if (st >= (MAX_ANIM-1)) {
-            Serial.print("Color parse fail, too long: <<<"); Serial.print(color); Serial.println(">>>");
+            debugE("Color parse fail, too long: <<<%s>>>", color);
             break;
           }
           st++;
@@ -210,13 +211,21 @@ void leds_set(const char *color)
   anim_tick = millis();
   /*
   for (st = 0; st < anim_len; st++) {
-    Serial.print("DBG: st = "); Serial.print(st);
-    Serial.print(", anim[st].tm = "); Serial.print(anim[st].tm);
-    Serial.print(", anim[st].color[] = "); Serial.print(anim[st].color[0], HEX);
-    Serial.print(","); Serial.print(anim[st].color[1], HEX);
-    Serial.print(","); Serial.print(anim[st].color[2], HEX);
-    Serial.print(","); Serial.print(anim[st].color[3], HEX);
-    Serial.println(" .");
+    debugD("st = %d, anim[st].tm = %d, anim[st].color[] = 0x%06x,0x%06x,0x%06x,0x%06x",
+        st, anim[st].tm,
+        anim[st].color[0],
+        anim[st].color[1],
+        anim[st].color[2],
+        anim[st].color[3]);
   }
   */
 }
+#else // MQTT_LEDS
+void leds_setup() {}
+void leds_animate() {}
+void leds_clear() {}
+void leds_set(const char *color) {}
+
+unsigned long anim_tick = 0;
+
+#endif // MQTT_LEDS

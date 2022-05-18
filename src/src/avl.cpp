@@ -1,3 +1,4 @@
+#include "settings.h"
 #include "avl.h"
 int avl_num_entries[2] = {0,0};
 #ifdef MQTT_RFID
@@ -6,15 +7,7 @@ int avl_num_entries[2] = {0,0};
 //#define AVL_DEBUG
 
 #ifdef AVL_DEBUG
-static void avl_debug(char *fmt, ...)
-{
-  char dbgbuf[256];
-  va_list args;
-  va_start(args,fmt);
-  vsnprintf(dbgbuf, sizeof(dbgbuf), fmt, args);
-  Serial.print("avl debug:"); Serial.println(dbgbuf);
-  va_end(args);
-}
+#define avl_debug(fmt,...) debugD(fmt,...)
 #else
 #define avl_debug(...)
 #endif
@@ -38,8 +31,7 @@ static int avl_root[2] = {0,0};
 
 static int avl_new_entry(avl_access_t *entry) {
     if ((avl_num_entries[0] + avl_num_entries[1]) >= AVL_MAX_ENTRIES) {
-        avl_debug("AVL tree full, did not add entry with key %08x and data %08x", entry->key.v, entry->data.v);
-        Serial.print("AVL tree full!  Cannot add key '"); Serial.print(entry->key.v); Serial.print("' with data '"); Serial.print(entry->data.v); Serial.println("'");
+        debugE("AVL tree full, did not add entry with key %08x and data %08x", entry->key.v, entry->data.v);
         return 0;
     }
     int ridx = (entry->bitfield ? 1 : 0);
@@ -230,10 +222,10 @@ static void avl_print_tree(int node, int depth)
 
 void avl_print_status()
 {
-    Serial.print("AVL tree uses "); Serial.print(sizeof(avl_access_tree)); Serial.println(" bytes");
-    Serial.print("AVL tree 1 has "); Serial.print(avl_num_entries[0]); Serial.println(" entries");
+    avl_debug("AVL tree uses %d bytes", sizeof(avl_access_tree));
+    avl_debug("AVL tree 1 has %d entries", avl_num_entries[0]);
     avl_print_tree(avl_root[0], 1);
-    Serial.print("AVL tree 2 has "); Serial.print(avl_num_entries[1]); Serial.println(" entries");
+    avl_debug("AVL tree 2 has %d entries", avl_num_entries[1]);
     avl_print_tree(avl_root[1], 1);
 }
 

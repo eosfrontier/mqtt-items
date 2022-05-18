@@ -1,4 +1,6 @@
 #include "settings.h"
+#include "buttons.h"
+#ifdef MQTT_BUTTONS
 #include <stdint.h>
 #include <Arduino.h>
 #include "msg.h"
@@ -33,9 +35,7 @@ void buttons_check()
     for (int i = 0; i < BUTTONS_NUM; i++) {
       if (buttons_send & (1 << i)) {
         if ((idx + strlen(BUTTONS_NAMES[i])) > 1024) {
-          Serial.print("Button message too long! <<<");
-          Serial.write(msgbuf, idx);
-          Serial.println(">>>");
+          debugE("Button message too long! <<<%s>>>", msgbuf);
           return;
         }
         strcpy(msgbuf+idx, BUTTONS_NAMES[i]);
@@ -46,7 +46,7 @@ void buttons_check()
     msgbuf[--idx] = 0;
     buttons_retry--;
     if (!(buttons_retry % BUTTON_RETRY_DELAY)) {
-      Serial.print("Sending button press "); Serial.print(msgbuf); Serial.print(" try "); Serial.println(buttons_retry);
+      debugI("Sending button press %s try %d", msgbuf, buttons_retry);
       msg_send(msgbuf, state);
     }
   }
@@ -62,3 +62,8 @@ void buttons_ack()
 {
   buttons_retry = 0;
 }
+#else // MQTT_BUTTONS
+void buttons_setup() {}
+void buttons_check() {}
+void buttons_ack() {}
+#endif // MQTT_BUTTONS

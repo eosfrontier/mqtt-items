@@ -3,34 +3,43 @@
 #include <stddef.h>
 
 #ifdef MQTT_LIGHTS
+#define MQTT_NAME "light"
+#define MQTT_LEDS
+#define MQTT_BUTTONS
 
 const int LEDS_NUM = 4;
 const int BUTTONS_PINS[] = {};
 const char * const  BUTTONS_NAMES[] = {};
 #define COLORS_DEFAULT "2000:000000"
 
-#define MQTT_NAME "light"
-#endif
+#endif // MQTT_LIGHTS
 
 #ifdef MQTT_BUTTONS_OUT
+#define MQTT_NAME "buttons_out"
+#define MQTT_LEDS
+#define MQTT_BUTTONS
+
 const int LEDS_NUM = 3;
 const int BUTTONS_PINS[] = {14,12,13};
 const char * const  BUTTONS_NAMES[] = {"b1","b2","b3"};
 #define COLORS_DEFAULT "2000:000000,001800,000000"
 
-#define MQTT_NAME "buttons_out"
-#endif
+#endif // MQTT_BUTTONS_OUT
 
 #ifdef MQTT_BUTTONS_IN
+#define MQTT_NAME "buttons_in"
+#define MQTT_LEDS
+#define MQTT_BUTTONS
+
 const int LEDS_NUM = 4;
 const int BUTTONS_PINS[] = {4,14,12,13};
 const char * const  BUTTONS_NAMES[] = {"b4","b3","b2","b1"};
 #define COLORS_DEFAULT "2000:000000,000000,001800,180000"
 
-#define MQTT_NAME "buttons_in"
-#endif
+#endif // MQTT_BUTTONS_IN
 
 #ifdef MQTT_SONOFF
+#define MQTT_NAME "sonoff_" MQTT_SONOFF
 #define MQTT_WEBSOCKETS
 #define MQTT_GPIO
 
@@ -39,7 +48,6 @@ const int BUTTONS_PINS[] = {0};
 const char * const  BUTTONS_NAMES[] = {"b1"};
 #define COLORS_DEFAULT "1000:000000"
 
-#define MQTT_NAME "sonoff_" MQTT_SONOFF
 
 const int WS_MESSAGE_RETRIES = 5;
 const int WS_MESSAGE_RETRY_DELAY = 10;
@@ -51,26 +59,27 @@ const char * const GPIO_PORTS[] = {
   NULL
 };
 
-#endif
+#endif // MQTT_SONOFF
 
 #ifdef MQTT_RFID
+#define MQTT_NAME MQTT_RFID
 #define MQTT_JSON
+#define MQTT_LEDS
 
 const int LEDS_NUM = 24;
 const int BUTTONS_PINS[] = {};
 const char * const BUTTONS_NAMES[] = {};
 #define COLORS_DEFAULT "1000:000000,000008"
 
-#define MQTT_NAME MQTT_RFID
-#endif
+#endif // MQTT_RFID
 
 #ifdef MQTT_RFID
 #define MSG_NAME "eos/rfid/" MQTT_NAME
 #define OTA_NAME "eos-rfid-" MQTT_NAME
-#else
+#else // MQTT_RFID
 #define MSG_NAME "eos/portal/" MQTT_NAME
 #define OTA_NAME "eos-portal-" MQTT_NAME
-#endif
+#endif // MQTT_RFID
 
 // #define COLORS_NOWIFI "r 1000:100008,000000 2000:000000 5000:000000 6000:000000,080010 7000:000000 10000:000000"
 // #define COLORS_NOSUBS "r 500:000108,000000 1000:000000,000810"
@@ -82,9 +91,9 @@ const char * const BUTTONS_NAMES[] = {};
 #ifdef MQTT_SERVER
 const int MAX_CLIENTS = 8;
 const int MAX_SUBSCRIBERS = 32;
-#else
+#else // MQTT_RFID
 const int MAX_CLIENTS = 1;
-#endif
+#endif // MQTT_RFID
 
 const int BUTTONS_NUM = sizeof(BUTTONS_PINS)/sizeof(*BUTTONS_PINS);
 
@@ -98,7 +107,7 @@ const char * const  LEDS_ANIMATIONS[] = {
 const char * const RFID_LEDS_GRANTED = "500:00ff00,000000,000000,000000 1000:00ff00,00ff00,000000,000000 1500:00ff00,00ff00,00ff00,000000 2000:00ff00 10000:008000 12000:000008,000000";
 const char * const RFID_LEDS_DENIED  = "500:ff0000,000000,000000,000000 800:ff0000,ff0000,000000,000000 1000:ff0000,ff0000,ff0000,000000 1200:ff0000 1500:200000 2000:ff0000 5000:ff0000 6000:000008,000000";
 const char * const RFID_LEDS_QUEUE_FULL = "500:005555,000000 1000:000000 1500:000000,005555 2000:000000 2500:000000,000000,000000,001111";
-#else
+#else // MQTT_RFID
 
 const char * const  LEDS_ANIMATIONS[] = {
   "inc","r 1000:00ff00,00aa00,005500 2000:00aa00,005500,00ff00 3000:005500,00ff00,00aa00",
@@ -109,7 +118,7 @@ const char * const  LEDS_ANIMATIONS[] = {
   "nosubs",COLORS_NOSUBS,
   NULL
 };
-#endif
+#endif // MQTT_RFID
 
 const int LEDS_PIN = 0;
 const int MAX_ANIM = 16;
@@ -149,7 +158,7 @@ const char * const  MSG_MAPPING[] = {
 const char * const  MSG_SUBSCRIPTIONS[] = {
   NULL
 };
-#else
+#else // MQTT_LIGHTS|MQTT_GPIO|MQTT_RFID
 const char * const  MSG_MAPPING[] = {
   "eos/portal/light/ack","*",MSG_NAME "/set",NULL,
   NULL
@@ -158,7 +167,7 @@ const char * const  MSG_SUBSCRIPTIONS[] = {
   "eos/portal/light/ack",
   NULL
 };
-#endif
+#endif // MQTT_LIGHTS|MQTT_GPIO|MQTT_RFID
 
 #ifdef MQTT_WEBSOCKETS
 const char * const  WS_BROADCAST_RECEIVE[] = {
@@ -177,7 +186,7 @@ const char * const  WS_BROADCAST_SEND[] = {
   NULL
 };
 const char * const WS_BROADCAST_ACK = "eos/portal/light/ack";
-#endif
+#endif // MQTT_WEBSOCKETS
 
 const int BUTTON_RETRIES = 5;
 const int BUTTON_RETRY_DELAY = 10;
@@ -188,5 +197,21 @@ const int FPS = 40;
 const int MSG_ACK_INTERVAL = 15 * 1000;   // Send last status every 15 seconds
 
 const int ms_per_frame = 1000/FPS;
+
+#define TELNET_DEBUG
+
+#ifdef TELNET_DEBUG
+#include <RemoteDebug.h>
+extern RemoteDebug Debug;
+#else
+#ifdef SERIAL_DEBUG
+#else
+#define debugV(...)
+#define debugD(...)
+#define debugI(...)
+#define debugW(...)
+#define debugE(...)
+#endif // SERIAL_DEBUG
+#endif // TELNET_DEBUG
 
 #endif // _SETTINGS_H_

@@ -17,7 +17,7 @@ WiFiClientSecure wsclient;
 #define WS_SIZE16         126
 
 #define WS_HOST "beacon.eosfrontier.space"
-#define WS_PATH "/socket.io/?transport=websocket"
+#define WS_PATH "/socket.io/?EIO=4&transport=websocket"
 #define WS_PORT 443
 
 enum WSState { noconn, errwait, handshake, handshaking, connected } wsstate;
@@ -58,13 +58,13 @@ void ws_setup()
 
 void ws_send(const char *msg)
 {
-  serprintf("ws_send(%s)", msg);
+  debugD("ws_send(%s)", msg);
   if (!wsclient.connected()) {
     return;
   }
   int size = strlen(msg);
   uint8_t buf[size+8];
-  serprintf("WS Trying to send(%d): %s", size, msg);
+  debugD("WS Trying to send(%d): %s", size, msg);
   uint8_t *bufptr = buf;
   *bufptr++ = WS_FIN | WS_OPCODE_TEXT;
   if (size > 125) {
@@ -83,7 +83,7 @@ void ws_send(const char *msg)
   for (int i = 0; i < size; i++) {
     *bufptr++ = msg[i] ^ mask[i%4];
   }
-  serprintf("WS Writing %d bytes", bufptr-buf);
+  debugD("WS Writing %d bytes", bufptr-buf);
   wsclient.write((const uint8_t *)buf, (bufptr-buf));
 }
 
@@ -97,12 +97,12 @@ int ws_message_retry = 0;
 
 void ws_receive_broadcast(const char *bc)
 {
-  serprintf("Received broadcast: '%s'", bc);
+  debugD("Received broadcast: '%s'", bc);
   for (int i = 0; WS_BROADCAST_RECEIVE[i]; i += 3) {
     if (!strcmp(bc, WS_BROADCAST_RECEIVE[i])) {
       ws_message_last = i;
       ws_message_retry = WS_MESSAGE_RETRIES * WS_MESSAGE_RETRY_DELAY + 1;
-      serprintf("Send message: <%s> -> <%s>", WS_BROADCAST_RECEIVE[i+1], WS_BROADCAST_RECEIVE[i+2]);
+      debugD("Send message: <%s> -> <%s>", WS_BROADCAST_RECEIVE[i+1], WS_BROADCAST_RECEIVE[i+2]);
       msg_send(WS_BROADCAST_RECEIVE[i+1], WS_BROADCAST_RECEIVE[i+2]);
       return;
     }
@@ -123,16 +123,16 @@ void ws_resend_message(void)
 
 void ws_receive(char *msg)
 {
-    serprintf("Received WS message: <<<%s>>>", msg);
+    debugD("Received WS message: <<<%s>>>", msg);
     if (msg[0] == '0') {
-      serprintf("TODO: Do something with connection info: ", msg+1);
+      debugD("TODO: Do something with connection info: %s", msg+1);
     }
     if (msg[0] == '2') {
       ws_send("3");
     } else if (msg[0] == '4') {
       if (msg[1] == '0') {
         ws_ping_time = lasttick;
-        serprintf("WS Connected");
+        debugI("WS Connected");
       } else if (msg[1] == '2') {
         if (startswith(msg+2, "[\"broadcastReceive\"")) {
           char *bcfile = strstr(msg+24, "\"file\":\"");
@@ -145,7 +145,7 @@ void ws_receive(char *msg)
             }
           }
         } else {
-          serprintf("TODO: Do something with <<<%s>>>", msg+2);
+          debugD("TODO: Do something with <<<%s>>>", msg+2);
         }
       }
     }
@@ -188,7 +188,7 @@ void ws_check()
         wsstate = noconn;
     }
     if (wsstate == noconn) {
-        serprintf("Trying to connect to %s:%d", WS_HOST, WS_PORT);
+        debugI("Trying to connect to %s:%d", WS_HOST, WS_PORT);
         if (!wsclient.connect(WS_HOST, WS_PORT)) {
             wsstate = errwait;
             ws_timeout = 100;
@@ -209,7 +209,7 @@ void ws_check()
             "Upgrade: websocket\r\n"
             "Sec-WebSocket-Version: 13\r\n"
             "Sec-WebSocket-Key: " + generateKey() + "=\r\n\r\n";
-        serprintf("WS Send handshake %s", hs.c_str());
+        debugD("WS Send handshake %s", hs.c_str());
         wsclient.write(hs.c_str());
         ws_shakes = 0;
         wsstate = handshaking;
@@ -219,39 +219,39 @@ void ws_check()
         while (wsclient.available()) {
             String s = wsclient.readStringUntil('\n');
             const char *ss = s.c_str();
-            serprintf("WS received: %s", ss);
+            debugD("WS received: %s", ss);
             if (s == "\r") {
                 if (ws_shakes != WSH_COMPLETE) {
-                    serprintf("WS End of handshake, status not ok: %d", ws_shakes);
+                    debugE("WS End of handshake, status not ok: %d", ws_shakes);
                     wsclient.stop();
                     return;
                 }
-                serprintf("WS End of handshake");
+                debugD("WS End of handshake");
                 break;
             } else if (s.indexOf("HTTP/") != -1) {
                 if (!memcmp(ss+9, "101", 3)) {
                     ws_shakes |= WSH_STATUS;
-                    serprintf("WS Status is OK");
+                    debugD("WS Status is OK");
                 } else {
-                    serprintf("WS Wrong status received: %s", ss);
+                    debugE("WS Wrong status received: %s", ss);
                     wsclient.stop();
                     return;
                 }
             } else if (!strncmp(ss, "Connection: ", 12)) {
                 if (!strncmp(ss+13, "pgrade", 6)) {
                     ws_shakes |= WSH_UPGRADE;
-                    serprintf("WS Upgrade OK");
+                    debugD("WS Upgrade OK");
                 }
             } else if (!strncmp(ss, "Sec-WebSocket-Accept:", 21)) {
                 ws_shakes |= WSH_KEY;
-                serprintf("WS key OK");
+                debugD("WS key OK");
             } else if (!strncmp(ss, "Upgrade: websocket", 18)) {
                 ws_shakes |= WSH_WEBSOCKET;
-                serprintf("WS Websocket OK");
+                debugD("WS Websocket OK");
             }
         }
         if (ws_shakes == WSH_COMPLETE) {
-            serprintf("WS is connected successfully");
+            debugI("WS is connected successfully");
             wsstate = connected;
         }
         return;
@@ -292,7 +292,7 @@ void ws_check()
 
 void ws_send_ack(const char *ack)
 {
-  serprintf("ws_send_ack(%s)", ack);
+  debugD("ws_send_ack(%s)", ack);
   if (ws_message_last >= 0) {
     if (!strcmp(WS_BROADCAST_RECEIVE[ws_message_last+2], ack)) {
       // Received mqtt-ack from a websocket message

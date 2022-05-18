@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "settings.h"
 #include "ntp.h"
 #ifdef MQTT_RFID
 #include <WiFiUdp.h>
@@ -41,18 +42,17 @@ void ntp_check()
   while ((pak = ntp_udp.parsePacket()) > 0) {
     int rd = ntp_udp.read(packet, sizeof(packet));
     if (rd < pak) {
-      Serial.print("NTP Short read, got "); Serial.print(rd); Serial.print(", expected "); Serial.println(pak);
+      debugE("NTP Short read, got %d, expected %d", rd, pak);
       ntp_udp.flush();
       if (rd < 48) break;
     }
     // Serial.print("NTP time packet: "); for (int i = 0; i < rd; i++) { Serial.printf("%02x ", packet[i]); }
-    uint32_t secs = (packet[40] << 24) | (packet[41] << 16) | (packet[42] << 8) | (packet[43]);
-    Serial.print("NTP time result: "); Serial.print(secs);
-    secs -= 2208988800UL; // 1900 -> 1970 for epoch time
+    uint32_t osecs = (packet[40] << 24) | (packet[41] << 16) | (packet[42] << 8) | (packet[43]);
+    uint32_t secs = osecs - 2208988800UL; // 1900 -> 1970 for epoch time
     ntp_offset = secs - (now / 1000);
     ntp_last_check = now;
     ntp_next_check = now + 3600000;
-    Serial.print(" shifted: "); Serial.print(secs); Serial.print(", offset = "); Serial.println(ntp_offset);
+    debugD("NTP time result: %d shifted: %d, offset = %d", osecs, secs, ntp_offset);
   }
   if (WiFi.status() != WL_CONNECTED) {
     return;
@@ -78,7 +78,7 @@ void ntp_check()
     ntp_udp.write(packet, sizeof(packet));
     ntp_udp.endPacket();
     // Serial.print("NTP time packet sent: "); for (int i = 0; i < sizeof(packet); i++) { Serial.printf("%02x ", packet[i]); }
-    Serial.print("NTP sent request to: "); Serial.println(ntp_ip);
+    debugD("NTP sent request to: %s", ntp_ip.toString().c_str());
   }
 }
 

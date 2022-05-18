@@ -34,12 +34,12 @@ void gpio_check()
 
 void gpio_set(const char *topic, const char *msg)
 {
-  serprintf("Setting GPIO %s to %s", topic, msg);
+  debugI("Setting GPIO %s to %s", topic, msg);
   for (int i = 0; GPIO_PORTS[i]; i += 3) {
     if (!strcmp(topic, GPIO_PORTS[i])) {
       int hilo = GPIO_PORTS[i+2][0] == 'L';
       if (msg[0] == 'H') { hilo = !hilo; }
-      serprintf("Setting GPIO PIN %d to digital %d", (int)GPIO_PORTS[i+1], hilo);
+      debugD("Setting GPIO PIN %d to digital %d", (int)GPIO_PORTS[i+1], hilo);
       digitalWrite((int)GPIO_PORTS[i+1], hilo);
     }
   }

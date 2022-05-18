@@ -1,3 +1,4 @@
+#include "settings.h"
 #ifdef MQTT_JSON
 
 #define JSON_MAX_DEPTH 10
@@ -33,7 +34,7 @@ bool json_start_parse()
 
 bool json_err(const char *wanted, char c)
 {
-  Serial.print("Json parse error, "); Serial.print(wanted); Serial.print(", got <"); Serial.print(c); Serial.print("> at position "); Serial.println(jss.pos);
+  debugE("Json parse error, %s, got <%c> at position %d", wanted, c, jss.pos);
   return false;
 }
 
@@ -61,9 +62,6 @@ void json_emit_value()
 {
   if ((jss.depth > 0) && (jss.state[jss.depth-1] == object_value)) {
     json_object_value(jss.depth-1, jss.key[jss.depth-1], jss.val);
-    // Serial.print("DBG: "); Serial.print(jss.depth); Serial.print(" '"); Serial.print(jss.key[jss.depth-1]); Serial.print("' = '"); Serial.print(jss.val); Serial.println("'");
-  } else {
-    // Serial.print("DBG: "); Serial.print(jss.depth); Serial.print(" value '"); Serial.print(jss.val); Serial.println("'");
   }
 }
 
@@ -118,7 +116,6 @@ bool json_parse_char(char c)
       return json_err("expected key start", c);
     case in_key:
       if (c == '"') {
-        // Serial.print("Object key(");Serial.print(jss.depth);Serial.print(") '");Serial.print(jss.val);Serial.println("'");
         jss.key[jss.depth] = jss.val;
         jss.state[jss.depth] = want_colon;
         return true;
