@@ -401,6 +401,7 @@ static void server_check()
                     }
                 }
                 clients[idx].connected = false;
+                delete clients[idx].client;
                 clients[idx].client = NULL;
             }
         }

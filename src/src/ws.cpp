@@ -14,7 +14,7 @@
 #define WS_MASK           0x80
 #define WS_SIZE16         126
 
-#define LOCAL_TEST
+// #define LOCAL_TEST
 
 #ifdef LOCAL_TEST
 
@@ -35,11 +35,11 @@ WiFiClientSecure wsclient;
 #endif
 
 enum WSState { noconn, errwait, handshake, handshaking, connected } wsstate;
-int ws_timeout = 0;
+static int ws_timeout = 0;
 
-unsigned long ws_ping_time = 0;
+static unsigned long ws_ping_time = 0;
 
-int ws_shakes; // Check all handshake requirements
+static int ws_shakes; // Check all handshake requirements
 #define WSH_STATUS    (1 << 0)
 #define WSH_UPGRADE   (1 << 1)
 #define WSH_WEBSOCKET (1 << 2)
@@ -75,7 +75,7 @@ void ws_setup()
 #endif
 }
 
-void ws_send(const char *msg)
+static void ws_send(const char *msg)
 {
   debugD("ws_send(%s)", msg);
   if (!wsclient.connected()) {
@@ -111,10 +111,10 @@ static inline bool startswith(const char *str, const char *prefix)
   return (!strncmp(str, prefix, strlen(prefix)));
 }
 
-int ws_message_last = -1;
-int ws_message_retry = 0;
+static int ws_message_last = -1;
+static int ws_message_retry = 0;
 
-void ws_receive_broadcast(const char *bc)
+static void ws_receive_broadcast(const char *bc)
 {
   debugD("Received broadcast: '%s'", bc);
   for (int i = 0; WS_BROADCAST_RECEIVE[i]; i += 3) {
@@ -128,7 +128,7 @@ void ws_receive_broadcast(const char *bc)
   }
 }
 
-void ws_resend_message(void)
+static void ws_resend_message(void)
 {
   if (ws_message_last >= 0) {
     if (ws_message_retry > 0) {
@@ -140,9 +140,25 @@ void ws_resend_message(void)
   }
 }
 
-void ws_receive(char *msg)
+/*
+static const char hexchars[] = "0123456789ABCDEF";
+
+static String hexdump(const char *msg)
+{
+    String hd = "";
+    for (const uint8_t *ptr = (const uint8_t *)msg; *ptr; ptr++) {
+        hd += " ";
+        hd += hexchars[((*ptr)>>4) & 0xF];
+        hd += hexchars[*ptr & 0xF];
+    }
+    return hd;
+}
+*/
+
+static void ws_receive(char *msg)
 {
     debugD("Received WS message: <<<%s>>>", msg);
+    // debugD("Received WS message: <<<%s>>>", hexdump(msg).c_str());
     if (msg[0] == '0') {
       debugD("TODO: Do something with connection info: %s", msg+1);
     }
@@ -251,6 +267,10 @@ void ws_check()
                     wsclient.stop();
                     return;
                 }
+                while (wsclient.available()) {
+                    String cs = wsclient.readStringUntil('\n');
+                    debugD("WS received: %s", cs.c_str());
+                }
                 debugD("WS End of handshake");
                 break;
             } else if (s.indexOf("HTTP/") != -1) {
@@ -278,6 +298,8 @@ void ws_check()
         if (ws_shakes == WSH_COMPLETE) {
             debugI("WS is connected successfully");
             wsstate = connected;
+            ws_send("40");
+            ws_ping_time = lasttick;
         }
         return;
     }
@@ -307,10 +329,12 @@ void ws_check()
             }
             ws_receive(msg);
         }
+        /*
         if ((lasttick - ws_ping_time) > 25000) {
             ws_send("2ping");
             ws_ping_time = lasttick;
         }
+        */
     }
     ws_resend_message();
 }
