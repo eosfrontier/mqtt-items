@@ -45,7 +45,7 @@ static void conn_handle(char *line, unsigned int len)
     msg_handle(line, arg);
 }
 
-static void conn_recv(void *arg, char *data, unsigned short len)
+static void ICACHE_FLASH_ATTR conn_recv(void *arg, char *data, unsigned short len)
 {
     struct espconn *conn = (struct espconn *)arg;
     struct client *client = (struct client *)conn->reverse;
@@ -77,14 +77,14 @@ static void conn_recv(void *arg, char *data, unsigned short len)
     }
 }
 
-static void conn_recon(void *arg, sint8 err)
+static void ICACHE_FLASH_ATTR conn_recon(void *arg, sint8 err)
 {
     struct espconn *conn = (struct espconn *)arg;
     struct client *client = (struct client *)conn->reverse;
     client->state = NULL;
 }
 
-static void conn_discon(void *arg)
+static void ICACHE_FLASH_ATTR conn_discon(void *arg)
 {
     struct espconn *conn = (struct espconn *)arg;
     struct client **client = &clients;
@@ -104,12 +104,12 @@ static void conn_discon(void *arg)
 }
 
 /*
-static void conn_sent(void *arg)
+static void ICACHE_FLASH_ATTR conn_sent(void *arg)
 {
 }
 */
 
-static void conn_connected(void *arg)
+static void ICACHE_FLASH_ATTR conn_connected(void *arg)
 {
     struct client *client = new struct client;
 
@@ -147,6 +147,33 @@ static void server_setup()
     debugD("Server initialized");
 }
 
+static void ap_setup()
+{
+    if (wifi_get_opmode() != STATIONAP_MODE) wifi_set_opmode(STATIONAP_MODE);
+    File wifitxt = LittleFS.open("/wifiA.txt", "r");
+    String wssid = wifitxt.readStringUntil('\n');
+    String wpwd = wifitxt.readStringUntil('\n');
+    wifitxt.close();
+    if (wssid.length() > 31) {
+        debugE("wifiA ssid too long!");
+        return;
+    }
+    if (wssid.length() > 63) {
+        debugE("wifiA password too long!");
+        return;
+    }
+
+    struct softap_config wificonfig;
+    wifi_softap_get_config_default(&wificonfig);
+    if (strcmp(wificonfig.ssid, wssid) || strcmp(wificonfig.password, wpwd)) {
+        strcpy(wificonfig.ssid, wssid.c_str());
+        strcpy(wificonfig.password, wpwd.c_str());
+        wificonfig.ssid_len = wssif.length();
+        wificonfig.ssid_hidden = 0;
+        wifi_softap_set_config(&wificonfig);
+    }
+}
+
 #else
 
 static void client_mdns_query()
@@ -176,7 +203,7 @@ static void client_mdns_query()
 
     struct ip_info ip_info;
     wifi_get_ip_info(STATION_IF, &ip_info);
-    if (!ip_info.ip.addr) wifi_get_ip_info(STATION_IF, &ip_info);
+    if (!ip_info.ip.addr) wifi_get_ip_info(SOFTAP_IF, &ip_info);
     ip_addr_t ifaddr = { .addr = ip_info.ip.addr };
 }
 
@@ -192,9 +219,23 @@ static void client_setup()
     };
 }
 
+static void sta_setup()
+{
+    wifi_set_opmode(STATION_MODE);
+}
 #endif
 
 static char wifiidx = 0;
+
+static void wifi_check()
+{
+    // TODO
+}
+
+static void wifi_setup()
+{
+    // TODO
+}
 
 void msg_setup()
 {
@@ -206,11 +247,16 @@ void msg_setup()
         wififn[5] = 'A' + wifiidx;
     }
     // TODO setup ap or client
+
+    if (!wifi_station_get_auto_connect()) wifi_station_set_auto_connect(1);
 #ifdef MQTT_SERVER
+    ap_setup();
     server_setup();
 #else
+    sta_setup();
     client_setup();
 #endif
+    wifi_setup();
     msg_handle("set", "nosubs");
 }
 
@@ -220,6 +266,7 @@ void msg_send(const char *topic, const char *msg)
 
 void msg_check()
 {
+    wifi_check();
     struct client *client = clients;
     char sendstate[256];
     int len = snprintf(sendstate, sizeof(sendstate), "set %s\n", state);
