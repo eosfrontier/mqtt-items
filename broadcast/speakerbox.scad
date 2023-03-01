@@ -6,18 +6,18 @@ espoff=-2.0;
 
 holeoff = 20;
 
-*rotate([0,0,0]) translate([-gap,0,0]) {
+rotate([0,0,0]) translate([-gap,0,0]) {
     #if ($preview) {
         color("grey") translate([-65,0,40]) rotate([0,-60,0])    speaker();
     }
-    hexbox();
+    *hexbox();
 }
 
-*rotate([0,0,180]) translate([-gap,0,0]) {
+rotate([0,0,180]) translate([-gap,0,0]) {
     #if ($preview) {
         color("grey") translate([-65,0,40]) rotate([0,-60,0])    speaker();
     }
-    hexbox();
+    *hexbox();
 }
 
 translate([0,0,0]) hexbox(true);

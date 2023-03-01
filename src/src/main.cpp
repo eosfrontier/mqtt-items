@@ -18,8 +18,6 @@
 #include "api.h"
 #include "status.h"
 
-const char *state = "nosubs";
-
 unsigned long loadavg = 0;
 unsigned long lasttick = 0;
 int api_check_status = -1;

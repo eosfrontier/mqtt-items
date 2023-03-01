@@ -100,7 +100,6 @@ void leds_setup()
 {
   ledstrip.begin();
   //PIN_DIR_OUTPUT(LEDS_PIN);
-  leds_set(state);
 }
 
 void leds_animate()
@@ -154,15 +153,6 @@ void leds_clear()
 
 void leds_set(const char *color)
 {
-  for (int i = 0; LEDS_ANIMATIONS[i]; i += 2) {
-    if (!strcmp(color, LEDS_ANIMATIONS[i])) {
-      if (state != LEDS_ANIMATIONS[i]) { // Pointer vergelijking omdat ze naar dezelfde string in-memory wijzen
-        leds_set(LEDS_ANIMATIONS[i+1]);
-        state = LEDS_ANIMATIONS[i];
-      }
-      return;
-    }
-  }
   leds_clear();
   int st = 0;
   const char *p = color;
@@ -224,10 +214,7 @@ void leds_set(const char *color)
 void leds_setup() {}
 void leds_animate() {}
 void leds_clear() {}
-void leds_set(const char *color)
-{
-  state = color;
-}
+void leds_set(const char *color) {}
 
 unsigned long anim_tick = 0;
 

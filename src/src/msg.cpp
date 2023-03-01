@@ -9,50 +9,62 @@
 #include <user_interface.h>
 #include <espconn.h>
 
-static void msg_handle(char *cmd, char *arg)
+const char *state = "";
+
+static struct client {
+    struct espconn *conn;
+    const char *state;
+    struct client *next;
+    char buf[64 - 12];
+} *clients = NULL;
+
+static void msg_handle(const char *cmd, const char *arg)
 {
-    if (!strcmp(msg, "set")) {
+    if (!strcmp(cmd, "set")) {
+        for (int i = 0; LEDS_ANIMATIONS[i]; i += 2) {
+            if (!strcmp(arg, LEDS_ANIMATIONS[i])) {
+                if (state != LEDS_ANIMATIONS[i]) { // Pointer vergelijking omdat ze naar dezelfde string in-memory wijzen
+                    leds_set(LEDS_ANIMATIONS[i+1]);
+                    state = LEDS_ANIMATIONS[i];
+                }
+                return;
+            }
+        }
         leds_set(arg);
+        return;
     }
 }
 
 static void conn_handle(char *line, unsigned int len)
 {
-    while (len > 0 && isspace(line[len])) len--;
     char *arg = os_strchr(line, ' ');
     if (!arg) return;
     *arg++ = 0;
     while (*arg && isspace(*arg)) arg++;
+    while (--len > 0 && isspace(line[len])) line[len] = 0;
     msg_handle(line, arg);
 }
 
-static struct client {
-    struct espconn *conn;
-    unsigned long lastsent;
-    struct client *next;
-    char buf[64 - 12];
-} *clients = NULL;
-
 static void conn_recv(void *arg, char *data, unsigned short len)
 {
-    struct espcponn *conn = (struct espconn *)arg;
+    struct espconn *conn = (struct espconn *)arg;
     struct client *client = (struct client *)conn->reverse;
 
     int bln = os_strlen(client->buf);
     while (len > 0) {
-        char *nl = (char *)os_memchr(data, '\n', len);
+        char *nl = (char *)memchr(data, '\n', len);
         if (nl) {
             if (bln) {
                 size_t sz = nl-data;
                 if (sz > (sizeof(client->buf)-bln-1)) sz = (sizeof(client->buf)-bln-1);
                 os_memcpy(client->buf+bln, data, sz);
                 client->buf[bln+sz] = 0;
-                conn_handle(client->buf);
+                conn_handle(client->buf, bln+sz);
                 client->buf[0] = 0;
                 bln = 0;
             } else {
                 *nl = 0;
-                conn_handle(data);
+                conn_handle(data, nl-data);
             }
             len -= (nl-data);
             data = nl+1;
@@ -67,6 +79,9 @@ static void conn_recv(void *arg, char *data, unsigned short len)
 
 static void conn_recon(void *arg, sint8 err)
 {
+    struct espconn *conn = (struct espconn *)arg;
+    struct client *client = (struct client *)conn->reverse;
+    client->state = NULL;
 }
 
 static void conn_discon(void *arg)
@@ -88,6 +103,11 @@ static void conn_discon(void *arg)
     }
 }
 
+/*
+static void conn_sent(void *arg)
+{
+}
+*/
 
 static void conn_connected(void *arg)
 {
@@ -95,13 +115,15 @@ static void conn_connected(void *arg)
 
     client->conn = (struct espconn *)arg;
     client->conn->reverse = client;
-    client->lastsent = 0;
+    //client->lastsent = 0;
     client->buf[0] = 0;
     client->next = clients;
+    client->state = NULL;
     clients = client;
 
     espconn_set_opt(client->conn, ESPCONN_REUSEADDR|ESPCONN_NODELAY|ESPCONN_KEEPALIVE);
     espconn_regist_recvcb(client->conn, conn_recv);
+    //espconn_regist_sentcb(client->conn, conn_sent);
     espconn_regist_reconcb(client->conn, conn_recon);
     espconn_regist_disconcb(client->conn, conn_discon);
 }
@@ -156,7 +178,6 @@ static void client_mdns_query()
     wifi_get_ip_info(STATION_IF, &ip_info);
     if (!ip_info.ip.addr) wifi_get_ip_info(STATION_IF, &ip_info);
     ip_addr_t ifaddr = { .addr = ip_info.ip.addr };
-
 }
 
 static void client_setup()
@@ -190,6 +211,7 @@ void msg_setup()
 #else
     client_setup();
 #endif
+    msg_handle("set", "nosubs");
 }
 
 void msg_send(const char *topic, const char *msg)
@@ -198,6 +220,17 @@ void msg_send(const char *topic, const char *msg)
 
 void msg_check()
 {
+    struct client *client = clients;
+    char sendstate[256];
+    int len = snprintf(sendstate, sizeof(sendstate), "set %s\n", state);
+    if (len > 255) len = 255;
+    while (client) {
+        if (client->state != state) {
+            int r = espconn_send(client->conn, (uint8_t *)sendstate, len);
+            if (r == 0) client->state = state;
+        }
+        client = client->next;
+    }
 }
 
 void msg_receive(const char *topic, const char *msg)
