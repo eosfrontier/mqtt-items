@@ -18,20 +18,24 @@ static struct client {
     char buf[64 - 12];
 } *clients = NULL;
 
+static void msg_set_state(const char *st)
+{
+    for (int i = 0; LEDS_ANIMATIONS[i]; i += 2) {
+        if (!strcmp(st, LEDS_ANIMATIONS[i])) {
+            if (state != LEDS_ANIMATIONS[i]) { // Pointer vergelijking omdat ze naar dezelfde string in-memory wijzen
+                leds_set(LEDS_ANIMATIONS[i+1]);
+                state = LEDS_ANIMATIONS[i];
+            }
+            return;
+        }
+    }
+    leds_set(st);
+}
+
 static void msg_handle(const char *cmd, const char *arg)
 {
     if (!strcmp(cmd, "set")) {
-        for (int i = 0; LEDS_ANIMATIONS[i]; i += 2) {
-            if (!strcmp(arg, LEDS_ANIMATIONS[i])) {
-                if (state != LEDS_ANIMATIONS[i]) { // Pointer vergelijking omdat ze naar dezelfde string in-memory wijzen
-                    leds_set(LEDS_ANIMATIONS[i+1]);
-                    state = LEDS_ANIMATIONS[i];
-                }
-                return;
-            }
-        }
-        leds_set(arg);
-        return;
+        return msg_set_state(arg);
     }
 }
 
@@ -165,10 +169,10 @@ static void ap_setup()
 
     struct softap_config wificonfig;
     wifi_softap_get_config_default(&wificonfig);
-    if (strcmp(wificonfig.ssid, wssid) || strcmp(wificonfig.password, wpwd)) {
-        strcpy(wificonfig.ssid, wssid.c_str());
-        strcpy(wificonfig.password, wpwd.c_str());
-        wificonfig.ssid_len = wssif.length();
+    if (strcmp((char *)wificonfig.ssid, wssid.c_str()) || strcmp((char *)wificonfig.password, wpwd.c_str())) {
+        strcpy((char *)wificonfig.ssid, wssid.c_str());
+        strcpy((char *)wificonfig.password, wpwd.c_str());
+        wificonfig.ssid_len = wssid.length();
         wificonfig.ssid_hidden = 0;
         wifi_softap_set_config(&wificonfig);
     }
@@ -225,28 +229,100 @@ static void sta_setup()
 }
 #endif
 
-static char wifiidx = 0;
+static unsigned long lastscan;
+
+static struct wifipwd {
+    struct wifipwd *next;
+    char ssid[32];
+    char password[64];
+} *wifipwds = NULL;
+
+// TODO:
+// - mark APs as not ok (move to end of list?) on connection failure
+// - do something when connected
+// - print debug info
+// - use cached station api
+static void ICACHE_FLASH_ATTR wifi_scan_done(void *arg, STATUS status)
+{
+    if (status == OK) {
+        // Loop over wp first because that defines prio
+        for (struct wifipwd *wp = wifipwds; wp; wp = wp->next) {
+            for (struct bss_info *bss = (struct bss_info *)arg; bss; bss = bss->next.stqe_next) {
+                if (!strcmp(wp->ssid, (char *)bss->ssid)) {
+                    struct station_config sconf;
+                    sconf.bssid_set = 0;
+                    os_memcpy(&sconf.ssid, wp->ssid, 32);
+                    os_memcpy(&sconf.password, wp->password, 64);
+                    wifi_station_set_config_current(&sconf);
+                    wifi_station_connect();
+                    return;
+                }
+            }
+        }
+    }
+}
 
 static void wifi_check()
 {
-    // TODO
+    switch (wifi_station_get_connect_status()) {
+        case STATION_GOT_IP:
+            msg_set_state("nosubs");
+            return;
+        case STATION_CONNECTING:
+            msg_set_state("cnwifi");
+            return;
+        default:
+            if ((lasttick - lastscan) > 10000) {
+                lastscan = lasttick;
+                msg_set_state("nowifi");
+                wifi_station_scan(NULL, wifi_scan_done);
+                return;
+            }
+    }
 }
 
 static void wifi_setup()
 {
-    // TODO
+    lastscan = 0 - 10000;
+    // Read all wifi files from littlefs
+    // Get stored wifi connections from flash, set index on wifi files
+    // Scan wifi
+    // See if wifi is found that matches littlefs files
+    //   (opt?) If not see if wifi is found that matches flash (?)
+    // Connect to that wifi
+
+    char wififn[11] = "/wifiA.txt";
+    int wifiidx = 0;
+#ifndef MQTT_SERVER
+    // Skip A because that's our softAP
+    wifiidx = 1;
+    wififn[5] = 'A' + wifiidx;
+#endif
+    while (LittleFS.exists(wififn)) {
+        File wifitxt = LittleFS.open(wififn, "r");
+        String wssid = wifitxt.readStringUntil('\n');
+        String wpwd = wifitxt.readStringUntil('\n');
+        wifitxt.close();
+
+        if (wssid.length() > 31) {
+            debugE("%s ssid too long!", wififn);
+        } else if (wssid.length() > 63) {
+            debugE("%s password too long!", wififn);
+        } else {
+            struct wifipwd *wp = new struct wifipwd;
+            os_strcpy(wp->ssid, wssid.c_str());
+            os_strcpy(wp->password, wpwd.c_str());
+            wp->next = wifipwds;
+            wifipwds = wp;
+        }
+        wifiidx++;
+        wififn[5] = 'A' + wifiidx;
+    }
 }
 
 void msg_setup()
 {
     LittleFS.begin();
-    char wififn[11] = "/wifiA.txt";
-    wifiidx = 0;
-    while (LittleFS.exists(wififn)) {
-        wifiidx++;
-        wififn[5] = 'A' + wifiidx;
-    }
-    // TODO setup ap or client
 
     if (!wifi_station_get_auto_connect()) wifi_station_set_auto_connect(1);
 #ifdef MQTT_SERVER
@@ -257,7 +333,7 @@ void msg_setup()
     client_setup();
 #endif
     wifi_setup();
-    msg_handle("set", "nosubs");
+    msg_set_state("nosubs");
 }
 
 void msg_send(const char *topic, const char *msg)
