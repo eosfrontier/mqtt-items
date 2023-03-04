@@ -77,7 +77,7 @@ static void ICACHE_FLASH_ATTR conn_recv(void *arg, char *data, unsigned short le
             data = nl+1;
         } else {
             size_t sz = len;
-            if (sz > (sizeof(client->buf)-1)) sz = sizeof(client->buf)-1;
+            if (sz > (sizeof(client->buf)-bln-1)) sz = sizeof(client->buf)-bln-1;
             os_memcpy(client->buf+bln, data, sz);
             client->buf[bln+sz] = 0;
             //Serial.printf("buf = '%s'\r\n", client->buf);
@@ -86,13 +86,14 @@ static void ICACHE_FLASH_ATTR conn_recv(void *arg, char *data, unsigned short le
     }
 }
 
+/*
 static void ICACHE_FLASH_ATTR conn_recon(void *arg, sint8 err)
 {
     struct espconn *conn = (struct espconn *)arg;
-    Serial.printf("conn_recon(%d.%d.%d.%d:%d)\r\n",
+    Serial.printf("conn_recon(%d.%d.%d.%d:%d) %d\r\n",
         conn->proto.tcp->remote_ip[0], conn->proto.tcp->remote_ip[1],
         conn->proto.tcp->remote_ip[2], conn->proto.tcp->remote_ip[3],
-        conn->proto.tcp->remote_port);
+        conn->proto.tcp->remote_port, conn->link_cnt);
     struct client *client = (struct client *)conn->reverse;
     client->state = NULL;
 }
@@ -101,10 +102,10 @@ static void ICACHE_FLASH_ATTR conn_discon(void *arg)
 {
     struct espconn *conn = (struct espconn *)arg;
 
-    Serial.printf("conn_discon(%d.%d.%d.%d:%d)\r\n",
+    Serial.printf("conn_discon(%d.%d.%d.%d:%d) %d\r\n",
         conn->proto.tcp->remote_ip[0], conn->proto.tcp->remote_ip[1],
         conn->proto.tcp->remote_ip[2], conn->proto.tcp->remote_ip[3],
-        conn->proto.tcp->remote_port);
+        conn->proto.tcp->remote_port, conn->link_cnt);
 
     struct client **client = &clients;
     while (*client && conn->reverse != *client) {
@@ -125,6 +126,7 @@ static void ICACHE_FLASH_ATTR conn_discon(void *arg)
             conn->proto.tcp->remote_port);
     }
 }
+*/
 
 /*
 static void ICACHE_FLASH_ATTR conn_sent(void *arg)
@@ -145,18 +147,19 @@ static void ICACHE_FLASH_ATTR conn_connected(void *arg)
     client->state = NULL;
     clients = client;
 
-    espconn_set_opt(conn, ESPCONN_REUSEADDR|ESPCONN_NODELAY|ESPCONN_KEEPALIVE);
+    //espconn_set_opt(conn, ESPCONN_REUSEADDR|ESPCONN_NODELAY|ESPCONN_KEEPALIVE);
     espconn_regist_recvcb(conn, conn_recv);
     //espconn_regist_sentcb(conn, conn_sent);
-    espconn_regist_reconcb(conn, conn_recon);
-    espconn_regist_disconcb(conn, conn_discon);
-    espconn_regist_time(conn, 10, 1);
+    //espconn_regist_reconcb(conn, conn_recon);
+    //espconn_regist_disconcb(conn, conn_discon);
+    //espconn_regist_time(conn, 10, 1);
 
-    Serial.printf("Connected client (%d.%d.%d.%d:%d)\r\n",
+    Serial.printf("Connected client (%d.%d.%d.%d:%d) %d\r\n",
         conn->proto.tcp->remote_ip[0], conn->proto.tcp->remote_ip[1],
         conn->proto.tcp->remote_ip[2], conn->proto.tcp->remote_ip[3],
-        conn->proto.tcp->remote_port);
+        conn->proto.tcp->remote_port, conn->link_cnt);
 
+    Serial.printf("Heap: %d\r\n", system_get_free_heap_size());
     for (client = clients; client; client = client->next) {
         conn = client->conn;
         Serial.printf("- Client: (%d.%d.%d.%d:%d)\r\n",
@@ -164,9 +167,13 @@ static void ICACHE_FLASH_ATTR conn_connected(void *arg)
             conn->proto.tcp->remote_ip[2], conn->proto.tcp->remote_ip[3],
             conn->proto.tcp->remote_port);
         Serial.printf("  Conn state: %d\r\n", conn->state);
-        Serial.printf("  Link cnt: %d\r\n ", conn->link_cnt);
-        Serial.printf("  Client State: '%s'\r\n ", client->state ? client->state : "");
+        Serial.printf("  Link cnt: %d\r\n", conn->link_cnt);
+        Serial.printf("  Client State: '%s'\r\n", client->state ? client->state : "");
         Serial.printf("  Buf: '%s'\r\n", client->buf);
+        Serial.printf("  Con: %p\r\n", conn->proto.tcp->connect_callback);
+        Serial.printf("  Discon: %p\r\n", conn->proto.tcp->disconnect_callback);
+        Serial.printf("  Recon: %p\r\n", conn->proto.tcp->reconnect_callback);
+        Serial.printf("  Write: %p\r\n", conn->proto.tcp->write_finish_fn);
     }
 }
 
@@ -182,13 +189,15 @@ static void server_setup()
         .state = ESPCONN_NONE,
         .proto = { .tcp = &tcp }
     };
+    //espconn_set_opt(&server, ESPCONN_REUSEADDR|ESPCONN_NODELAY|ESPCONN_KEEPALIVE);
     espconn_regist_connectcb(&server, conn_connected);
-    espconn_regist_reconcb(&server, conn_recon);
-    espconn_regist_disconcb(&server, conn_discon);
+    //espconn_regist_reconcb(&server, conn_recon);
+    //espconn_regist_disconcb(&server, conn_discon);
     espconn_tcp_set_max_con_allow(&server, MAX_CLIENTS);
     espconn_accept(&server);
-    espconn_regist_time(&server, 30, 0);
+    espconn_regist_time(&server, 0, 0);
     Serial.printf("Server initialized\r\n");
+    //Serial.printf("  Con: %p\r\n  Discon: %p\r\n  Recon: %p\r\n  Write: %p\r\n", conn_connected, conn_recon, conn_discon, (void *)NULL);
 }
 
 static void ap_setup()
@@ -285,14 +294,27 @@ static struct wifipwd {
 static void ICACHE_FLASH_ATTR wifi_scan_done(void *arg, STATUS status)
 {
     if (status == OK) {
+        for (struct bss_info *bss = (struct bss_info *)arg; bss; bss = bss->next.stqe_next) {
+            Serial.printf("WiFi-AP %02X:%02X:%02X:%02X:%02X:%02X %s on channel %d with rssi %d\r\n",
+                bss->bssid[0], bss->bssid[1], bss->bssid[2],
+                bss->bssid[3], bss->bssid[4], bss->bssid[5],
+                bss->ssid, bss->channel, bss->rssi);
+        }
         // Loop over wp first because that defines prio
         for (struct wifipwd *wp = wifipwds; wp; wp = wp->next) {
             for (struct bss_info *bss = (struct bss_info *)arg; bss; bss = bss->next.stqe_next) {
                 if (!strcmp(wp->ssid, (char *)bss->ssid)) {
                     struct station_config sconf;
+                    wifi_station_get_config(&sconf);
+                    if (!strcmp((char *)sconf.ssid, wp->ssid)
+                            && !strcmp((char *)sconf.password, wp->password)
+                            && wifi_station_get_connect_status()) {
+                        Serial.printf("Still connecting to %s\r\n", sconf.ssid);
+                        return;
+                    }
                     sconf.bssid_set = 0;
-                    os_memcpy(&sconf.ssid, wp->ssid, 32);
-                    os_memcpy(&sconf.password, wp->password, 64);
+                    os_memcpy(sconf.ssid, wp->ssid, 32);
+                    os_memcpy(sconf.password, wp->password, 64);
                     Serial.printf("Connecting to ('%s' : '%s')\r\n", sconf.ssid, sconf.password);
                     wifi_station_set_config_current(&sconf);
                     wifi_station_connect();
@@ -310,10 +332,19 @@ static void wifi_check()
     if (cs != last_cs) {
         Serial.printf("Wifi status changed from %d to %d\r\n", last_cs, cs);
         last_cs = cs;
+        struct station_config sc;
+        wifi_station_get_config(&sc);
+        Serial.printf("Wifi %02X:%02X:%02X:%02X:%02X:%02X rssi %d\r\n",
+            sc.bssid[0], sc.bssid[1], sc.bssid[2],
+            sc.bssid[3], sc.bssid[4], sc.bssid[5],
+            wifi_station_get_rssi());
     }
     switch (cs) {
         case STATION_GOT_IP:
             if (!clients) {
+                if (!wifi_station_get_auto_connect()) {
+                    wifi_station_set_auto_connect(1);
+                }
                 msg_set_state("nosubs");
             } else {
                 if (!strcmp(state, "nosubs")) {
@@ -324,15 +355,9 @@ static void wifi_check()
         case STATION_CONNECTING:
             msg_set_state("cnwifi");
             return;
-        case STATION_WRONG_PASSWORD:
-            // It also gives state wrong_password when still connecting
-            if ((lasttick - lastscan) < 30000) {
-                msg_set_state("cnwifi");
-                break;
-            }
         default:
-            msg_set_state("nowifi");
-            if ((lasttick - lastscan) >= 10000) {
+            if ((lasttick - lastscan) >= 30000) {
+                msg_set_state("nowifi");
                 lastscan = lasttick;
                 wifi_station_scan(NULL, wifi_scan_done);
                 return;
@@ -342,7 +367,7 @@ static void wifi_check()
 
 static void wifi_setup()
 {
-    lastscan = 0 - 10000;
+    lastscan = 0 - 30000;
     // Read all wifi files from littlefs
     // Get stored wifi connections from flash, set index on wifi files
     // Scan wifi
@@ -402,19 +427,33 @@ void msg_send(const char *topic, const char *msg)
 void msg_check()
 {
     wifi_check();
-    struct client *client = clients;
+    // Double pointer to facilitate removal
+    struct client **client = &clients;
     char sendstate[256];
     int len = 0;
-    while (client) {
-        if (client->state != state) {
-            if (!len) {
-                len = snprintf(sendstate, sizeof(sendstate), "set %s\r\n", state);
-                if (len > 255) len = 255;
+    while (*client) {
+        struct espconn *conn = (*client)->conn;
+        if (conn->state == ESPCONN_CLOSE) {
+            struct client *toremove = *client;
+            *client = (*client)->next;
+            Serial.printf("espconn_disconnect(%d.%d.%d.%d:%d) %d\r\n",
+                conn->proto.tcp->remote_ip[0], conn->proto.tcp->remote_ip[1],
+                conn->proto.tcp->remote_ip[2], conn->proto.tcp->remote_ip[3],
+                conn->proto.tcp->remote_port, conn->link_cnt);
+            espconn_abort(conn);
+            espconn_delete(conn);
+            delete toremove;
+        } else {
+            if ((*client)->state != state) {
+                if (!len) {
+                    len = snprintf(sendstate, sizeof(sendstate), "set %s\r\n", state);
+                    if (len > 255) len = 255;
+                }
+                int r = espconn_send(conn, (uint8_t *)sendstate, len);
+                if (r == 0) (*client)->state = state;
             }
-            int r = espconn_send(client->conn, (uint8_t *)sendstate, len);
-            if (r == 0) client->state = state;
+            client = &((*client)->next);
         }
-        client = client->next;
     }
 }
 
