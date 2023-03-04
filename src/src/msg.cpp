@@ -20,12 +20,13 @@ static struct client {
 
 static void msg_set_state(const char *st)
 {
+    if (!strcmp(st, state)) return;
+    Serial.printf("Set state to %s\r\n", st);
     for (int i = 0; LEDS_ANIMATIONS[i]; i += 2) {
         if (!strcmp(st, LEDS_ANIMATIONS[i])) {
-            if (state != LEDS_ANIMATIONS[i]) { // Pointer vergelijking omdat ze naar dezelfde string in-memory wijzen
-                leds_set(LEDS_ANIMATIONS[i+1]);
-                state = LEDS_ANIMATIONS[i];
-            }
+            Serial.printf("Set leds to %s (%s)\r\n", st, LEDS_ANIMATIONS[i+1]);
+            leds_set(LEDS_ANIMATIONS[i+1]);
+            state = LEDS_ANIMATIONS[i];
             return;
         }
     }
@@ -54,9 +55,11 @@ static void ICACHE_FLASH_ATTR conn_recv(void *arg, char *data, unsigned short le
     struct espconn *conn = (struct espconn *)arg;
     struct client *client = (struct client *)conn->reverse;
 
+    //Serial.printf("recv('%*s', %d)  client %p  buf = '%s'\r\n", len, data, len, client, client->buf);
     int bln = os_strlen(client->buf);
     while (len > 0) {
         char *nl = (char *)memchr(data, '\n', len);
+        //Serial.printf("memchr(data, '\\n', %d) = %p\r\n", len, nl);
         if (nl) {
             if (bln) {
                 size_t sz = nl-data;
@@ -77,6 +80,8 @@ static void ICACHE_FLASH_ATTR conn_recv(void *arg, char *data, unsigned short le
             if (sz > (sizeof(client->buf)-1)) sz = sizeof(client->buf)-1;
             os_memcpy(client->buf+bln, data, sz);
             client->buf[bln+sz] = 0;
+            //Serial.printf("buf = '%s'\r\n", client->buf);
+            len = 0;
         }
     }
 }
@@ -84,6 +89,10 @@ static void ICACHE_FLASH_ATTR conn_recv(void *arg, char *data, unsigned short le
 static void ICACHE_FLASH_ATTR conn_recon(void *arg, sint8 err)
 {
     struct espconn *conn = (struct espconn *)arg;
+    Serial.printf("conn_recon(%d.%d.%d.%d:%d)\r\n",
+        conn->proto.tcp->remote_ip[0], conn->proto.tcp->remote_ip[1],
+        conn->proto.tcp->remote_ip[2], conn->proto.tcp->remote_ip[3],
+        conn->proto.tcp->remote_port);
     struct client *client = (struct client *)conn->reverse;
     client->state = NULL;
 }
@@ -91,6 +100,12 @@ static void ICACHE_FLASH_ATTR conn_recon(void *arg, sint8 err)
 static void ICACHE_FLASH_ATTR conn_discon(void *arg)
 {
     struct espconn *conn = (struct espconn *)arg;
+
+    Serial.printf("conn_discon(%d.%d.%d.%d:%d)\r\n",
+        conn->proto.tcp->remote_ip[0], conn->proto.tcp->remote_ip[1],
+        conn->proto.tcp->remote_ip[2], conn->proto.tcp->remote_ip[3],
+        conn->proto.tcp->remote_port);
+
     struct client **client = &clients;
     while (*client && conn->reverse != *client) {
         client = &((*client)->next);
@@ -99,6 +114,10 @@ static void ICACHE_FLASH_ATTR conn_discon(void *arg)
         struct client *toremove = *client;
         *client = (*client)->next;
         delete toremove;
+        Serial.printf("Removed client (%d.%d.%d.%d:%d)\r\n",
+            conn->proto.tcp->remote_ip[0], conn->proto.tcp->remote_ip[1],
+            conn->proto.tcp->remote_ip[2], conn->proto.tcp->remote_ip[3],
+            conn->proto.tcp->remote_port);
     } else {
         debugE("Disconnect callback on unknown client (%d.%d.%d.%d:%d)",
             conn->proto.tcp->remote_ip[0], conn->proto.tcp->remote_ip[1],
@@ -117,7 +136,8 @@ static void ICACHE_FLASH_ATTR conn_connected(void *arg)
 {
     struct client *client = new struct client;
 
-    client->conn = (struct espconn *)arg;
+    struct espconn *conn = (struct espconn *)arg;
+    client->conn = conn;
     client->conn->reverse = client;
     //client->lastsent = 0;
     client->buf[0] = 0;
@@ -125,11 +145,29 @@ static void ICACHE_FLASH_ATTR conn_connected(void *arg)
     client->state = NULL;
     clients = client;
 
-    espconn_set_opt(client->conn, ESPCONN_REUSEADDR|ESPCONN_NODELAY|ESPCONN_KEEPALIVE);
-    espconn_regist_recvcb(client->conn, conn_recv);
-    //espconn_regist_sentcb(client->conn, conn_sent);
-    espconn_regist_reconcb(client->conn, conn_recon);
-    espconn_regist_disconcb(client->conn, conn_discon);
+    espconn_set_opt(conn, ESPCONN_REUSEADDR|ESPCONN_NODELAY|ESPCONN_KEEPALIVE);
+    espconn_regist_recvcb(conn, conn_recv);
+    //espconn_regist_sentcb(conn, conn_sent);
+    espconn_regist_reconcb(conn, conn_recon);
+    espconn_regist_disconcb(conn, conn_discon);
+    espconn_regist_time(conn, 10, 1);
+
+    Serial.printf("Connected client (%d.%d.%d.%d:%d)\r\n",
+        conn->proto.tcp->remote_ip[0], conn->proto.tcp->remote_ip[1],
+        conn->proto.tcp->remote_ip[2], conn->proto.tcp->remote_ip[3],
+        conn->proto.tcp->remote_port);
+
+    for (client = clients; client; client = client->next) {
+        conn = client->conn;
+        Serial.printf("- Client: (%d.%d.%d.%d:%d)\r\n",
+            conn->proto.tcp->remote_ip[0], conn->proto.tcp->remote_ip[1],
+            conn->proto.tcp->remote_ip[2], conn->proto.tcp->remote_ip[3],
+            conn->proto.tcp->remote_port);
+        Serial.printf("  Conn state: %d\r\n", conn->state);
+        Serial.printf("  Link cnt: %d\r\n ", conn->link_cnt);
+        Serial.printf("  Client State: '%s'\r\n ", client->state ? client->state : "");
+        Serial.printf("  Buf: '%s'\r\n", client->buf);
+    }
 }
 
 #ifdef MQTT_SERVER
@@ -145,10 +183,12 @@ static void server_setup()
         .proto = { .tcp = &tcp }
     };
     espconn_regist_connectcb(&server, conn_connected);
+    espconn_regist_reconcb(&server, conn_recon);
+    espconn_regist_disconcb(&server, conn_discon);
     espconn_tcp_set_max_con_allow(&server, MAX_CLIENTS);
     espconn_accept(&server);
     espconn_regist_time(&server, 30, 0);
-    debugD("Server initialized");
+    Serial.printf("Server initialized\r\n");
 }
 
 static void ap_setup()
@@ -253,6 +293,7 @@ static void ICACHE_FLASH_ATTR wifi_scan_done(void *arg, STATUS status)
                     sconf.bssid_set = 0;
                     os_memcpy(&sconf.ssid, wp->ssid, 32);
                     os_memcpy(&sconf.password, wp->password, 64);
+                    Serial.printf("Connecting to ('%s' : '%s')\r\n", sconf.ssid, sconf.password);
                     wifi_station_set_config_current(&sconf);
                     wifi_station_connect();
                     return;
@@ -264,17 +305,35 @@ static void ICACHE_FLASH_ATTR wifi_scan_done(void *arg, STATUS status)
 
 static void wifi_check()
 {
-    switch (wifi_station_get_connect_status()) {
+    static uint8 last_cs = 255;
+    uint8 cs = wifi_station_get_connect_status();
+    if (cs != last_cs) {
+        Serial.printf("Wifi status changed from %d to %d\r\n", last_cs, cs);
+        last_cs = cs;
+    }
+    switch (cs) {
         case STATION_GOT_IP:
-            msg_set_state("nosubs");
+            if (!clients) {
+                msg_set_state("nosubs");
+            } else {
+                if (!strcmp(state, "nosubs")) {
+                    msg_set_state("idle");
+                }
+            }
             return;
         case STATION_CONNECTING:
             msg_set_state("cnwifi");
             return;
+        case STATION_WRONG_PASSWORD:
+            // It also gives state wrong_password when still connecting
+            if ((lasttick - lastscan) < 30000) {
+                msg_set_state("cnwifi");
+                break;
+            }
         default:
-            if ((lasttick - lastscan) > 10000) {
+            msg_set_state("nowifi");
+            if ((lasttick - lastscan) >= 10000) {
                 lastscan = lasttick;
-                msg_set_state("nowifi");
                 wifi_station_scan(NULL, wifi_scan_done);
                 return;
             }
@@ -333,7 +392,7 @@ void msg_setup()
     client_setup();
 #endif
     wifi_setup();
-    msg_set_state("nosubs");
+    msg_set_state("nowifi");
 }
 
 void msg_send(const char *topic, const char *msg)
@@ -345,10 +404,13 @@ void msg_check()
     wifi_check();
     struct client *client = clients;
     char sendstate[256];
-    int len = snprintf(sendstate, sizeof(sendstate), "set %s\n", state);
-    if (len > 255) len = 255;
+    int len = 0;
     while (client) {
         if (client->state != state) {
+            if (!len) {
+                len = snprintf(sendstate, sizeof(sendstate), "set %s\r\n", state);
+                if (len > 255) len = 255;
+            }
             int r = espconn_send(client->conn, (uint8_t *)sendstate, len);
             if (r == 0) client->state = state;
         }
