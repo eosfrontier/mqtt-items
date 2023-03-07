@@ -8,6 +8,7 @@
 #include <LittleFS.h>
 #include <user_interface.h>
 #include <espconn.h>
+#include <ESP8266mDNS.h>
 
 const char *state = "";
 
@@ -227,54 +228,56 @@ static void ap_setup()
     }
 }
 
+static MDNSResponder mdns;
+
+static void mdns_setup()
+{
+    if (!mdns.begin(OTA_NAME)) {
+        Serial.printf("Error setting up mdns responder");
+    }
+    if (!mdns.addService("eos-portal", "tcp", mqtt_port)) {
+        Serial.printf("Error adding mdns service");
+    }
+}
+
 #else
 
-static void client_mdns_query()
-{
-    char packet[128];
-    const char *server = "eos-portal";
-    const char *proto = "tcp";
-    const char *local = "local";
-    snprintf(packet, sizeof(packet),
-        "%c%c%c%c"
-        "%c%c%c%c"
-        "%c%c%c%c"
-        "%c_%s"
-        "%c_%s"
-        "%c%s"
-        "%c"
-        "%c%c%c%c",
-        0,0,0,0,
-        0,1,0,0,
-        0,0,0,0,
-        strlen(server)+1, server,
-        strlen(proto)+1, proto,
-        strlen(local), local,
-        0,
-        0, 12, 0, 1
-        );
-
-    struct ip_info ip_info;
-    wifi_get_ip_info(STATION_IF, &ip_info);
-    if (!ip_info.ip.addr) wifi_get_ip_info(SOFTAP_IF, &ip_info);
-    ip_addr_t ifaddr = { .addr = ip_info.ip.addr };
-}
-
-static void client_setup()
-{
-    static esp_tcp tcp = {
-        .remote_port = mqtt_port
-    };
-    static struct espconn server = {
-        .type = ESPCONN_TCP,
-        .state = ESPCONN_NONE,
-        .proto = { .tcp = &tcp }
-    };
-}
+static unsigned long lastconn;
 
 static void sta_setup()
 {
     wifi_set_opmode(STATION_MODE);
+    lastconn = 0 - 30000;
+}
+
+static struct espconn client_conn;
+
+static void client_setup()
+{
+    static esp_tcp tcp;
+    client_conn.type = ESPCONN_TCP;
+    client_conn.state = ESPCONN_NONE;
+    client_conn.proto.tcp = &tcp;
+    espconn_regist_recvcb(&client_conn, conn_recv);
+}
+
+static void client_check()
+{
+    if ((client_conn.state == ESPCONN_NONE) || (client_conn.state == ESPCONN_CLOSE)) {
+        if ((lasttick - lastconn) >= 30000) {
+            Serial.printf("Querying mdns for %s - %s\r\n", "eos-portal", "tcp");
+            int n = MDNS.queryService("eos-portal", "tcp");
+            Serial.printf("Found %d services\r\n", n);
+            if (n) {
+                Serial.printf("Trying to connect to %s at %s:%d\r\n", MDNS.answerHostname(0), MDNS.answerIP(0).toString().c_str(), MDNS.answerPort(0));
+                client_conn.proto.tcp.remote_port = MDNS.answerPort(0);
+                os_memcpy(client_conn.proto.tcp.remote_ip, MDNS.answerIP(0).ip);
+                espconn_connect(&client_conn);
+            }
+            lastconn = lasttick + 30000;
+        }
+    }
+
 }
 #endif
 
@@ -305,6 +308,7 @@ static void ICACHE_FLASH_ATTR wifi_scan_done(void *arg, STATUS status)
             for (struct bss_info *bss = (struct bss_info *)arg; bss; bss = bss->next.stqe_next) {
                 if (!strcmp(wp->ssid, (char *)bss->ssid)) {
                     struct station_config sconf;
+                    os_memset(&sconf, 0, sizeof(sconf));
                     wifi_station_get_config(&sconf);
                     Serial.printf(
                         "  ssid: '%s'\r\n"
@@ -472,10 +476,10 @@ void msg_setup()
     if (!wifi_station_get_auto_connect()) wifi_station_set_auto_connect(1);
 #ifdef MQTT_SERVER
     ap_setup();
+    mdns_setup();
     server_setup();
 #else
     sta_setup();
-    client_setup();
 #endif
     wifi_setup();
     msg_set_state("nowifi");
@@ -483,11 +487,31 @@ void msg_setup()
 
 void msg_send(const char *topic, const char *msg)
 {
+    struct client *client = clients;
+    char sendstate[256];
+    int len = 0;
+    len = snprintf(sendstate, sizeof(sendstate), "%s %s\r\n", topic, msg);
+    if (len > sizeof(sendstate)-1) {
+        debugE("msg_send too large: %s %s", topic, msg);
+        return;
+    }
+    while (client) {
+        struct espconn *conn = client->conn;
+        if (conn->state != ESPCONN_CLOSE) {
+            espconn_send(conn, (uint8_t *)sendstate, len);
+        }
+        client = client->next;
+    }
 }
 
 void msg_check()
 {
     wifi_check();
+#ifdef MQTT_SERVER
+    mdns.update();
+#else
+    client_check();
+#endif
     // Double pointer to facilitate removal
     struct client **client = &clients;
     char sendstate[256];

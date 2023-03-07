@@ -3,6 +3,5 @@
 
 void buttons_setup();
 void buttons_check();
-void buttons_ack();
 
 #endif // _BUTTONS_H_

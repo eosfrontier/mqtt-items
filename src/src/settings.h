@@ -5,7 +5,7 @@
 #ifdef MQTT_LIGHTS
 #define MQTT_NAME "light"
 #define MQTT_LEDS
-#define MQTT_BUTTONS
+#undef MQTT_BUTTONS
 
 const int LEDS_NUM = 4;
 const int BUTTONS_PINS[] = {};
@@ -22,6 +22,13 @@ const char * const  BUTTONS_NAMES[] = {};
 const int LEDS_NUM = 3;
 const int BUTTONS_PINS[] = {14,12,13};
 const char * const  BUTTONS_NAMES[] = {"b1","b2","b3"};
+// Hack integer values into char array
+// state - allowable buttons - newstate
+const char * const BUTTONS_ACTIONS[] = {
+    "idle", (const char *)(0b010), "out",
+    "*", (const char *)(0b111),
+    NULL
+};
 #define COLORS_DEFAULT "2000:000000,001800,000000"
 
 #endif // MQTT_BUTTONS_OUT
