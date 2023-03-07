@@ -197,6 +197,10 @@ void leds_set(const char *color)
       }
     }
   }
+  if (st == 0) {
+      debugE("No color found in <<<%s>>>", color);
+      return;
+  }
   anim_len = st+1;
   anim_tick = millis();
   /*

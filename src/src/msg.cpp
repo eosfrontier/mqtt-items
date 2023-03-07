@@ -306,15 +306,36 @@ static void ICACHE_FLASH_ATTR wifi_scan_done(void *arg, STATUS status)
                 if (!strcmp(wp->ssid, (char *)bss->ssid)) {
                     struct station_config sconf;
                     wifi_station_get_config(&sconf);
+                    Serial.printf(
+                        "  ssid: '%s'\r\n"
+                        "  bssid_set: %d\r\n"
+                        "  bssid: '%02X:%02X:%02X:%02X:%02X:%02X'\r\n"
+                        "  threshold: (%d,%d)\r\n",
+                        sconf.ssid,
+                        sconf.bssid_set,
+                        sconf.bssid[0], sconf.bssid[1], sconf.bssid[2],
+                        sconf.bssid[3], sconf.bssid[4], sconf.bssid[5],
+                        sconf.threshold.rssi, sconf.threshold.authmode);
                     if (!strcmp((char *)sconf.ssid, wp->ssid)
                             && !strcmp((char *)sconf.password, wp->password)
                             && wifi_station_get_connect_status()) {
                         Serial.printf("Still connecting to %s\r\n", sconf.ssid);
                         return;
                     }
-                    sconf.bssid_set = 0;
+                    os_memset(&sconf, 0, sizeof(sconf));
+                    sconf.threshold.rssi = -90;
                     os_memcpy(sconf.ssid, wp->ssid, 32);
                     os_memcpy(sconf.password, wp->password, 64);
+                    Serial.printf(
+                        "  ssid: '%s'\r\n"
+                        "  bssid_set: %d\r\n"
+                        "  bssid: '%02X:%02X:%02X:%02X:%02X:%02X'\r\n"
+                        "  threshold: (%d,%d)\r\n",
+                        sconf.ssid,
+                        sconf.bssid_set,
+                        sconf.bssid[0], sconf.bssid[1], sconf.bssid[2],
+                        sconf.bssid[3], sconf.bssid[4], sconf.bssid[5],
+                        sconf.threshold.rssi, sconf.threshold.authmode);
                     Serial.printf("Connecting to ('%s' : '%s')\r\n", sconf.ssid, sconf.password);
                     wifi_station_set_config_current(&sconf);
                     wifi_station_connect();
@@ -342,9 +363,6 @@ static void wifi_check()
     switch (cs) {
         case STATION_GOT_IP:
             if (!clients) {
-                if (!wifi_station_get_auto_connect()) {
-                    wifi_station_set_auto_connect(1);
-                }
                 msg_set_state("nosubs");
             } else {
                 if (!strcmp(state, "nosubs")) {
@@ -365,6 +383,48 @@ static void wifi_check()
     }
 }
 
+static void ICACHE_FLASH_ATTR wifi_event(System_Event_t *evt)
+{
+    if (evt->event == EVENT_SOFTAPMODE_PROBEREQRECVED) return;
+    Serial.printf("event %x\r\n", evt->event);
+    switch (evt->event) {
+        case EVENT_STAMODE_CONNECTED:
+            Serial.printf("connect to ssid %s, channel %d\r\n",
+                    evt->event_info.connected.ssid,
+                    evt->event_info.connected.channel);
+            break;
+        case EVENT_STAMODE_DISCONNECTED:
+            Serial.printf("disconnect from ssid %s, reason %d\r\n",
+                    evt->event_info.disconnected.ssid,
+                    evt->event_info.disconnected.reason);
+            break;
+        case EVENT_STAMODE_AUTHMODE_CHANGE:
+            Serial.printf("mode: %d -> %d\r\n",
+                    evt->event_info.auth_change.old_mode,
+                    evt->event_info.auth_change.new_mode);
+            break;
+        case EVENT_STAMODE_GOT_IP:
+            Serial.printf("ip:" IPSTR ",mask:" IPSTR ",gw:" IPSTR "\r\n",
+                    IP2STR(&evt->event_info.got_ip.ip),
+                    IP2STR(&evt->event_info.got_ip.mask),
+                    IP2STR(&evt->event_info.got_ip.gw));
+            break;
+        case EVENT_SOFTAPMODE_STACONNECTED:
+            Serial.printf("station: " MACSTR "join, AID = %d\r\n",
+                    MAC2STR(evt->event_info.sta_connected.mac),
+                    evt->event_info.sta_connected.aid);
+            break;
+        case EVENT_SOFTAPMODE_STADISCONNECTED:
+            Serial.printf("station: " MACSTR "leave, AID = %d\r\n",
+                    MAC2STR(evt->event_info.sta_disconnected.mac),
+                    evt->event_info.sta_disconnected.aid);
+            break;
+        default:
+            break;
+    }
+}
+
+
 static void wifi_setup()
 {
     lastscan = 0 - 30000;
@@ -374,6 +434,7 @@ static void wifi_setup()
     // See if wifi is found that matches littlefs files
     //   (opt?) If not see if wifi is found that matches flash (?)
     // Connect to that wifi
+    wifi_set_event_handler_cb(wifi_event);
 
     char wififn[11] = "/wifiA.txt";
     int wifiidx = 0;
