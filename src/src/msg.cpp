@@ -179,7 +179,6 @@ static void ICACHE_FLASH_ATTR conn_connected(void *arg)
 }
 
 #ifdef MQTT_SERVER
-
 static void server_setup()
 {
     static esp_tcp tcp = {
@@ -233,10 +232,10 @@ static MDNSResponder mdns;
 static void mdns_setup()
 {
     if (!mdns.begin(OTA_NAME)) {
-        Serial.printf("Error setting up mdns responder");
+        Serial.printf("Error setting up mdns responder\r\n");
     }
     if (!mdns.addService("eos-portal", "tcp", mqtt_port)) {
-        Serial.printf("Error adding mdns service");
+        Serial.printf("Error adding mdns service\r\n");
     }
 }
 
@@ -252,33 +251,69 @@ static void sta_setup()
 
 static struct espconn client_conn;
 
+/*
+static void mdns_callback(const MDNSResponder::MDNSServiceInfo &info, MDNSResponder::AnswerType at, bool isset)
+{
+    Serial.printf("Got mdns callback: %x %x\r\n", (int)at, isset);
+    if (isset && ((client_conn.state == ESPCONN_NONE) || (client_conn.state == ESPCONN_CLOSE))) {
+        uint16_t port = info.hostPort();
+        if (port && info.IP4AddressAvailable()) {
+            IPAddress ip = info.IP4Adresses()[0];
+            client_conn.proto.tcp->remote_port = port;
+            client_conn.proto.tcp->remote_ip[0] = ip[0];
+            client_conn.proto.tcp->remote_ip[1] = ip[1];
+            client_conn.proto.tcp->remote_ip[2] = ip[2];
+            client_conn.proto.tcp->remote_ip[3] = ip[3];
+            Serial.printf("Trying to connect to %d.%d.%d.%d:%d\r\n",
+                client_conn.proto.tcp->remote_ip[0], client_conn.proto.tcp->remote_ip[1],
+                client_conn.proto.tcp->remote_ip[2], client_conn.proto.tcp->remote_ip[3],
+                client_conn.proto.tcp->remote_port);
+            espconn_connect(&client_conn);
+        }
+    }
+}
+*/
+
 static void client_setup()
 {
+    Serial.printf("Setting up client connection\r\n");
     static esp_tcp tcp;
     client_conn.type = ESPCONN_TCP;
     client_conn.state = ESPCONN_NONE;
     client_conn.proto.tcp = &tcp;
+    espconn_regist_connectcb(&client_conn, conn_connected);
     espconn_regist_recvcb(&client_conn, conn_recv);
+
+    //Serial.printf("Installing mdns service query\r\n");
+    //MDNS.installServiceQuery("eos-portal", "tcp", mdns_callback);
 }
 
 static void client_check()
 {
-    if ((client_conn.state == ESPCONN_NONE) || (client_conn.state == ESPCONN_CLOSE)) {
-        if ((lasttick - lastconn) >= 30000) {
-            Serial.printf("Querying mdns for %s - %s\r\n", "eos-portal", "tcp");
-            int n = MDNS.queryService("eos-portal", "tcp");
-            Serial.printf("Found %d services\r\n", n);
-            if (n) {
-                Serial.printf("Trying to connect to %s at %s:%d\r\n", MDNS.answerHostname(0), MDNS.answerIP(0).toString().c_str(), MDNS.answerPort(0));
-                client_conn.proto.tcp.remote_port = MDNS.answerPort(0);
-                os_memcpy(client_conn.proto.tcp.remote_ip, MDNS.answerIP(0).ip);
-                espconn_connect(&client_conn);
-            }
-            lastconn = lasttick + 30000;
+    if ((client_conn.state == ESPCONN_CLOSE || client_conn.state == ESPCONN_NONE) && ((lasttick - lastconn) >= 30000)) {
+        Serial.printf("Querying mdns for %s - %s\r\n", "eos-portal", "tcp");
+        int n = MDNS.queryService("eos-portal", "tcp");
+        Serial.printf("Found %d services\r\n", n);
+        if (n) {
+            Serial.printf("Trying to connect to %s at %s:%d\r\n", MDNS.answerHostname(0), MDNS.answerIP(0).toString().c_str(), MDNS.answerPort(0));
+            IPAddress ip = MDNS.answerIP(0);
+            client_conn.proto.tcp->remote_ip[0] = ip[0];
+            client_conn.proto.tcp->remote_ip[1] = ip[1];
+            client_conn.proto.tcp->remote_ip[2] = ip[2];
+            client_conn.proto.tcp->remote_ip[3] = ip[3];
+            client_conn.proto.tcp->remote_port = MDNS.answerPort(0);
+            Serial.printf("esp_connect %d.%d.%d.%d : %d\r\n",
+                client_conn.proto.tcp->remote_ip[0],
+                client_conn.proto.tcp->remote_ip[1],
+                client_conn.proto.tcp->remote_ip[2],
+                client_conn.proto.tcp->remote_ip[3],
+                client_conn.proto.tcp->remote_port);
+            espconn_connect(&client_conn);
         }
+        lastconn = lasttick;
     }
-
 }
+
 #endif
 
 static unsigned long lastscan;
@@ -367,6 +402,9 @@ static void wifi_check()
     switch (cs) {
         case STATION_GOT_IP:
             if (!clients) {
+#ifndef MQTT_SERVER
+                lastconn = lasttick - 30000;
+#endif
                 msg_set_state("nosubs");
             } else {
                 if (!strcmp(state, "nosubs")) {
@@ -480,6 +518,7 @@ void msg_setup()
     server_setup();
 #else
     sta_setup();
+    client_setup();
 #endif
     wifi_setup();
     msg_set_state("nowifi");
@@ -487,17 +526,19 @@ void msg_setup()
 
 void msg_send(const char *topic, const char *msg)
 {
-    struct client *client = clients;
     char sendstate[256];
-    int len = 0;
-    len = snprintf(sendstate, sizeof(sendstate), "%s %s\r\n", topic, msg);
-    if (len > sizeof(sendstate)-1) {
-        debugE("msg_send too large: %s %s", topic, msg);
-        return;
-    }
+    size_t len = 0;
+    struct client *client = clients;
     while (client) {
         struct espconn *conn = client->conn;
         if (conn->state != ESPCONN_CLOSE) {
+            if (len == 0) {
+                len = snprintf(sendstate, sizeof(sendstate), "%s %s\r\n", topic, msg);
+                if (len > sizeof(sendstate)-1) {
+                    debugE("msg_send too large: %s %s", topic, msg);
+                    return;
+                }
+            }
             espconn_send(conn, (uint8_t *)sendstate, len);
         }
         client = client->next;
@@ -525,8 +566,10 @@ void msg_check()
                 conn->proto.tcp->remote_ip[0], conn->proto.tcp->remote_ip[1],
                 conn->proto.tcp->remote_ip[2], conn->proto.tcp->remote_ip[3],
                 conn->proto.tcp->remote_port, conn->link_cnt);
+#ifdef MQTT_SERVER
             espconn_abort(conn);
             espconn_delete(conn);
+#endif
             delete toremove;
         } else {
             if ((*client)->state != state) {

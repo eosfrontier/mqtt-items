@@ -30,7 +30,9 @@ void buttons_check()
     for (int i = 0; BUTTONS_ACTIONS[i]; i += 3) {
       if ((BUTTONS_ACTIONS[i][0] == '*') || !strcmp(state, BUTTONS_ACTIONS[i])) {
         if (btpush & (int)BUTTONS_ACTIONS[i+1]) {
-          msg_send("set", BUTTONS_ACTIONS[i+2]);
+          if (BUTTONS_ACTIONS[i+2]) {
+            msg_send("set", BUTTONS_ACTIONS[i+2]);
+          }
           break;
         }
       }

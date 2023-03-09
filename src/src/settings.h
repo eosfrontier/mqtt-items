@@ -26,7 +26,8 @@ const char * const  BUTTONS_NAMES[] = {"b1","b2","b3"};
 // state - allowable buttons - newstate
 const char * const BUTTONS_ACTIONS[] = {
     "idle", (const char *)(0b010), "out",
-    "*", (const char *)(0b111),
+    "idle", (const char *)(0b111), NULL,
+    "*",    (const char *)(0b111), "idle",
     NULL
 };
 #define COLORS_DEFAULT "2000:000000,001800,000000"
